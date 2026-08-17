@@ -1,0 +1,15 @@
+{
+  "_evidence": "Proves Zed-Concept/noema is private. Captured 2026-08-17 by Claude Code (Opus, high) during the governance scaffold dispatch, before the scaffold commit.",
+  "_command": "gh repo view Zed-Concept/noema --json name,nameWithOwner,visibility,isPrivate,defaultBranchRef,createdAt,isFork,isEmpty",
+  "_note": "isEmpty is true and defaultBranchRef is empty because this was captured before the scaffold commit was pushed. The visibility and isPrivate fields are the claim under test.",
+  "_output": {
+    "createdAt": "2026-08-17T09:55:16Z",
+    "defaultBranchRef": { "name": "" },
+    "isEmpty": true,
+    "isFork": false,
+    "isPrivate": true,
+    "name": "noema",
+    "nameWithOwner": "Zed-Concept/noema",
+    "visibility": "PRIVATE"
+  }
+}

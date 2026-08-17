@@ -1,0 +1,48 @@
+Evidence: the exact tracked tree of the governance scaffold commit.
+Captured 2026-08-17 by Claude Code (Opus, high) before the commit, with every
+file staged.
+
+Command: git add -A && git ls-files | sort
+
+--- output (14 files) ---
+.gitignore
+AGENTS.md
+README.md
+docs/00-master/ARCHITECTURE.md
+docs/01-state/BRANCH-NOTES.md
+docs/01-state/HANDOFF.md
+docs/01-state/PROJECT-STATE.md
+docs/02-roles/OPERATIONS.md
+docs/03-decisions/ADR-001-operating-model.md
+docs/03-decisions/ADR-002-v1-stack.md
+docs/03-decisions/ADR-NNN-template.md
+docs/04-reviews/REVIEW-NNN.md
+docs/05-quality/evidence/001-scaffold/git-ls-files.txt
+docs/05-quality/evidence/001-scaffold/repo-visibility.json
+--- end output ---
+
+What this proves, against the dispatch scope:
+
+  Present and in scope
+    AGENTS.md                     the rulebook, written verbatim as approved
+    README.md                     three lines
+    .gitignore                    standard Node/Expo
+    docs/00-master/               ARCHITECTURE.md
+    docs/01-state/                PROJECT-STATE.md, HANDOFF.md, BRANCH-NOTES.md
+    docs/02-roles/                OPERATIONS.md
+    docs/03-decisions/            ADR-001, ADR-002, and the unfilled ADR template
+    docs/04-reviews/              the unfilled REVIEW template
+    docs/05-quality/evidence/     these two artifacts
+
+  Absent, as required
+    docs/06-content/              omitted — Noema is not a content-driven site
+    package.json                  no application manifest
+    package-lock.json / yarn.lock / pnpm-lock.yaml
+    app.json / app.config.* / eas.json     no Expo or EAS initialization
+    node_modules/                 no dependencies installed
+    .github/                      no CI configuration
+    supabase/                     no Supabase configuration
+    src/ app/ components/         no application source of any kind
+    .env / .env.*                 no environment files; no credential committed
+
+  Zero files outside the dispatch's allowed list.
