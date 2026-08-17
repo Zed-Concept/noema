@@ -8,6 +8,39 @@ Append a new block at the top. Never edit an old one.
 
 ---
 
+## 2026-08-18 — chore/state-ctrl-001-closeout (CTRL-001 close-out)
+
+**What I set out to do**
+
+Controller close-out for CTRL-001: write ADR-003 recording the RED-lane
+payments ruling, update the controller sections of `PROJECT-STATE.md`, flip
+the `chore/agents-md-formatting` LOCK to `MERGED`, and record this branch's
+own LOCK.
+
+**What I changed**
+
+- `docs/03-decisions/ADR-003-red-lane-payments.md` — new ADR: payment,
+  purchase, entitlement, and billing-webhook logic changes are RED-lane items
+  requiring explicit per-item approval.
+- `docs/01-state/PROJECT-STATE.md` — added binding ruling 3 (ADR-003);
+  appended learnings digest entries 2–4; updated Current state to note the
+  merge, AGENTS.md sha256, and REVIEW-001/REVIEW-002 record; added a known
+  issue for REVIEW-001's missing HANDOFF block; cleared Active work and added
+  the App skeleton stream; updated Last verified.
+- `docs/01-state/BRANCH-NOTES.md` — flipped the `chore/agents-md-formatting`
+  LOCK to `MERGED` (commit `2e6b9f33c2cedbc8dbad2f30bd95a9550bf06675`); added
+  the LOCK for this branch.
+- `docs/01-state/HANDOFF.md` — appended this session record at the top.
+- `docs/05-quality/evidence/001d-closeout/git-log.txt` — `git log --oneline
+  -8` output.
+
+**What I verified, and how**
+
+- Pre-flight: `git merge-base --is-ancestor chore/agents-md-formatting main`
+  confirmed the branch is merged into `main` before starting.
+
+---
+
 ## 2026-08-18 — chore/agents-md-formatting (REVIEW-002 re-review)
 
 **What I set out to do**

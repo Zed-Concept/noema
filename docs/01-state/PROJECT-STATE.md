@@ -3,7 +3,8 @@
 The authoritative record of what is true right now. If this file and your
 memory of the project disagree, this file is right and you are stale.
 
-**Last verified:** 2026-08-17 by Claude Code (Opus, high effort), scaffold dispatch
+**Last verified:** 2026-08-18, controller close-out CTRL-001, verified against
+git log and review records
 **Verification method:** `git ls-files` on the scaffold commit and
 `gh repo view Zed-Concept/noema --json visibility`. Both outputs are in
 `docs/05-quality/evidence/001-scaffold/`.
@@ -44,6 +45,11 @@ As of 2026-08-17:
   no CI, no Supabase config. This is deliberate and was the explicit scope of the
   scaffold dispatch.
 - Two ADRs accepted: ADR-001 (operating model), ADR-002 (v1 stack).
+- Scaffold + AGENTS.md restoration merged to main; AGENTS.md sha256
+  0ff02d20…f013 (5378 bytes); REVIEW-001 (FAIL, resolved) and REVIEW-002
+  (PASS) on record; the scaffold handoff's "AGENTS.md does not render" flag is
+  resolved as of the merge — noted here, the old handoff block itself stays
+  untouched.
 
 ## Binding rulings
 
@@ -54,6 +60,7 @@ explicitly and get it overturned on the record.
 |---|---|---|---|
 | 1 | The multi-agent operating model is fixed: controller dispatches, one builder per branch, a reviewer of record who never built the unit, advisory review only on named triggers, and `BRANCH-NOTES.md` as the authoritative lock record with Linear as a mirror. | 2026-08-17 | `docs/03-decisions/ADR-001-operating-model.md` |
 | 2 | The v1 data layer is Supabase — not Neon plus assembled services — and carries no ORM: `supabase-js` against RLS with generated types. Drizzle is not adopted in v1. | 2026-08-17 | `docs/03-decisions/ADR-002-v1-stack.md` |
+| 3 | Payment, purchase, entitlement, and billing-webhook logic changes are RED lane. | 2026-08-18 | `docs/03-decisions/ADR-003-red-lane-payments.md` |
 
 ## Active work
 
@@ -61,8 +68,7 @@ What is in flight, who owns it, and what it is blocked on. One row per stream.
 
 | Stream | Owner | Status | Blocked on |
 |---|---|---|---|
-| Governance scaffold (`main`, single authorized direct commit) | Claude Code (Opus, high) | Built; awaiting review by Codex | Reviewer of record |
-| `AGENTS.md` formatting restoration (`chore/agents-md-formatting`) | Claude Code (see LOCK — dispatch/session model mismatch) | REVIEW-001 fix loop complete (findings 1 & 2 fixed; finding 3 overruled by controller); awaiting re-review by Codex. Not merged | Reviewer of record |
+| App skeleton (Expo init, CI baseline) | Owner + controller | Next | Blocked on staging Supabase project setup with owner |
 
 ## RED lane
 
@@ -87,7 +93,9 @@ and the rule derived from it. Keep entries short; move long narratives to
 
 | # | What happened | Rule now in force |
 |---|---|---|
-| 1 | — no incidents yet; this project is one commit old — | — |
+| 2 | Markdown was stripped twice when governance text was pasted inline between tools | Governance documents transfer between tools as files with a pre-agreed sha256, never as inline paste |
+| 3 | A unit dispatched as Sonnet was built by an Opus session; the LOCK had to record a discrepancy | The owner sets /model to the dispatched model before pasting; the builder verifies and stops on mismatch before any work |
+| 4 | A reviewer dispatch said REVIEW-NNN.md must be "the only change," conflicting with the mandatory HANDOFF block; Codex correctly stopped | Reviewer dispatches always scope exactly two files: the REVIEW record and the HANDOFF append |
 
 ## Known issues
 
@@ -96,7 +104,7 @@ written here does not exist to the next session.
 
 | # | Issue | Impact | Status |
 |---|---|---|---|
-| 1 | — none recorded — | | |
+| 1 | REVIEW-001 was committed without a HANDOFF block, under the same flawed dispatch wording as learning 4. | Accepted inconsistency; not to be repaired by editing history. | Accepted |
 
 ## Open questions
 
