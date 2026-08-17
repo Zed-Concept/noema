@@ -1,0 +1,47 @@
+Structure check — GFM headings, table, preformatted block
+
+No markdown renderer (pandoc/glow/mdcat/python-markdown) is available
+in this environment, so 'renders correctly' was NOT verified by
+rendering. structcheck.py instead parses the file against the GFM
+rules the document depends on. See the classification at the bottom.
+
+$ python3 structcheck.py AGENTS.md      # after
+ATX headings found: 10
+  L1    h1  AGENTS.md — Noema
+  L7    h2  Read first
+  L16   h2  RED lane — blocked without explicit, separate approval
+  L32   h2  Roles
+  L52   h2  Lock protocol
+  L63   h2  Non-negotiable boundaries
+  L77   h2  Session protocol
+  L89   h2  Verification
+  L97   h2  Engineering workflow
+  L107  h2  Quick reference
+
+Pipe table rows found: 9
+  header L109: 2 columns -> | What | Where |
+  delimiter L110: OK
+  body rows: 7, all 2 columns
+
+Indented (code-block) lines: 2 at [56, 57]
+Lines containing a literal tab: 0 []
+
+PASS: structure valid
+exit=0
+
+$ python3 structcheck.py AGENTS.before.md   # before, for contrast
+ATX headings found: 0
+
+Pipe table rows found: 0
+
+Indented (code-block) lines: 0 at []
+Lines containing a literal tab: 8 [59, 60, 61, 62, 63, 64, 65, 66]
+
+FAIL: no ATX headings; table has fewer than 3 rows (header + delimiter + body); lock-protocol block is not indented as preformatted text; literal tabs present at [59, 60, 61, 62, 63, 64, 65, 66] (the original defect)
+exit=1
+
+CLASSIFICATION
+  Structure valid per GFM parse ......... PASS (new file, exit 0)
+  Defect reproduced on the old file .... PASS (old file, exit 1)
+  Visual render in a renderer .......... NOT RUN — no renderer available
+    offline; installing one was outside this dispatch's scope.

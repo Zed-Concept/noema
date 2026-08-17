@@ -1,0 +1,27 @@
+AGENTS.md formatting restoration — fingerprints
+Branch: chore/agents-md-formatting   Builder: Claude Code   Date: 2026-08-17
+
+== Owner-supplied source ==
+path: ~/Downloads/AGENTS-approved.md (transferred as a file, not pasted inline)
+expected per owner: 5310 bytes, 10 lines ^#, 10 lines with |,
+  sha256 1028ac153298d361c434c7963a78f0dc49de1d0212f42171104e02793d678295
+measured:
+  bytes:  5310
+  sha256: 1028ac153298d361c434c7963a78f0dc49de1d0212f42171104e02793d678295
+  ^# :    10
+  | :     10
+STOP-check verdict: all four match -> proceed authorized
+
+== AGENTS.md BEFORE (commit fdbc384) ==
+  bytes:  4998
+  sha256: 31ef11944cba0fa79883634f39c1ba7e975610aa4b468482a2da310ee110cca2
+  ^# :    0
+  | :     1  (not a table: the lock-protocol Status line)
+
+== AGENTS.md AFTER (this commit) ==
+  bytes:  5310
+  sha256: 1028ac153298d361c434c7963a78f0dc49de1d0212f42171104e02793d678295
+  ^# :    10
+  | :     10
+
+AFTER sha256 == source sha256: byte-for-byte replacement confirmed.
