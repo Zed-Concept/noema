@@ -1,0 +1,55 @@
+$ git ls-files
+.github/workflows/ci.yml
+.gitignore
+.prettierignore
+.prettierrc
+AGENTS.md
+README.md
+app.json
+docs/00-master/ARCHITECTURE.md
+docs/01-state/BRANCH-NOTES.md
+docs/01-state/HANDOFF.md
+docs/01-state/PROJECT-STATE.md
+docs/02-roles/OPERATIONS.md
+docs/03-decisions/ADR-001-operating-model.md
+docs/03-decisions/ADR-002-v1-stack.md
+docs/03-decisions/ADR-003-red-lane-payments.md
+docs/03-decisions/ADR-NNN-template.md
+docs/04-reviews/REVIEW-001.md
+docs/04-reviews/REVIEW-002.md
+docs/04-reviews/REVIEW-NNN.md
+docs/05-quality/evidence/001-scaffold/git-ls-files.txt
+docs/05-quality/evidence/001-scaffold/repo-visibility.json
+docs/05-quality/evidence/001b-agents-md/fingerprint.txt
+docs/05-quality/evidence/001b-agents-md/normalize.py
+docs/05-quality/evidence/001b-agents-md/structcheck.py
+docs/05-quality/evidence/001b-agents-md/structure-check.txt
+docs/05-quality/evidence/001b-agents-md/wording-diff.txt
+docs/05-quality/evidence/001c-fixes/agents-md-diff.txt
+docs/05-quality/evidence/001c-fixes/agents-md-fingerprint.txt
+docs/05-quality/evidence/001c-fixes/handoff-restore-diff.txt
+docs/05-quality/evidence/001d-closeout/git-log.txt
+docs/05-quality/evidence/002a-app-skeleton/capture.sh
+docs/05-quality/evidence/002a-app-skeleton/environment.txt
+docs/05-quality/evidence/002a-app-skeleton/expo-doctor.txt
+docs/05-quality/evidence/002a-app-skeleton/expo-export.txt
+docs/05-quality/evidence/002a-app-skeleton/gate-negative-control.txt
+docs/05-quality/evidence/002a-app-skeleton/lint-file-list.txt
+docs/05-quality/evidence/002a-app-skeleton/lint.txt
+docs/05-quality/evidence/002a-app-skeleton/negative-control.sh
+docs/05-quality/evidence/002a-app-skeleton/npm-audit.txt
+docs/05-quality/evidence/002a-app-skeleton/prettier-check.txt
+docs/05-quality/evidence/002a-app-skeleton/test.txt
+docs/05-quality/evidence/002a-app-skeleton/typecheck.txt
+eslint.config.js
+jest.config.js
+package-lock.json
+package.json
+src/__tests__/home-screen.test.tsx
+src/app/_layout.tsx
+src/app/index.tsx
+tsconfig.json
+--- exit code: 0 ---
+
+$ git ls-files | wc -l
+      50

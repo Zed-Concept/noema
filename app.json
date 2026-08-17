@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "noema",
+    "slug": "noema",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "noema",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "bundler": "metro"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

@@ -1,0 +1,28 @@
+$ npx expo export --platform all --output-dir dist --clear
+Using src/app as the root directory for Expo Router.
+React Compiler enabled
+Starting Metro Bundler
+
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+Android Bundled 30356ms node_modules/expo-router/entry.js (1226 modules)
+iOS Bundled 42314ms node_modules/expo-router/entry.js (1101 modules)
+Static rendering is enabled. Learn more: https://docs.expo.dev/router/web/static-rendering/
+λ Bundled 50802ms node_modules/expo/node_modules/@expo/cli/node_modules/@expo/router-server/node/render.js (823 modules)
+Web Bundled 51997ms node_modules/expo-router/entry.js (773 modules)
+
+› android bundles (1):
+_expo/static/js/android/entry-dd75f7dbbc4101c5e8b95b5cd4513a14.hbc (2.6MB)
+
+› ios bundles (1):
+_expo/static/js/ios/entry-d154a55bdd3567039f145a3fd4f8be18.hbc (2.3MB)
+
+› web bundles (1):
+_expo/static/js/web/entry-c8ed4343d57932604e0e1c64f2409d81.js (1.1MB)
+
+› Static routes (3):
+/ (index) (19KB)
+/_sitemap (17KB)
+/+not-found (17KB)
+
+Exported: dist
+--- exit code: 0 ---

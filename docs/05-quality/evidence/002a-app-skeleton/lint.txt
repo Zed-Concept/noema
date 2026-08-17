@@ -1,0 +1,6 @@
+$ npm run lint
+
+> noema@0.1.0 lint
+> expo lint
+
+--- exit code: 0 ---

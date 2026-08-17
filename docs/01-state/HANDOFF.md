@@ -8,6 +8,173 @@ Append a new block at the top. Never edit an old one.
 
 ---
 
+## 2026-08-18 — feat/app-skeleton (CTRL-002 Unit A)
+
+**Controller:** CTRL-002 App Skeleton. **Builder:** Claude Code, Opus / high
+effort / fresh session. **Reviewer of record:** Codex. **Branch cut from:**
+`main` at `ed0340d46a0cacbeffaaf71ed1cc229d62316fc9`.
+
+**What I set out to do**
+
+Unit A: initialize an Expo managed app at the repo root targeting iOS, Android,
+and web, with expo-router and one placeholder home screen; npm with a committed
+lockfile; ESLint, Prettier, TypeScript strict; one GitHub Actions workflow
+running install, typecheck, lint, and test; and evidence for every PASS claim.
+No Supabase, no keys, no transcription, no deploys.
+
+**The stop before the build**
+
+My first session action was a stop, not a commit. `BRANCH-NOTES.md` at
+`59db981` contained no LOCK for `feat/app-skeleton`, so there was nothing to
+verify the dispatch's model and scope lines against — the check learning 3 put
+in force. The controller ruled the snapshot stale, pointed to `ed0340d`, and I
+re-verified against that tree: LOCK present, `Status: BUILD`, Builder Claude
+Code, Model+Effort `Opus / high effort / fresh session`, RoR Codex, dispatch
+line matching. Only then did I create the branch. Recording this because the
+stop was the protocol working, not friction.
+
+**What I changed**
+
+Application:
+
+- `package.json` — Expo SDK 57.0.14, `main: expo-router/entry`, npm scripts for
+  `start`/`ios`/`android`/`web`, `typecheck`, `lint`, `format`, `format:check`,
+  `test`. Private, version `0.1.0`.
+- `package-lock.json` — committed. `node_modules/` and `dist/` are not tracked.
+- `app.json` — slug `noema`, scheme `noema`, `web.output: static`,
+  `plugins: [expo-router]`, `typedRoutes` and `reactCompiler` experiments on.
+- `tsconfig.json` — extends `expo/tsconfig.base`, `strict: true`, `@/*` → `./src/*`.
+- `src/app/_layout.tsx` — a bare `<Stack />`.
+- `src/app/index.tsx` — the one placeholder home screen. Two lines of neutral
+  text; no product copy, no product feature.
+- `src/__tests__/home-screen.test.tsx` — one trivial test that renders the
+  placeholder screen.
+- `eslint.config.js` — `eslint-config-expo/flat`, then `eslint-config-prettier`
+  last so formatting stays Prettier's job.
+- `.prettierrc`, `.prettierignore`, `jest.config.js` (`preset: jest-expo`).
+- `.github/workflows/ci.yml` — `pull_request` and push-to-`main`; checkout,
+  setup-node (Node 24 LTS, npm cache), `npm ci`, typecheck, lint, test.
+- `.gitignore` — two lines added (`expo-env.d.ts`, `.metro-health-check*`).
+  Nothing removed.
+
+Governance:
+
+- `docs/05-quality/evidence/002a-app-skeleton/` — eleven artifacts plus the two
+  scripts that generate them, and a `README.md` mapping every claim to its
+  artifact with an explicit classification.
+- `docs/01-state/PROJECT-STATE.md` — the Unit A **Active work** row only.
+- `docs/01-state/HANDOFF.md` — this block.
+
+`AGENTS.md`, `README.md`, `docs/03-decisions/`, `docs/04-reviews/`, and every
+prior HANDOFF block are untouched. `.prettierignore` lists `docs/`, `AGENTS.md`,
+and `README.md` so no formatter can ever reflow governance text.
+
+**What I verified, and how**
+
+Full table with classifications in
+`docs/05-quality/evidence/002a-app-skeleton/README.md`.
+
+- **Typecheck — PASS.** `tsc --noEmit` exit 0 under `strict`. `typecheck.txt`.
+- **Lint — PASS.** Exit 0, zero errors, zero warnings. `lint.txt`.
+- **The lint pass is not vacuous — PASS.** `expo lint` prints nothing on
+  success, so a zero exit alone cannot distinguish "found nothing" from "matched
+  no files." ESLint inspected 5 files. `lint-file-list.txt`.
+- **Test — PASS.** 1 passed, 1 total. `test.txt`.
+- **The gates are real — PASS.** This is the check worth having. I injected one
+  deliberate fault per gate: typecheck went to exit 2, lint to 1, test to 1, and
+  all three returned to 0 once removed. A green check nobody has seen go red
+  proves nothing. `gate-negative-control.txt`, script `negative-control.sh`.
+- **Prettier — PASS.** Every matched file already formatted. `prettier-check.txt`.
+- **Dependencies match SDK 57 — PASS.** `expo-doctor` 21/21. `expo-doctor.txt`.
+- **All three targets bundle — PASS.** `expo export --platform all` produced iOS
+  (2.3MB hbc), Android (2.6MB hbc), and web (1.1MB js) bundles plus three static
+  routes, exit 0. This is the strongest evidence available here that the
+  skeleton really targets all three. `expo-export.txt`.
+- **No generated file tracked — PASS.** 50 files, no `node_modules/`, no
+  `dist/`, no `.env`. `git-ls-files.txt`.
+- **CI — NOT RUN.** No `pull_request` or push-to-`main` event has occurred, so
+  the workflow has never executed. **The first CI run triggers when this
+  branch's PR is opened.** The four commands it invokes each pass locally; the
+  workflow file itself — Actions syntax, action resolution, Node 24 — is
+  asserted by reading only.
+- **`npm audit` — FAIL pre-existing.** 22 advisories (7 moderate, 15 high), all
+  transitive through Expo's own build tooling and arriving with `expo@57.0.14`.
+  Not introduced by this unit, not acted on. `npm-audit.txt`.
+
+**Decisions I made under delegated judgment**
+
+- **SDK 57.0.14**, the current `latest` dist-tag.
+- **`src/app/` routes**, matching the current Expo default template layout.
+- **jest-expo**, Expo's default runner. Two findings worth passing on: `jest-expo@57`
+  is built on the **Jest 29** line, and installing `jest@30` yields a broken
+  mixed tree (`clearMocksOnScope is not a function`); and
+  `@testing-library/react-native@14` made `render` **async**, so `await
+  render(...)` is now required. I pinned Jest to 29 rather than forcing the
+  install — `--legacy-peer-deps` here would have been weakening a check to make
+  it pass.
+- **Dropped the template's demo-only packages** (`@expo/ui`, `expo-image`,
+  `expo-symbols`, `expo-glass-effect`, `expo-web-browser`, `expo-device`,
+  `expo-font`, `expo-splash-screen`, `expo-status-bar`, `expo-system-ui`) and
+  all demo assets and screens. A skeleton should not ship code nothing imports.
+- **Kept `react-native-gesture-handler`, `react-native-reanimated`, and
+  `react-native-worklets`** even though expo-router marks them *optional* peers
+  and nothing imports them. Dropping them is very likely correct, but the
+  failure mode would be a device-runtime crash, and I cannot run a device build
+  in this environment. I did not trim on an unverifiable assumption. Flagged
+  below as a cleanup a later unit can do with a simulator in hand.
+
+**What I did NOT do**
+
+No Supabase in any form. No provider key, no `.env`, no secret read, printed, or
+committed. No transcription code. No EAS, Vercel, RevenueCat, Sentry, or PostHog
+configuration. No deploy, no push, no PR, no merge. I did not flip the LOCK past
+`BUILD` — that is a controller/owner act. I did not touch any state section other
+than the Unit A Active work row, and did not edit an existing HANDOFF block.
+
+The name "Noema" appears only as the lowercase internal slug (`package.json`
+name, `app.json` `slug` and `scheme`) — nothing outward-facing, per the uncleared
+trademark in open question 2.
+
+**What is broken or uncertain**
+
+1. **CI is unproven.** It cannot be proven before a PR exists. If the first run
+   fails, it fails on the workflow file or on Node 24, not on the four commands
+   — those are green locally on Node 26.
+2. **Local Node 26 vs CI Node 24.** I built on Node 26 (current); CI pins 24
+   (LTS), which is what Expo supports. The mismatch is deliberate but untested.
+   Worth a `.nvmrc` in a later unit; adding one was not in this dispatch.
+3. **Prettier is configured but not CI-enforced.** The dispatch names exactly
+   four CI steps — install, typecheck, lint, test — and `eslint-config-prettier`
+   *disables* formatting rules in ESLint, so nothing in CI checks formatting.
+   `npm run format:check` exists and passes locally. Adding it as a fifth step
+   is a one-line change I did not make because it is outside the dispatched
+   scope. **Controller decision requested.**
+4. **22 transitive npm advisories** in Expo build tooling (item above). The fix
+   would move Expo off SDK-pinned versions that `expo-doctor` requires — above a
+   builder's authority. **Reported, not acted on.**
+5. **Three unused navigation dependencies** retained for the reason given above.
+6. **The app has never been run.** No simulator, emulator, or browser session.
+   Bundling for all three platforms is proven; rendering on a device is not.
+
+**Adjacent findings — reported, acted on in none**
+
+- The repo has no `LICENSE`. The Expo template ships one; adding it is an owner
+  decision, so I did not.
+- `docs/02-roles/OPERATIONS.md` is still the scaffold stub. There is now
+  something runnable to document (`npm start`, `npm run ios|android|web`), so it
+  is fillable for the first time — but it is not in this dispatch.
+
+**Next step**
+
+Route the `feat/app-skeleton` diff to Codex as reviewer of record. Then: owner
+opens the PR, which is the event that produces the first CI run and converts
+claim 10 from NOT RUN to a real result. Controller to rule on item 3 (Prettier
+in CI) and item 4 (audit advisories).
+
+LOCK status line unchanged and reported as: `Status: BUILD`.
+
+---
+
 ## 2026-08-18 — chore/state-ctrl-001-closeout (CTRL-001 close-out)
 
 **What I set out to do**

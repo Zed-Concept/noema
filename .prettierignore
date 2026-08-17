@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.expo/
+coverage/
+package-lock.json
+
+# Governance documents. Formatting here is owner-approved content, not style —
+# see AGENTS.md. No tool reformats these.
+docs/
+AGENTS.md
+README.md
