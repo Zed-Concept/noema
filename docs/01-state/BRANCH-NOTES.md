@@ -68,17 +68,50 @@ Controller:         CTRL-002 App Skeleton
 Builder:            Claude Code
 Model+Effort:       Opus / high effort / fresh session
 Reviewer of record: Codex
-Status:             BUILD
+Status:             REVIEW
 Dispatch:           Unit A — initialize the Expo (React Native) app for mobile
                     and web plus a CI baseline. No Supabase, no provider keys,
                     no transcription code, no deploys. Supabase wiring is
-                    Unit B, a separate future dispatch.
-Evidence:           docs/05-quality/evidence/002a-app-skeleton/ (pending)
+                    Unit B, a separate future dispatch. Amended by CTRL-002
+                    after handoff: add `npm run format:check` as a fifth CI
+                    step.
+Evidence:           docs/05-quality/evidence/002a-app-skeleton/
 ```
 
 Registered by the controller in the CTRL-002 opening state commit, ahead of
 dispatch issue. `BUILD` marks the branch owned from the moment this merges;
 the dispatch text is delivered to the builder separately.
+
+**Opening note — the builder stopped before building.** The dispatch told the
+builder to verify itself against this block. At the snapshot the builder held
+(`59db981`) the block did not exist, so there was nothing to verify against and
+the session stopped without creating the branch. The controller ruled the
+snapshot stale and pointed to `ed0340d`, where this block is present; the
+builder re-verified and only then began. Recorded because the stop is the
+protocol working as designed, not an incident.
+
+**Closing note (2026-08-18).** Build complete. The Expo skeleton is in:
+SDK 57.0.14, expo-router, TypeScript strict, one placeholder home screen, npm
+with a committed lockfile, ESLint + Prettier, jest-expo with one passing test,
+and a GitHub Actions workflow. Verified locally — typecheck, lint, and test all
+exit 0; each gate was proven to go red on an injected fault and back to green;
+`expo-doctor` 21/21; `expo export --platform all` produces iOS, Android, and
+web bundles. CI itself is **NOT RUN**: no `pull_request` or push-to-`main`
+event has occurred, so the first CI run happens when the PR opens. Two results
+are carried forward rather than fixed — 22 transitive npm advisories in Expo's
+own build tooling, and the local Node 26 / CI Node 24 skew — both accepted by
+controller ruling. Evidence in `docs/05-quality/evidence/002a-app-skeleton/`.
+Handoff is in `docs/01-state/HANDOFF.md`.
+
+**Post-handoff amendment (2026-08-18).** The handoff flagged that Prettier was
+configured but not enforced in CI, since `eslint-config-prettier` disables
+ESLint's formatting rules and the original dispatch named exactly four CI
+steps. The controller amended scope: `npm run format:check` is now a fifth CI
+step. Status moved `BUILD` → `REVIEW` in the same amendment, per the house
+precedent set by the scaffold and formatting units — the builder does not
+review its own unit.
+
+Status moves to `MERGED` only by the controller, after review.
 
 ---
 

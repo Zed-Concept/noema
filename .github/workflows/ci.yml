@@ -37,3 +37,8 @@ jobs:
 
       - name: Test
         run: npm test -- --ci
+
+      # eslint-config-prettier switches ESLint's formatting rules off, so the
+      # lint step above does not check formatting. This is the step that does.
+      - name: Format check
+        run: npm run format:check

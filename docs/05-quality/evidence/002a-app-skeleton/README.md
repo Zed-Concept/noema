@@ -23,7 +23,7 @@ TypeScript 6.0.3, Expo SDK 57.0.14, Darwin 24.6.0.
 | 7 | Dependencies match what Expo SDK 57 expects | PASS | `expo-doctor.txt` (21/21) |
 | 8 | The app bundles for iOS, Android, and web | PASS | `expo-export.txt` (three bundles, exit 0) |
 | 9 | No generated or machine-local file is tracked | PASS | `git-ls-files.txt` |
-| 10 | CI runs install → typecheck → lint → test on PR and push-to-main | NOT RUN | see "CI has not run yet" below |
+| 10 | CI runs install → typecheck → lint → test → format:check on PR and push-to-main | NOT RUN | see "CI has not run yet" below |
 | 11 | `npm audit` reports 22 transitive advisories in Expo build tooling | FAIL pre-existing | `npm-audit.txt` |
 
 ## CI has not run yet
@@ -34,12 +34,17 @@ pull request. **The first CI run triggers when the PR for this branch is
 opened.** Until that run exists, claim 10 is NOT RUN, and the workflow is
 asserted correct by reading, not by execution.
 
-What *was* verified locally is that the four commands the workflow invokes all
-succeed on this tree (claims 1, 2, 4, and the `npm ci`-equivalent install that
-produced the committed lockfile). What was not verified is the workflow file
-itself — GitHub Actions syntax, action resolution, and Node 24 behaviour. This
-session ran Node 26 locally; CI pins Node 24 LTS, so the CI run is also the
-first execution on that version.
+What *was* verified locally is that the five commands the workflow invokes all
+succeed on this tree (claims 1, 2, 4, 6, and the `npm ci`-equivalent install
+that produced the committed lockfile). What was not verified is the workflow
+file itself — GitHub Actions syntax, action resolution, and Node 24 behaviour.
+This session ran Node 26 locally; CI pins Node 24 LTS, so the CI run is also
+the first execution on that version.
+
+`format:check` was added as the fifth step by CTRL-002 scope amendment after
+the initial handoff. It is the only step that checks formatting:
+`eslint-config-prettier` switches ESLint's formatting rules off, so the lint
+step cannot catch it.
 
 ## On claim 11 — `npm audit`
 

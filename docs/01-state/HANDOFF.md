@@ -8,6 +8,59 @@ Append a new block at the top. Never edit an old one.
 
 ---
 
+## 2026-08-18 — feat/app-skeleton (CTRL-002 Unit A, post-handoff amendment)
+
+Same session, same branch, continuing under a controller ruling that accepted
+the Unit A handoff with one amendment. Appended rather than edited into the
+block below, which stays as written.
+
+**What changed**
+
+- `.github/workflows/ci.yml` — added a fifth step, `npm run format:check`,
+  after the test step. This closes the gap raised as item 3 of the block
+  below: `eslint-config-prettier` disables ESLint's formatting rules, so
+  before this step nothing in CI checked formatting. That item is now resolved
+  and should not be read as open.
+- `docs/01-state/BRANCH-NOTES.md` — the `feat/app-skeleton` LOCK moved
+  `BUILD` → `REVIEW`, with an opening note recording the pre-build stop, a
+  closing note, and an amendment note. The controller ruled that `REVIEW` at
+  handoff is the builder's act per the precedent set by the scaffold and
+  formatting units; `MERGED` remains a controller act. The original dispatch
+  line I was given said not to move the status, so this is done on an explicit
+  later ruling, not on my own reading.
+- `docs/05-quality/evidence/002a-app-skeleton/README.md` — claim 10 and the
+  "CI has not run yet" section updated from four steps to five. An evidence
+  index that describes a workflow the repo no longer contains is worse than no
+  index.
+- `docs/01-state/PROJECT-STATE.md` — the Unit A Active work row only.
+- `feat/app-skeleton` pushed to `origin`. No PR opened, per the ruling.
+
+**What I verified, and how**
+
+- **`npm run format:check` — PASS**, exit 0, so the new CI step passes on this
+  tree rather than being added untested.
+  `docs/05-quality/evidence/002a-app-skeleton/prettier-check.txt`.
+- **The other four gates still pass — PASS.** Typecheck, lint, and test re-run
+  after the amendment, all exit 0.
+- **CI — still NOT RUN.** Adding a step does not run it. The workflow has now
+  never executed with five steps rather than never executed with four; the
+  first run still comes with the PR.
+
+**Accepted by controller ruling, no action taken**
+
+The 22 transitive npm advisories in Expo build tooling, the three retained
+navigation dependencies, and the local Node 26 / CI Node 24 skew. All three
+remain true and are recorded in the block below; none is open work.
+
+**Next step**
+
+Unchanged: route the diff to Codex as reviewer of record. The owner opens the
+PR, which produces the first CI run.
+
+LOCK status line: `Status: REVIEW`.
+
+---
+
 ## 2026-08-18 — feat/app-skeleton (CTRL-002 Unit A)
 
 **Controller:** CTRL-002 App Skeleton. **Builder:** Claude Code, Opus / high
