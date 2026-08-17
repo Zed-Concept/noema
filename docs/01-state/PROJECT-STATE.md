@@ -70,7 +70,7 @@ What is in flight, who owns it, and what it is blocked on. One row per stream.
 
 | Stream | Owner | Status | Blocked on |
 |---|---|---|---|
-| Unit A — app skeleton (Expo init + CI baseline; no Supabase) | Claude Code, dispatched by CTRL-002 | LOCK `REVIEW`; branch pushed to origin, no PR. Typecheck, lint, test, and format:check PASS locally. CI NOT RUN until the PR opens. | Codex review |
+| Unit A — app skeleton (Expo init + CI baseline; no Supabase) | Claude Code, dispatched by CTRL-002 | LOCK `REVIEW`; REVIEW-003 (FAIL) fix loop complete — all four findings resolved, evidence in `docs/05-quality/evidence/002b-fix-loop/`. Gates re-run green; CI still NOT RUN until the PR opens. | Re-review of the fix commit |
 | Unit B — Supabase wiring (supabase-js, generated types, staging env plumbing) | Controller + owner | Queued | Staging Supabase project creation (owner task, RED lane) |
 | Supabase projects, staging + production | Owner, guided by CTRL-002 | In progress | — |
 

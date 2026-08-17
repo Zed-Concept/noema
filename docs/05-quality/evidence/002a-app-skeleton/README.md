@@ -29,10 +29,17 @@ TypeScript 6.0.3, Expo SDK 57.0.14, Darwin 24.6.0.
 ## CI has not run yet
 
 `.github/workflows/ci.yml` triggers on `pull_request` and on `push` to `main`.
-Neither event has occurred: this work sits on an unpushed feature branch with no
-pull request. **The first CI run triggers when the PR for this branch is
-opened.** Until that run exists, claim 10 is NOT RUN, and the workflow is
-asserted correct by reading, not by execution.
+Neither event has occurred. The branch **is** pushed to `origin` — that happened
+in the CTRL-002 amendment — but a push to a feature branch matches neither
+trigger, and no pull request is open. **The first CI run triggers when the PR
+for this branch is opened.** Until that run exists, claim 10 is NOT RUN, and the
+workflow is asserted correct by reading, not by execution.
+
+*Corrected in the REVIEW-003 fix loop (finding 3).* This paragraph previously
+called the branch unpushed, which stopped being true when the amendment pushed
+it. The NOT RUN classification is unchanged and was never at issue — pushing a
+feature branch is not a workflow trigger. See
+`../002b-fix-loop/README.md`.
 
 What *was* verified locally is that the five commands the workflow invokes all
 succeed on this tree (claims 1, 2, 4, 6, and the `npm ci`-equivalent install
@@ -59,13 +66,29 @@ versions that `expo-doctor` requires, which is both outside this dispatch and a
 decision above a builder's authority. Reported to the controller as an adjacent
 finding.
 
+## On claim 9 — the tracked-file listing
+
+`git-ls-files.txt` was **regenerated in the REVIEW-003 fix loop (finding 4)**.
+The original capture ran before its own file and this README were staged, so it
+recorded 50 paths where the committed tree held 52 — a listing that could not
+match the head it claimed to describe. The underlying requirement always passed;
+only the transcript was wrong.
+
+It is now produced by the committed script
+`../002b-fix-loop/tracked-files.sh`, which reads the index after everything is
+staged and was run to a fixed point (it lists itself). Run at the fix-loop head,
+that script reproduces this file byte-for-byte; the listing can be checked
+against `git ls-tree -r --name-only <head>`. The file therefore describes the
+fix-loop commit, not the earlier `9708fc2` head.
+
 ## Re-running these checks
 
-Both scripts are committed so the results are reproducible rather than asserted:
+Every script is committed so the results are reproducible rather than asserted:
 
 - `capture.sh` — regenerates every transcript except `git-ls-files.txt` and
   `gate-negative-control.txt`.
 - `negative-control.sh` — injects one deliberate fault per gate, records the
   exit code, removes it, and confirms the gate returns to green.
+- `../002b-fix-loop/tracked-files.sh` — regenerates `git-ls-files.txt`.
 
-Run either from the repository root.
+Run any of them from the repository root.

@@ -3,9 +3,11 @@
 Who runs what, and how. This is the file someone opens to answer "how do I run
 it" and "who is allowed to do this".
 
-**Status:** stub. As of 2026-08-17 there is nothing to run — the repository holds
-governance documents and no application code. Fill each section when the thing it
-describes first exists, not before.
+**Status:** partly filled. As of 2026-08-18 the Unit A Expo app skeleton exists on
+`feat/app-skeleton`, so **How to run it locally** below is real and the local row
+of the environments table has changed. Everything else is still a stub: no
+staging or production environment, no deploy target, and no monitoring exists.
+Fill each section when the thing it describes first exists, not before.
 
 ## Credential ownership
 
@@ -20,18 +22,48 @@ This part is already decided and binds now.
 
 ## How to run it locally
 
-TODO(owner) — no application exists. There is no `package.json`, no Expo project,
-and no dependency to install.
+The Expo app skeleton lives at the repository root and targets iOS, Android, and
+web. There is no backend, no `.env`, and nothing to configure: Supabase wiring is
+Unit B and does not exist yet, so a fresh clone runs with no credentials at all.
+
+Requires Node and npm. CI pins **Node 24 LTS**; Unit A was built and verified on
+Node 26. No global Expo CLI install — `npx` resolves the version in the lockfile.
+
+```
+npm ci      # exact lockfile install; use this rather than npm install
+npm start   # Metro dev server, then press i, a, or w to pick a target
+```
+
+| Command | What it does |
+|---|---|
+| `npm start` | Metro dev server; choose the target from its prompt |
+| `npm run ios` | iOS Simulator — needs Xcode, macOS only |
+| `npm run android` | Android emulator or attached device — needs Android Studio |
+| `npm run web` | Opens the web target in a browser |
+| `npm run typecheck` | `tsc --noEmit` under `strict` |
+| `npm run lint` | `expo lint` |
+| `npm test` | Jest via `jest-expo` |
+| `npm run format` / `npm run format:check` | Prettier write / check |
+
+CI runs five of these in order — `npm ci`, typecheck, lint, test, format:check.
+The definition is `.github/workflows/ci.yml`; it is the same set you can run
+locally before pushing.
+
+**Not yet verified:** nobody has rendered the app on a simulator, emulator, or
+browser. `expo export --platform all` produces iOS, Android, and web bundles
+(`docs/05-quality/evidence/002a-app-skeleton/expo-export.txt`), which proves it
+bundles, not that it renders. First run on a real target is still open work.
 
 ## Environments
 
-TODO(owner) — none exist. No staging or production Supabase project has been
-created; that is an owner task. There is no deployed web app and no store
-presence.
+**Local** exists as of Unit A: an Expo dev server with no backend and no keys.
+**Staging and production do not exist** — TODO(owner). No Supabase project has
+been created; that is an owner task and RED lane. There is no deployed web app
+and no store presence.
 
 | Environment | Status | Owner |
 |---|---|---|
-| local | does not exist | — |
+| local | app skeleton runs; no backend, no keys | any builder |
 | staging | not created | Ahmed |
 | production | not created | Ahmed |
 

@@ -113,6 +113,40 @@ review its own unit.
 
 Status moves to `MERGED` only by the controller, after review.
 
+**Fix loop closing note (2026-08-18).** REVIEW-003 (Codex, verdict FAIL)
+recorded four findings on this branch. All four are resolved here — same
+builder, same branch, fresh session, `Status: REVIEW` throughout.
+
+Finding 1 (high), verdict-driving: `app.json`'s `name` is Expo's user-visible
+app label and read `noema`. It is now `ZC App (dev)`, a one-line change. On the
+controller's ruling, `slug` and `scheme` stay — they are internal identifiers of
+the same class as the GitHub repo name, as are the npm `name` fields in
+`package.json` and the lockfile. Proven at three depths (the file as written,
+Expo's resolved config, and the manifest embedded in the exported web bundle):
+zero user-visible fields match the name; `web.name` and `web.shortName`, which
+Expo derives from `name`, now read `ZC App (dev)` too.
+
+Finding 2 (medium): `docs/02-roles/OPERATIONS.md` no longer claims there is
+nothing to run. "How to run it locally" and the local row of the environments
+table describe the real app; staging and production remain `TODO(owner)`
+because they still do not exist.
+
+Finding 3 (low): the 002a evidence README called the branch unpushed after the
+amendment had pushed it. Corrected, with the push state captured as an
+artifact. The CI NOT RUN classification is unchanged and was never at issue —
+a feature-branch push is not a workflow trigger.
+
+Finding 4 (low): `git-ls-files.txt` was regenerated from the staged index by a
+committed script, run to a fixed point so it includes itself. It now describes
+the fix-loop head and can be checked against `git ls-tree -r --name-only`.
+
+All gates re-run after the change: typecheck, lint, test, and format:check exit
+0, `expo-doctor` 21/21, `expo export --platform all` produces iOS, Android, and
+web bundles. CI is still **NOT RUN** — this loop adds a commit, not a trigger.
+The 22 Expo-tooling audit advisories are unchanged. Evidence in
+`docs/05-quality/evidence/002b-fix-loop/`. Status stays `REVIEW` for the
+re-review.
+
 ---
 
 ## LOCK — chore/state-ctrl-001-closeout

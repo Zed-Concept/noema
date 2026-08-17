@@ -1,0 +1,14 @@
+$ git diff 670b5365a78417523fee26741425dda3a6c4b45c -- app.json
+diff --git a/app.json b/app.json
+index b4f6ac8..6c554ab 100644
+--- a/app.json
++++ b/app.json
+@@ -1,6 +1,6 @@
+ {
+   "expo": {
+-    "name": "noema",
++    "name": "ZC App (dev)",
+     "slug": "noema",
+     "version": "0.1.0",
+     "orientation": "portrait",
+--- exit code: 0 ---

@@ -1,0 +1,13 @@
+$ git rev-parse 670b5365a78417523fee26741425dda3a6c4b45c   # REVIEW-003 head
+670b5365a78417523fee26741425dda3a6c4b45c
+
+$ git rev-parse refs/remotes/origin/feat/app-skeleton
+670b5365a78417523fee26741425dda3a6c4b45c
+
+$ git log --oneline -1 refs/remotes/origin/feat/app-skeleton
+670b536 docs: REVIEW-003 (FAIL) — Unit A review record
+
+$ git rev-list --left-right --count HEAD...refs/remotes/origin/feat/app-skeleton
+  (local-only commits <TAB> origin-only commits)
+0	0
+--- exit code: 0 ---

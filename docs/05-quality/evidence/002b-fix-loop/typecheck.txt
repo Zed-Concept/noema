@@ -1,0 +1,6 @@
+$ npm run typecheck
+
+> noema@0.1.0 typecheck
+> tsc --noEmit
+
+--- exit code: 0 ---

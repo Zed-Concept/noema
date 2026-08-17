@@ -17,6 +17,7 @@ docs/03-decisions/ADR-003-red-lane-payments.md
 docs/03-decisions/ADR-NNN-template.md
 docs/04-reviews/REVIEW-001.md
 docs/04-reviews/REVIEW-002.md
+docs/04-reviews/REVIEW-003.md
 docs/04-reviews/REVIEW-NNN.md
 docs/05-quality/evidence/001-scaffold/git-ls-files.txt
 docs/05-quality/evidence/001-scaffold/repo-visibility.json
@@ -29,11 +30,13 @@ docs/05-quality/evidence/001c-fixes/agents-md-diff.txt
 docs/05-quality/evidence/001c-fixes/agents-md-fingerprint.txt
 docs/05-quality/evidence/001c-fixes/handoff-restore-diff.txt
 docs/05-quality/evidence/001d-closeout/git-log.txt
+docs/05-quality/evidence/002a-app-skeleton/README.md
 docs/05-quality/evidence/002a-app-skeleton/capture.sh
 docs/05-quality/evidence/002a-app-skeleton/environment.txt
 docs/05-quality/evidence/002a-app-skeleton/expo-doctor.txt
 docs/05-quality/evidence/002a-app-skeleton/expo-export.txt
 docs/05-quality/evidence/002a-app-skeleton/gate-negative-control.txt
+docs/05-quality/evidence/002a-app-skeleton/git-ls-files.txt
 docs/05-quality/evidence/002a-app-skeleton/lint-file-list.txt
 docs/05-quality/evidence/002a-app-skeleton/lint.txt
 docs/05-quality/evidence/002a-app-skeleton/negative-control.sh
@@ -41,6 +44,23 @@ docs/05-quality/evidence/002a-app-skeleton/npm-audit.txt
 docs/05-quality/evidence/002a-app-skeleton/prettier-check.txt
 docs/05-quality/evidence/002a-app-skeleton/test.txt
 docs/05-quality/evidence/002a-app-skeleton/typecheck.txt
+docs/05-quality/evidence/002b-fix-loop/README.md
+docs/05-quality/evidence/002b-fix-loop/app-json-diff.txt
+docs/05-quality/evidence/002b-fix-loop/capture.sh
+docs/05-quality/evidence/002b-fix-loop/environment.txt
+docs/05-quality/evidence/002b-fix-loop/expo-doctor.txt
+docs/05-quality/evidence/002b-fix-loop/expo-export.txt
+docs/05-quality/evidence/002b-fix-loop/fix-state.sh
+docs/05-quality/evidence/002b-fix-loop/lint-file-list.txt
+docs/05-quality/evidence/002b-fix-loop/lint.txt
+docs/05-quality/evidence/002b-fix-loop/name-scan.sh
+docs/05-quality/evidence/002b-fix-loop/name-scan.txt
+docs/05-quality/evidence/002b-fix-loop/npm-audit.txt
+docs/05-quality/evidence/002b-fix-loop/prettier-check.txt
+docs/05-quality/evidence/002b-fix-loop/push-state.txt
+docs/05-quality/evidence/002b-fix-loop/test.txt
+docs/05-quality/evidence/002b-fix-loop/tracked-files.sh
+docs/05-quality/evidence/002b-fix-loop/typecheck.txt
 eslint.config.js
 jest.config.js
 package-lock.json
@@ -52,4 +72,4 @@ tsconfig.json
 --- exit code: 0 ---
 
 $ git ls-files | wc -l
-      50
+      70
