@@ -8,6 +8,59 @@ Append a new block at the top. Never edit an old one.
 
 ---
 
+## 2026-08-18 — chore/agents-md-formatting (REVIEW-002 re-review)
+
+**What I set out to do**
+
+Re-review only the REVIEW-001 fix commit at `71630bb` against `6501b2d`, verify
+the four controller-directed conditions, and write a new immutable review
+record without changing the reviewed work.
+
+**What I changed**
+
+- `docs/04-reviews/REVIEW-002.md` — recorded the narrow re-review with verdict
+  PASS, explicit resolution of REVIEW-001 findings 1 and 2, evidence links, and
+  the accepted README deviation.
+- `docs/01-state/HANDOFF.md` — appended this session record at the top, per the
+  session protocol.
+
+No other file was changed. The reviewed commit was not fixed or merged.
+
+**What I verified, and how**
+
+- **AGENTS.md fingerprint and exact delta — PASS.** Fresh Git-object hashing
+  returned the required sha256, and the parent-to-head diff contains exactly
+  the owner-approved payment line after the auth/RLS line.
+- **HANDOFF preservation — PASS.** The scaffold block byte-matches the block in
+  `fdbc384`; the pre-existing formatting block byte-matches `6501b2d`; both
+  newer blocks are above the scaffold block.
+- **001c scope — PASS.** The changed-path list is limited to the five allowed
+  path classes, with `PROJECT-STATE.md` limited to the Active work row.
+- **REVIEW-001 findings 1 and 2 — PASS.** Both are resolved. No new finding was
+  identified.
+
+Full methods, hashes, classifications, and evidence links are in
+`docs/04-reviews/REVIEW-002.md`.
+
+**What I did NOT do**
+
+Did not re-examine the scaffold or formatting commits beyond the directed
+content comparisons. Did not relitigate the owner-approved payment wording or
+the controller-overruled README item. Did not modify `BRANCH-NOTES.md`, the
+reviewed fix, or any external system. Did not merge.
+
+**What is broken or uncertain**
+
+Nothing open from this re-review. The previously recorded model discrepancy and
+upstream markdown-stripping cause remain outside this review's scope.
+
+**Next step**
+
+Controller receives this HANDOFF and the unchanged LOCK status line:
+`Status: REVIEW`. The owner may merge after controller processing.
+
+---
+
 ## 2026-08-18 — chore/agents-md-formatting (REVIEW-001 fix loop)
 
 **What I set out to do**
