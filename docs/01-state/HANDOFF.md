@@ -8,6 +8,71 @@ Append a new block at the top. Never edit an old one.
 
 ---
 
+## 2026-08-18 — feat/app-skeleton (REVIEW-003)
+
+**What I set out to do**
+
+Review the complete two-commit Unit A delta from
+`ed0340d46a0cacbeffaaf71ed1cc229d62316fc9` to
+`9708fc223dff97343e7a1dad5389b701609d692f` as Codex reviewer of record. Verify
+scope, independently reproduce the evidence scripts, check tracked-file and CI
+requirements, and verify the narrow state-file edits. Do not fix, merge, deploy,
+or touch any file beyond the immutable review record and this HANDOFF append.
+
+**What changed**
+
+- `docs/04-reviews/REVIEW-003.md` — immutable Unit A review, verdict **FAIL**.
+- `docs/01-state/HANDOFF.md` — this append-only review handoff.
+
+No reviewed application, configuration, state row, LOCK block, or evidence
+artifact was edited. No PR was opened and nothing was merged or deployed.
+
+**What I verified, and how**
+
+- **Exact review range — PASS.** The target is two linear commits above the
+  supplied base; the full Git-object diff and every changed path were inspected.
+- **Fresh evidence reproduction — PASS.** In a clean detached clone, `npm ci`
+  installed the lockfile, both committed scripts ran unchanged, all local gates
+  passed, `expo-doctor` returned 21/21, all three platform bundles exported,
+  the accepted 22 audit advisories reproduced, and injected typecheck/lint/test
+  faults each went red before returning to green.
+- **Scope restrictions — FAIL introduced by this work.** `app.json.name` is
+  `noema`; Expo defines that field as the name shown in Expo Go and on an
+  installed app's home screen. This is outward-facing use of the uncleared name.
+- **Repository hygiene and CI definition — PASS.** The lockfile is tracked;
+  generated and machine-local paths are not; the workflow has the five required
+  steps on pull requests and push-to-main.
+- **CI execution — NOT RUN.** Accepted: there is still no PR or push-to-main
+  event, and Node 24 has not run this workflow.
+- **State boundaries — PASS.** Only the Unit A Active-work row changed in
+  `PROJECT-STATE.md`; HANDOFF changes are additions only and the original Unit A
+  block is byte-preserved beneath its amendment; only the Unit A LOCK changed in
+  `BRANCH-NOTES.md`.
+- **Additional review findings — FAIL introduced by this work.** `OPERATIONS.md`
+  still asserts there is no runnable app; the evidence README incorrectly calls
+  the now-pushed branch unpushed; and the tracked-file transcript records 50
+  paths rather than the target's 52. The latter two are evidence-record defects,
+  not failures of the underlying CI or tracked-file requirements.
+
+Full findings, classifications, methods, hashes, and artifact links are in
+`docs/04-reviews/REVIEW-003.md`.
+
+**What I did NOT do**
+
+Did not fix any finding, modify reviewed work, query Supabase, inspect or change
+an external deployment, open a PR, merge, or change the LOCK. The isolated
+reproduction did not write into the reviewed checkout.
+
+**Next step**
+
+Return the FAIL findings to the same builder for a fix loop, then route the new
+fix commit to a fresh immutable re-review. CI remains for the owner's PR-open
+step.
+
+LOCK status line: `Status: REVIEW`.
+
+---
+
 ## 2026-08-18 — feat/app-skeleton (CTRL-002 Unit A, post-handoff amendment)
 
 Same session, same branch, continuing under a controller ruling that accepted
