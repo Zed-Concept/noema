@@ -1,0 +1,15 @@
+Wording-unchanged proof — normalized word-stream diff
+
+The deliverable was structure only; wording was not to be edited.
+normalize.py strips every structural marker that differs between the
+two files (heading #, bullets, ordered numbers, ** , backticks, table
+pipes and delimiter row, tabs, all whitespace) and emits one word per
+line. An empty diff therefore means the prose is identical.
+
+$ python3 normalize.py AGENTS.before.md > before.words   # 713 words
+$ python3 normalize.py AGENTS.md        > after.words    # 713 words
+$ diff before.words after.words
+(no output — streams identical)
+
+VERDICT: PASS — 713 words before, 713 after, zero differences.
+Only markdown structure changed.

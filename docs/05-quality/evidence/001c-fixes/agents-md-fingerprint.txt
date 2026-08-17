@@ -1,0 +1,2 @@
+AGENTS.md size (bytes): 5378
+AGENTS.md sha256: 0ff02d209247dadd94f217b441732baa87ed9f182f9b734cece668b1c3f0f013
