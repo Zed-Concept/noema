@@ -3,11 +3,13 @@
 The authoritative record of what is true right now. If this file and your
 memory of the project disagree, this file is right and you are stale.
 
-**Last verified:** 2026-08-18, controller close-out CTRL-001, verified against
-git log and review records
-**Verification method:** `git ls-files` on the scaffold commit and
-`gh repo view Zed-Concept/noema --json visibility`. Both outputs are in
-`docs/05-quality/evidence/001-scaffold/`.
+**Last verified:** 2026-08-18, CTRL-002 opening, verified against main at
+`59db981` (the CTRL-001 close-out merge) and review records
+REVIEW-001/REVIEW-002
+**Verification method:** controller read of main via GitHub API —
+PROJECT-STATE.md, BRANCH-NOTES.md, HANDOFF.md, both review records, and
+AGENTS.md re-hashed to the recorded fingerprint (sha256 0ff02d20…f013,
+5378 bytes, match).
 
 ## Project facts
 
@@ -68,7 +70,13 @@ What is in flight, who owns it, and what it is blocked on. One row per stream.
 
 | Stream | Owner | Status | Blocked on |
 |---|---|---|---|
-| App skeleton (Expo init, CI baseline) | Owner + controller | Next | Blocked on staging Supabase project setup with owner |
+| Unit A — app skeleton (Expo init + CI baseline; no Supabase) | Claude Code, dispatched by CTRL-002 | LOCK registered on `feat/app-skeleton`; dispatch issuing | — |
+| Unit B — Supabase wiring (supabase-js, generated types, staging env plumbing) | Controller + owner | Queued | Staging Supabase project creation (owner task, RED lane) |
+| Supabase projects, staging + production | Owner, guided by CTRL-002 | In progress | — |
+
+Unit A/B split ruled by the owner 2026-08-18 (CTRL-002): the skeleton has no
+Supabase dependency and proceeds unblocked; Supabase wiring follows as its
+own dispatched unit once the staging project exists.
 
 ## RED lane
 
