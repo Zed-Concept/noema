@@ -23,6 +23,7 @@ that achieves the same effect.
 - Writing to or querying the production Supabase project
 - Editing a migration already applied to any environment
 - Changing authentication, authorization, or row-level security policies
+- Changing payment, purchase, entitlement, or billing-webhook logic
 - Rotating, printing, or committing secrets, including Deepgram,
   ElevenLabs, Anthropic, RevenueCat, Sentry, or PostHog keys
 - Force-pushing, rewriting history, or deleting a branch

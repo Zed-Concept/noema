@@ -62,7 +62,7 @@ What is in flight, who owns it, and what it is blocked on. One row per stream.
 | Stream | Owner | Status | Blocked on |
 |---|---|---|---|
 | Governance scaffold (`main`, single authorized direct commit) | Claude Code (Opus, high) | Built; awaiting review by Codex | Reviewer of record |
-| `AGENTS.md` formatting restoration (`chore/agents-md-formatting`) | Claude Code (see LOCK — dispatch/session model mismatch) | Built; awaiting review by Codex. Not merged | Reviewer of record |
+| `AGENTS.md` formatting restoration (`chore/agents-md-formatting`) | Claude Code (see LOCK — dispatch/session model mismatch) | REVIEW-001 fix loop complete (findings 1 & 2 fixed; finding 3 overruled by controller); awaiting re-review by Codex. Not merged | Reviewer of record |
 
 ## RED lane
 

@@ -8,6 +8,64 @@ Append a new block at the top. Never edit an old one.
 
 ---
 
+## 2026-08-18 — chore/agents-md-formatting (REVIEW-001 fix loop)
+
+**What I set out to do**
+
+Fix REVIEW-001 findings 1 (high) and 2 (medium) on this branch. Finding 3
+(README.md) was overruled by the controller and explicitly out of scope for
+this dispatch.
+
+**What I changed**
+
+- `AGENTS.md` — inserted one line into the RED lane list, immediately after
+  the auth/RLS line: "Changing payment, purchase, entitlement, or
+  billing-webhook logic" (owner-approved wording, line-wrapped to match the
+  file's existing style). No other line touched.
+- `docs/01-state/HANDOFF.md` — restored the scaffold block's
+  `## 2026-08-17 — main (scaffold)` heading, deleted by `f25631c`, from
+  `fdbc384:docs/01-state/HANDOFF.md`. Positioned below this block and the
+  001b block, above the scaffold body it always headed.
+- `docs/01-state/BRANCH-NOTES.md` — closing note on this branch's LOCK block;
+  status stays `REVIEW`.
+- `docs/01-state/PROJECT-STATE.md` — Active work row only.
+- `docs/05-quality/evidence/001c-fixes/` — `agents-md-diff.txt`,
+  `agents-md-fingerprint.txt`, `handoff-restore-diff.txt`.
+
+Nothing else was touched. README.md was not opened.
+
+**What I verified, and how**
+
+- **AGENTS.md diff is exactly one insertion — PASS.** `git diff AGENTS.md`
+  shows a single added line and nothing else.
+  `docs/05-quality/evidence/001c-fixes/agents-md-diff.txt`.
+- **AGENTS.md fingerprint — PASS.** 5378 bytes, sha256
+  `0ff02d209247dadd94f217b441732baa87ed9f182f9b734cece668b1c3f0f013`.
+  `docs/05-quality/evidence/001c-fixes/agents-md-fingerprint.txt`.
+- **HANDOFF restoration is byte-for-byte — PASS.** Diffed the restored
+  scaffold block (from the re-inserted heading to end of file) against
+  `fdbc384:docs/01-state/HANDOFF.md` — empty diff.
+  `docs/05-quality/evidence/001c-fixes/handoff-restore-diff.txt`.
+
+**What I did NOT do**
+
+Did not touch README.md or anything under `docs/03-decisions/` or
+`docs/04-reviews/`. Did not edit any prior HANDOFF block — appended above the
+scaffold block and restored its own heading, nothing else in that block
+changed. Did not merge.
+
+**What is broken or uncertain**
+
+Nothing new. The prior block's open items (model discrepancy, upstream
+markdown-stripping cause) are unchanged by this fix loop.
+
+**Next step**
+
+Route to Codex for re-review of REVIEW-001 findings 1 and 2. On PASS, the
+controller moves the LOCK block to `MERGED`.
+
+---
+
 ## 2026-08-17 — chore/agents-md-formatting
 
 **What I set out to do**
@@ -98,6 +156,8 @@ claims. Then the controller moves the LOCK block to `MERGED`, decides on the
 Learnings digest entry, and reconciles the model discrepancy.
 
 ---
+
+## 2026-08-17 — main (scaffold)
 
 **What I set out to do**
 
