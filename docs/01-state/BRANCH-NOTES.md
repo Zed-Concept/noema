@@ -31,6 +31,57 @@ feature branch and nothing more.
 
 ---
 
+## LOCK — chore/state-ctrl-002-opening
+
+```
+Project:            Noema
+Branch:             chore/state-ctrl-002-opening
+Controller:         CTRL-002 App Skeleton
+Builder:            Controller (direct state edit via GitHub API; no product
+                    code — controller-only class per AGENTS.md state ownership)
+Model+Effort:       controller conversation / — / same session
+Reviewer of record: none (controller-only state edits; same class as
+                    chore/state-ctrl-001-closeout)
+Status:             BUILD
+Dispatch:           CTRL-002 opening state commit: flip the stale scaffold and
+                    CTRL-001 close-out LOCK statuses to MERGED, register the
+                    Unit A LOCK (feat/app-skeleton), and update Active work for
+                    the owner-approved Unit A/B split. Owner ruled 2026-08-18:
+                    on a branch, owner merges — no second main exception.
+Evidence:           — (documentation-only state edit; the diff is the evidence)
+```
+
+**Known lag.** A state branch cannot flip its own status: after the owner
+merges, this block reads `BUILD` until a later controller state commit
+reconciles it — the same lag that left the CTRL-001 close-out block stale.
+From CTRL-002 onward, reconciling all LOCK statuses against merge reality is
+the first act of every controller state commit.
+
+---
+
+## LOCK — feat/app-skeleton
+
+```
+Project:            Noema
+Branch:             feat/app-skeleton
+Controller:         CTRL-002 App Skeleton
+Builder:            Claude Code
+Model+Effort:       Opus / high effort / fresh session
+Reviewer of record: Codex
+Status:             BUILD
+Dispatch:           Unit A — initialize the Expo (React Native) app for mobile
+                    and web plus a CI baseline. No Supabase, no provider keys,
+                    no transcription code, no deploys. Supabase wiring is
+                    Unit B, a separate future dispatch.
+Evidence:           docs/05-quality/evidence/002a-app-skeleton/ (pending)
+```
+
+Registered by the controller in the CTRL-002 opening state commit, ahead of
+dispatch issue. `BUILD` marks the branch owned from the moment this merges;
+the dispatch text is delivered to the builder separately.
+
+---
+
 ## LOCK — chore/state-ctrl-001-closeout
 
 ```
@@ -42,13 +93,20 @@ Model+Effort:       Sonnet / low effort
 Reviewer of record: none (controller-only state edits per AGENTS.md
                     state-ownership rule; RoR review not required for this
                     class)
-Status:             BUILD
+Status:             MERGED — merge commit
+                    59db981b931d2827c58d26c0a4d7bcc62cfdfac4
 Dispatch:           Controller close-out for CTRL-001: write ADR-003
                     (RED-lane payments), update PROJECT-STATE.md controller
                     sections, flip the chore/agents-md-formatting LOCK to
                     MERGED, and add this LOCK.
 Evidence:           docs/05-quality/evidence/001d-closeout/
 ```
+
+
+**Status flip (2026-08-18, CTRL-002).** All CTRL-001 close-out deliverables
+are verifiably on main; the close-out merged at `59db981`. The BUILD
+status was stale because a state branch cannot flip its own status —
+reconciled here per the owner's 2026-08-18 ruling.
 
 ---
 
@@ -122,7 +180,9 @@ Controller:         Noema Controller (Claude Project conversation)
 Builder:            Claude Code
 Model+Effort:       Opus / high effort / fresh session per unit
 Reviewer of record: Codex
-Status:             REVIEW
+Status:             MERGED — direct-commit unit, on main at fdbc384;
+                    review chain REVIEW-001 (FAIL, findings resolved)
+                    then REVIEW-002 (PASS); merged state at 2e6b9f3
 Dispatch:           Scaffold project governance — docs/ tree, AGENTS.md, ADR-001,
                     ADR-002, filled state and architecture files, evidence
                     artifacts. No application code.
@@ -142,5 +202,11 @@ moved `BUILD` → `REVIEW`; the reviewer of record is Codex and the builder does
 review its own unit. Handoff is in `docs/01-state/HANDOFF.md`.
 
 Status moves to `MERGED` only by the controller, after review.
+
+**Status flip (2026-08-18, CTRL-002).** That review is complete: REVIEW-001
+covered the full scaffold tree (verdict FAIL), its findings were fixed on
+`chore/agents-md-formatting` and re-reviewed PASS in REVIEW-002, and the
+combined result merged at `2e6b9f3`. Flipped by the controller per the
+owner's 2026-08-18 ruling.
 
 ---
