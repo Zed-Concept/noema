@@ -1,0 +1,6 @@
+2e6b9f3 merge: AGENTS.md restoration + REVIEW-001 fixes (REVIEW-002 PASS)
+f0c9e85 docs: record REVIEW-002 pass
+71630bb fix: REVIEW-001 findings 1 and 2 — RED-lane payment entry, HANDOFF heading restore
+6501b2d docs: record REVIEW-001 governance scaffold verdict
+f25631c chore: restore AGENTS.md markdown structure byte-for-byte from approved source
+fdbc384 chore: scaffold project governance directly on main — explicitly authorized for this dispatch only, because feature-branch governance does not exist until this commit

@@ -31,6 +31,27 @@ feature branch and nothing more.
 
 ---
 
+## LOCK — chore/state-ctrl-001-closeout
+
+```
+Project:            Noema
+Branch:             chore/state-ctrl-001-closeout
+Controller:         CTRL-001 Scaffold and Governance
+Builder:            Claude Code
+Model+Effort:       Sonnet / low effort
+Reviewer of record: none (controller-only state edits per AGENTS.md
+                    state-ownership rule; RoR review not required for this
+                    class)
+Status:             BUILD
+Dispatch:           Controller close-out for CTRL-001: write ADR-003
+                    (RED-lane payments), update PROJECT-STATE.md controller
+                    sections, flip the chore/agents-md-formatting LOCK to
+                    MERGED, and add this LOCK.
+Evidence:           docs/05-quality/evidence/001d-closeout/
+```
+
+---
+
 ## LOCK — chore/agents-md-formatting
 
 ```
@@ -42,7 +63,7 @@ Model+Effort:       dispatched as Sonnet 4.6 / low effort; the session that
                     built it reported itself as Opus 5 (1M context) —
                     see "Model discrepancy" below
 Reviewer of record: Codex
-Status:             REVIEW
+Status:             MERGED — merge commit 2e6b9f33c2cedbc8dbad2f30bd95a9550bf06675
 Dispatch:           Restore the markdown structure of AGENTS.md by replacing
                     its content byte-for-byte with the owner-approved file.
                     Structure is the deliverable; wording not to be edited.
