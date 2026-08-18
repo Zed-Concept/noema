@@ -1,0 +1,18 @@
+== baseline (no faults injected) ==
+typecheck CLEAN exit=0
+lint      CLEAN exit=0
+test      CLEAN exit=0
+
+== typecheck gate ==
+typecheck INJECTED exit=2
+
+== lint gate ==
+lint      INJECTED exit=1
+
+== test gate ==
+test      INJECTED exit=1
+
+== back to baseline ==
+typecheck CLEAN exit=0
+lint      CLEAN exit=0
+test      CLEAN exit=0

@@ -6,6 +6,8 @@ node_modules/
 .expo-shared/
 dist/
 web-build/
+expo-env.d.ts
+.metro-health-check*
 
 # Native build output
 ios/

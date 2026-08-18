@@ -1,0 +1,45 @@
+$ CI=1 npx expo start --web --port 8081   # backgrounded, then killed
+
+=== 1. the server's own startup output ===
+Starting project at <repo-root>
+Using src/app as the root directory for Expo Router.
+React Compiler enabled
+Metro is running in CI mode, reloads are disabled. Remove CI=true to enable watch mode.
+Starting Metro Bundler
+
+Waiting on http://localhost:8081
+
+=== 2. what it served on / ===
+$ curl -s -o body.html -w '%{http_code}' http://localhost:8081/
+http status:                                 200
+body contains 'Placeholder home screen':     yes
+body contains 'Edit src/app/index.tsx':      yes
+body contains 'ZC App (dev)':                no
+body contains the Stack header '>index<':    yes
+<title> element as served:                   <title data-rh="true"></title>
+
+Two notes about what is on the page, both corrected by the owner's smoke
+test (../002c-owner-smoke/attestation.md) after the prose written around
+this artifact — not this script's checks, which were accurate throughout
+— described the page wrongly:
+
+  1. The root <Stack /> renders a header bar, and its title is the route
+     name, so the page shows 'index' above the placeholder text. It is
+     in the markup above and always was.
+  2. The <title> is empty *as served*. Expo Router sets it on the client
+     after hydration, to the same route name, so a real browser tab
+     reads 'index'. A server-side capture cannot see that; the owner
+     observed it directly.
+
+Neither says 'ZC App (dev)'. The app name reaches a user through the web
+manifest embedded in the bundle (../002b-fix-loop/name-scan.txt section
+3) and through the Expo Go project list — not through anything drawn on
+this page.
+
+=== 3. what this does not show ===
+This markup came from Expo Router's static rendering, in Node. Nothing
+here is a browser, a simulator or a device rendering anything, and no
+rendering claim rests on this file. The browser is attested separately
+by a person, in ../002c-owner-smoke/attestation.md (web, PASS,
+2026-08-18); simulator, emulator and device remain NOT RUN.
+--- exit code: 0 ---

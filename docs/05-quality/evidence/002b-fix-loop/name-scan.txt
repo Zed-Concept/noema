@@ -1,0 +1,49 @@
+=== 1. app.json as written ===
+$ node -e '<classify app.json fields>'
+expo.name           user-visible  "ZC App (dev)"    Expo Go list and installed home-screen label
+expo.web.name       user-visible  null              web manifest name; unset here, derived at export
+expo.web.shortName  user-visible  null              web manifest short label; unset here, derived
+expo.slug           internal      "noema"           project identifier for Expo/EAS, like the repo name
+expo.scheme         internal      "noema"           deep-link URI scheme, not a display string
+expo.version        user-visible  "0.1.0"           store version string; carries no name
+
+user-visible app.json fields matching /noema/i: 0
+--- exit code: 0 ---
+
+=== 2. the config Expo resolves ===
+$ npx expo config --type public --json
+name        "ZC App (dev)"
+slug        "noema"
+scheme      "noema"
+version     "0.1.0"
+sdkVersion  "57.0.0"
+
+resolved name matches /noema/i: false
+--- exit code: 0 ---
+
+=== 3. the manifest embedded in the exported web bundle ===
+$ <extract the embedded manifest from dist/_expo/static/js/web/entry-<hash>.js>
+name            user-visible  "ZC App (dev)"
+web.name        user-visible  "ZC App (dev)"
+web.shortName   user-visible  "ZC App (dev)"
+slug            internal      "noema"
+scheme          internal      "noema"
+
+user-visible shipped fields matching /noema/i: 0
+--- exit code: 0 ---
+
+=== 4. tracked occurrences of the name (read from the index) ===
+$ git grep --cached -n -i noema -- ':!docs/'   # outside governance prose
+AGENTS.md:1:# AGENTS.md — Noema
+AGENTS.md:35:- **Controller** — the Noema Controller Claude Project conversation.
+README.md:1:# Noema
+app.json:4:    "slug": "noema",
+app.json:7:    "scheme": "noema",
+package-lock.json:2:  "name": "noema",
+package-lock.json:8:      "name": "noema",
+package.json:2:  "name": "noema",
+--- exit code: 0 ---
+
+$ git grep --cached -l -i noema -- 'docs/' | wc -l   # governance files naming the project
+      22
+--- exit code: 0 ---

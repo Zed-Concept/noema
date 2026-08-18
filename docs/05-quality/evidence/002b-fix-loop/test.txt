@@ -1,0 +1,15 @@
+$ npm test
+
+> noema@0.1.0 test
+> jest
+
+PASS src/__tests__/home-screen.test.tsx
+  placeholder home screen
+    ✓ renders (<duration> ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       1 passed, 1 total
+Snapshots:   0 total
+Time:        <duration>
+Ran all test suites.
+--- exit code: 0 ---

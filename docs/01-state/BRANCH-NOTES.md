@@ -68,17 +68,275 @@ Controller:         CTRL-002 App Skeleton
 Builder:            Claude Code
 Model+Effort:       Opus / high effort / fresh session
 Reviewer of record: Codex
-Status:             BUILD
+Status:             REVIEW
 Dispatch:           Unit A — initialize the Expo (React Native) app for mobile
                     and web plus a CI baseline. No Supabase, no provider keys,
                     no transcription code, no deploys. Supabase wiring is
-                    Unit B, a separate future dispatch.
-Evidence:           docs/05-quality/evidence/002a-app-skeleton/ (pending)
+                    Unit B, a separate future dispatch. Amended by CTRL-002
+                    after handoff: add `npm run format:check` as a fifth CI
+                    step.
+Evidence:           docs/05-quality/evidence/002a-app-skeleton/
 ```
 
 Registered by the controller in the CTRL-002 opening state commit, ahead of
 dispatch issue. `BUILD` marks the branch owned from the moment this merges;
 the dispatch text is delivered to the builder separately.
+
+**Opening note — the builder stopped before building.** The dispatch told the
+builder to verify itself against this block. At the snapshot the builder held
+(`59db981`) the block did not exist, so there was nothing to verify against and
+the session stopped without creating the branch. The controller ruled the
+snapshot stale and pointed to `ed0340d`, where this block is present; the
+builder re-verified and only then began. Recorded because the stop is the
+protocol working as designed, not an incident.
+
+**Closing note (2026-08-18).** Build complete. The Expo skeleton is in:
+SDK 57.0.14, expo-router, TypeScript strict, one placeholder home screen, npm
+with a committed lockfile, ESLint + Prettier, jest-expo with one passing test,
+and a GitHub Actions workflow. Verified locally — typecheck, lint, and test all
+exit 0; each gate was proven to go red on an injected fault and back to green;
+`expo-doctor` 21/21; `expo export --platform all` produces iOS, Android, and
+web bundles. CI itself is **NOT RUN**: no `pull_request` or push-to-`main`
+event has occurred, so the first CI run happens when the PR opens. Two results
+are carried forward rather than fixed — 22 transitive npm advisories in Expo's
+own build tooling, and the local Node 26 / CI Node 24 skew — both accepted by
+controller ruling. Evidence in `docs/05-quality/evidence/002a-app-skeleton/`.
+Handoff is in `docs/01-state/HANDOFF.md`.
+
+**Post-handoff amendment (2026-08-18).** The handoff flagged that Prettier was
+configured but not enforced in CI, since `eslint-config-prettier` disables
+ESLint's formatting rules and the original dispatch named exactly four CI
+steps. The controller amended scope: `npm run format:check` is now a fifth CI
+step. Status moved `BUILD` → `REVIEW` in the same amendment, per the house
+precedent set by the scaffold and formatting units — the builder does not
+review its own unit.
+
+Status moves to `MERGED` only by the controller, after review.
+
+**Fix loop closing note (2026-08-18).** REVIEW-003 (Codex, verdict FAIL)
+recorded four findings on this branch. All four are resolved here — same
+builder, same branch, fresh session, `Status: REVIEW` throughout.
+
+Finding 1 (high), verdict-driving: `app.json`'s `name` is Expo's user-visible
+app label and read `noema`. It is now `ZC App (dev)`, a one-line change. On the
+controller's ruling, `slug` and `scheme` stay — they are internal identifiers of
+the same class as the GitHub repo name, as are the npm `name` fields in
+`package.json` and the lockfile. Proven at three depths (the file as written,
+Expo's resolved config, and the manifest embedded in the exported web bundle):
+zero user-visible fields match the name; `web.name` and `web.shortName`, which
+Expo derives from `name`, now read `ZC App (dev)` too.
+
+Finding 2 (medium): `docs/02-roles/OPERATIONS.md` no longer claims there is
+nothing to run. "How to run it locally" and the local row of the environments
+table describe the real app; staging and production remain `TODO(owner)`
+because they still do not exist.
+
+Finding 3 (low): the 002a evidence README called the branch unpushed after the
+amendment had pushed it. Corrected, with the push state captured as an
+artifact. The CI NOT RUN classification is unchanged and was never at issue —
+a feature-branch push is not a workflow trigger.
+
+Finding 4 (low): `git-ls-files.txt` was regenerated from the staged index by a
+committed script, run to a fixed point so it includes itself. It now describes
+the fix-loop head and can be checked against `git ls-tree -r --name-only`.
+
+All gates re-run after the change: typecheck, lint, test, and format:check exit
+0, `expo-doctor` 21/21, `expo export --platform all` produces iOS, Android, and
+web bundles. CI is still **NOT RUN** — this loop adds a commit, not a trigger.
+The 22 Expo-tooling audit advisories are unchanged. Evidence in
+`docs/05-quality/evidence/002b-fix-loop/`. Status stays `REVIEW` for the
+re-review.
+
+**REVIEW-004 fix loop closing note (2026-08-18).** REVIEW-004 (Codex, verdict
+FAIL) recorded two medium findings on this branch. Both are resolved here —
+same builder, same branch, fresh session, `Status: REVIEW` throughout, and the
+RED lane and every prior exclusion and ruling left untouched.
+
+Finding 1, verdict-driving: the byte-stable regeneration gate failed. Four 002b
+transcripts — `push-state.txt`, `name-scan.txt`, `test.txt`, `expo-export.txt` —
+changed when the committed scripts were rerun at the committed head. Each
+carried a field that moves on its own: wall-clock durations, a cold-cache
+warning, a count read from the working tree rather than the index, and the
+remote's current head. The fix is in the generating scripts, never in their
+outputs; every artifact here was regenerated by running its script. A fifth
+artifact, `lint-file-list.txt`, had the same defect and REVIEW-004 could not
+have seen it: ESLint also inspects the generated, gitignored `expo-env.d.ts`,
+which is absent in a fresh clone and present after any `expo` command, so the
+listing read 5 files for the reviewer and 6 here. It now lists tracked files
+only and counts problems in untracked ones separately (`0`); `lint.txt` remains
+the gate and still covers everything ESLint sees. Three
+artifacts cannot be normalised without lying about what they measure and are
+now classified **run-varying**, each naming exactly which fields vary:
+`environment.txt` (node, npm, os), `expo-doctor.txt` (the build resolved from
+`@latest`, its check count, and which of its checks can reach Expo's services)
+and `npm-audit.txt` (the upstream advisory database). That classification was
+borne out during the loop: `expo-doctor` returned three different transcripts
+across the eight runs this loop made against the same tree, and `npm audit`
+reordered its
+dependency tree while reporting the same 22 advisories. The byte-stability claim is scoped to the remaining ten gated
+artifacts and re-proven at the committed head by
+`docs/05-quality/evidence/002c-fix-loop-2/stability.txt`. One limit is recorded
+rather than engineered around: `push-state.txt` cannot attest that its own
+commit is pushed, because no artifact inside a commit can name that commit's
+hash; it attests containment of every commit through the REVIEW-004 record.
+
+Finding 2: `docs/02-roles/OPERATIONS.md` no longer says the clone, the
+environment, or the app "runs". Each runtime statement is now separate, classed,
+and tied to an artifact — install PASS, three-platform export PASS, dev server
+starts and serves `/` PASS (new evidence, `002c-fix-loop-2/dev-server.txt`),
+rendering **NOT RUN**. The dev-server artifact states its own limit: the markup
+is produced by Expo Router's static rendering in Node, so no browser or device
+rendered anything. An **Owner smoke test** section was added with the `npm ci` /
+`npm run web` procedure and its expected result, and
+`docs/05-quality/evidence/002c-owner-smoke/` was created as the slot the owner's
+attestation lands in, before re-review. It is deliberately empty.
+
+**Adjacent finding, reported and not acted on.** On the web target the app name
+`ZC App (dev)` is not visible anywhere on screen — the skeleton leaves the
+document title empty, so the name lives only in the web manifest embedded in the
+bundle and in the Expo Go project list. The dispatch's expected smoke result
+named a `ZC App (dev)` context; the smoke procedure therefore sends anyone who
+wants to see the name to the Expo Go target and says plainly that a web-only
+attestation cannot claim it. Setting a document title is a product change
+outside this loop's scope.
+
+All gates re-run: typecheck, lint, test and format:check exit 0, `expo-doctor`
+21/21, `expo export --platform all` produces iOS, Android and web bundles. CI is
+still **NOT RUN** — this loop adds a commit, not a trigger. The 22 Expo-tooling
+audit advisories are unchanged. Evidence in
+`docs/05-quality/evidence/002c-fix-loop-2/`, with the amended artifacts in
+`docs/05-quality/evidence/002b-fix-loop/`. Status stays `REVIEW` for the
+re-review.
+
+**Owner smoke test recorded (2026-08-18).** The owner ran the web target at
+`68c14d1` and it **passed** — the placeholder home screen renders, no error
+overlay, clean hydration. Attestation in
+`docs/05-quality/evidence/002c-owner-smoke/attestation.md`. Rendering is now
+**PASS on web** and **NOT RUN** on simulator, emulator and device; the device
+target is also the only one on which the `ZC App (dev)` name is user-visible,
+so that sighting is still outstanding.
+
+The run corrected two statements this loop had written about the page, both
+now fixed at source: the browser tab reads `index`, not the URL (the served
+`<title>` is empty, but Expo Router sets it on the client after hydration,
+which no server-side capture can observe), and there *is* a header bar, titled
+with the route name, which was in the served markup all along. No check in
+`dev-server.txt` was wrong — the prose around it was. `dev-server.sh` now also
+asserts the header, and `dev-server.txt` has been added to the gated set.
+
+**The gate then caught a defect in the previous commit.** With `dev-server.txt`
+added, the re-run failed on `expo-export.txt`. Two moving fields, in two stages:
+one export in eight reported 1099 iOS modules against 1101 in the other seven,
+while emitting an identical bundle hash and size every time — so the module
+count is a statistic about the build, not a property of it, and is normalised;
+and more seriously, the **web** bundle's content hash is not reproducible at
+all, because `expo export --platform all` bundles concurrently and assigns
+module ids in completion order. Three distinct web hashes were observed, while
+iOS and Android were identical in every run and a web-only export reproduced its
+own hash exactly. The previous commit's claim that bundle content hashes
+reproduced exactly was therefore **wrong for web**, and is corrected on the
+record rather than dropped. The transcript is reclassified run-varying with both
+fields named, and the claim it backed moved to a new gated `export-summary.txt`
+— one bundle per platform, three named static routes, exit code, read from
+`dist/`. The gate is now eleven gated artifacts and four run-varying.
+
+**Adjacent finding, reported not acted on.** The header bar and the browser tab
+both read `index` — the route filename in user-visible chrome. Not introduced
+here and not in scope; it needs a real screen and document title before any of
+this is user-facing. Status stays `REVIEW`.
+
+**Model transition (2026-08-18).** Loops 1-2 built under Opus/high as
+dispatched; loop 3 onward under Fable 5 / Ultracode per owner ruling
+2026-08-18. The `Model+Effort` line in the block above is the original
+dispatch record and stays as written — historical, not a mismatch.
+
+**REVIEW-005 fix loop closing note (2026-08-18).** REVIEW-005 (Codex, verdict
+FAIL) recorded three medium and two low findings. All five are resolved here —
+same builder, same branch, fresh session under the model transition noted
+above, `Status: REVIEW` throughout, and the RED lane and every prior exclusion
+and ruling left untouched.
+
+Finding 1, verdict-driving: the stability gate printed `DIFFERS` and an
+encoded exit-code line when a gated artifact changed, but its process returned
+0 — false-green. `stability.sh` now exits 1 when any gated artifact differs
+and 0 when all match; the exit status is the gate's contract. Proven from both
+sides by a committed negative control
+(`docs/05-quality/evidence/002d-fix-loop-3/negative-control.txt`): a marker
+staged into `typecheck.txt`'s index copy made the gate report exactly that
+artifact as differing and **exit 1**; restoring the bytes exactly made the
+full gate run green again, **exit 0**. The control is rerunnable at any
+committed head and is not itself gated — a gate cannot contain a run of
+itself.
+
+Finding 2, verdict-driving: the install PASS in `OPERATIONS.md` now cites a
+real artifact — `002d-fix-loop-3/npm-ci.txt`, a fresh `npm ci` at this head
+transcribed by the committed `npm-ci.sh`: 1,085 packages, exit 0, wall-clock
+masked, registry-sourced lines classified run-varying. One environmental retry
+(npm `ENOTEMPTY` while deleting the old tree, exit 190) is disclosed in the
+002d README rather than silently discarded.
+
+Finding 3, verdict-driving: the Active-work row in `PROJECT-STATE.md` is
+current — and the raw gated/run-varying counts are removed from that file
+entirely, replaced by a pointer to the evidence README that owns them
+(`002b-fix-loop/README.md`, "Gated versus run-varying"). Counts duplicated
+into state files rot; pointers do not. The one-row shape change was authorized
+by the dispatch.
+
+Findings 4-5: the three false/stale prose statements are corrected at source —
+`capture.sh` no longer claims module counts pass through unchanged, the 002c
+README no longer says three run-varying artifacts, and `dev-server.sh` no
+longer attributes the two page-description errors to its own earlier version;
+they lived in the prose written around it, and its served-markup checks were
+accurate throughout. `export-summary.txt`'s producer now joins route filenames
+with `paste`, removing the generated trailing space `git diff --check`
+flagged. Both artifacts were regenerated by running their scripts. Among the
+regenerated gated artifacts, three changed: those two, each exactly as
+intended, and `git-ls-files.txt`, which picked up the six paths new since it
+was last regenerated — the five 002d files, and the REVIEW-005 record
+committed at this loop's base.
+
+Gates at this head: the full stability gate ran green inside the negative
+control's second run — zero differing gated artifacts, process exit 0 — which
+also regenerated the typecheck, lint, test and format:check transcripts
+byte-identically, all exit 0. CI is still **NOT RUN** — this loop adds
+commits, not a trigger. Rendering remains PASS on web and NOT RUN on
+simulator, emulator and device. Evidence in
+`docs/05-quality/evidence/002d-fix-loop-3/`. Status stays `REVIEW` for the
+re-review.
+
+**REVIEW-006 fix loop closing note (2026-08-18).** REVIEW-006 (Codex Sol,
+verdict FAIL) recorded a single low finding: `npm-ci.sh`'s duration mask was
+not total — it required the `, and audited N packages` clause, so npm's
+equally valid shorter summary (`added 1085 packages in 2m` in the reviewer's
+fresh run) leaked its raw duration, contradicting the script's and the 002d
+README's stated contract. Fixed here — same builder, same branch, fresh
+session, `Status: REVIEW` throughout, all priors byte-preserved and every
+ruling standing.
+
+The mask now accepts both documented summary forms, the audited clause
+optional, and replaces everything after the summary's final ` in `, covering
+every duration shape npm formats (`Nms`, `Ns`, `N.Ns`, `Nm`, `NmNs`).
+Totality is proven by a committed positive control
+(`002d-fix-loop-3/normalizer-control.txt`): ten sample lines — each form
+crossed with each duration shape, including the reviewer's exact observed
+line — piped through `npm-ci.sh --filter`, the same committed expression the
+transcript is produced with; all ten came back masked, zero unmasked, encoded
+and process exit 0. The control was also probed from its failing side with a
+disposable scratch copy carrying the old regex: five `UNMASKED`, exit 1 — a
+green control is not vacuous. `npm ci` was rerun in full through the fixed
+script, first attempt, no retry: 1,085 packages, encoded exit 0; the fresh
+transcript reproduced the committed `npm-ci.txt` byte for byte (same-day,
+warm-cache coincidence, disclosed in the README — the classification stays
+run-varying). `git-ls-files.txt` was regenerated to a fixed point and lists
+three new paths (85 → 88): the REVIEW-006 record, committed at this loop's
+base, and the two normalizer-control files.
+
+Gates at this head: the full stability gate ran green — zero differing gated
+artifacts, process exit 0 — regenerating the typecheck, lint, test and
+format:check transcripts byte-identically, all exit 0. CI is still **NOT
+RUN** — this loop adds a commit, not a trigger. Rendering remains PASS on web
+and NOT RUN on simulator, emulator and device. Status stays `REVIEW` for the
+re-review.
 
 ---
 

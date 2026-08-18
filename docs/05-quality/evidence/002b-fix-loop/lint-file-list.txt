@@ -1,0 +1,9 @@
+$ npx eslint . --max-warnings=0 --format json  (summarised)
+eslint.config.js  errors=0 warnings=0
+jest.config.js  errors=0 warnings=0
+src/__tests__/home-screen.test.tsx  errors=0 warnings=0
+src/app/_layout.tsx  errors=0 warnings=0
+src/app/index.tsx  errors=0 warnings=0
+tracked files linted: 5
+problems in untracked files ESLint also inspected: 0
+--- exit code: 0 ---
