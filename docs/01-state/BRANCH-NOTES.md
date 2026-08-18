@@ -31,6 +31,36 @@ feature branch and nothing more.
 
 ---
 
+## LOCK — chore/state-ctrl-002-closeout
+
+```
+Project:            Noema
+Branch:             chore/state-ctrl-002-closeout
+Controller:         CTRL-002 App Skeleton
+Builder:            Controller (direct state edit via GitHub API; no product
+                    code — controller-only class per AGENTS.md state ownership)
+Model+Effort:       Fable 5 (controller conversation) / Max / same session
+Reviewer of record: none (controller-only state edits)
+Status:             BUILD
+Dispatch:           CTRL-002 close-out: flip the feat/app-skeleton and
+                    ctrl-002-opening LOCKs to MERGED, record the 2026-08-18
+                    owner rulings (operating-model seats, effort taxonomy,
+                    disclosure line, dispatch-confirmation practice, naming
+                    and scheme freeze, Linear activation), record staging
+                    Supabase facts and prod deferral, append learnings 5-7,
+                    update Known issues and backlog, set Active work to
+                    Unit B, and name CTRL-003 Supabase Wiring as successor.
+Evidence:           — (documentation-only state edit; the diff is the
+                    evidence; CI run IDs cited inline are GitHub's records)
+```
+
+**Known lag.** As with every controller state branch, this block reads `BUILD`
+after the owner merges until the next controller state commit reconciles it —
+learning 5 makes that reconciliation the first act of CTRL-003's first state
+commit.
+
+---
+
 ## LOCK — chore/state-ctrl-002-opening
 
 ```
@@ -42,7 +72,9 @@ Builder:            Controller (direct state edit via GitHub API; no product
 Model+Effort:       controller conversation / — / same session
 Reviewer of record: none (controller-only state edits; same class as
                     chore/state-ctrl-001-closeout)
-Status:             BUILD
+Status:             MERGED — merge commit
+                    ed0340d46a0cacbeffaaf71ed1cc229d62316fc9 (PR #1);
+                    lag reconciled per learning 5
 Dispatch:           CTRL-002 opening state commit: flip the stale scaffold and
                     CTRL-001 close-out LOCK statuses to MERGED, register the
                     Unit A LOCK (feat/app-skeleton), and update Active work for
@@ -68,7 +100,9 @@ Controller:         CTRL-002 App Skeleton
 Builder:            Claude Code
 Model+Effort:       Opus / high effort / fresh session
 Reviewer of record: Codex
-Status:             REVIEW
+Status:             MERGED — merge commit
+                    8d648bb5036d22817d30a29ec21b3c19edcc9ed4 (PR #2);
+                    REVIEW-007 PASS
 Dispatch:           Unit A — initialize the Expo (React Native) app for mobile
                     and web plus a CI baseline. No Supabase, no provider keys,
                     no transcription code, no deploys. Supabase wiring is
@@ -338,6 +372,16 @@ RUN** — this loop adds a commit, not a trigger. Rendering remains PASS on web
 and NOT RUN on simulator, emulator and device. Status stays `REVIEW` for the
 re-review.
 
+
+**Unit closed (2026-08-19, CTRL-002).** Review chain: REVIEW-003 FAIL (user-visible naming) → REVIEW-004 FAIL (evidence byte-stability, runtime
+claims) → REVIEW-005 FAIL (gate false-green, install artifact, stale counts)
+→ REVIEW-006 FAIL (duration-mask totality, low) → REVIEW-007 **PASS** at
+`f4dbe82`. Merged via PR #2 at `8d648bb`; branch deleted; owner working copy
+synced and pruned. CI's first two runs are green: run 1 (pull_request,
+`a00593e`, id 32166739595) and run 2 (push to main, `8d648bb`,
+id 32167057897) — the CI claim moves NOT RUN → PASS with those runs as the
+artifact. Loops 1-2 built under Opus/high, loops 3-4 under Fable 5 per the
+recorded model transition.
 ---
 
 ## LOCK — chore/state-ctrl-001-closeout
