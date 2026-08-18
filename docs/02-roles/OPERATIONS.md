@@ -63,7 +63,7 @@ locally before pushing.
 
 | Statement | Class | Artifact |
 |---|---|---|
-| `npm ci` installs the committed lockfile | PASS | `docs/05-quality/evidence/002b-fix-loop/environment.txt` and the gate transcripts beside it |
+| `npm ci` installs the committed lockfile | PASS | `docs/05-quality/evidence/002d-fix-loop-3/npm-ci.txt` — a real `npm ci` at this head, exit code captured |
 | `expo export --platform all` produces iOS, Android and web bundles | PASS | `docs/05-quality/evidence/002b-fix-loop/expo-export.txt` |
 | The dev server starts and answers HTTP 200 on `/`, with the placeholder screen's text in the markup it serves | PASS | `docs/05-quality/evidence/002c-fix-loop-2/dev-server.txt` |
 | The app renders **in a browser** | PASS | `docs/05-quality/evidence/002c-owner-smoke/attestation.md` — owner, web, Chrome on macOS, 2026-08-18 |

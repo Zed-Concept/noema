@@ -7,8 +7,14 @@
 # produced by Node, not by a browser laying it out or by React Native mounting
 # on a device. The rendering itself is attested separately, by a human, in
 # ../002c-owner-smoke/attestation.md — and that attestation corrected two
-# claims this script previously made about the page, which is a fair summary of
-# how far a server-side capture can be trusted to describe a screen.
+# descriptions of this page that the loop's surrounding prose had gotten
+# wrong. The checks this script makes on the served markup were accurate
+# throughout; the errors lived in the documentation written around them.
+# (REVIEW-005 finding 4 corrected this comment and the transcript note below,
+# both of which misattributed those errors to an earlier version of this
+# script.) That prose could be wrong while the checks were right is still a
+# fair summary of how far a server-side capture can be trusted to describe a
+# screen.
 #
 # Determinism. The transcript records the HTTP status, whether the placeholder
 # screen's own strings are present in the served markup, and the server's
@@ -67,8 +73,9 @@ has() {
   echo "<title> element as served:                   $(grep -o '<title[^>]*>[^<]*</title>' "$BODY" | head -1)"
   echo
   echo "Two notes about what is on the page, both corrected by the owner's smoke"
-  echo "test (../002c-owner-smoke/attestation.md) after an earlier version of"
-  echo "this file described the page wrongly:"
+  echo "test (../002c-owner-smoke/attestation.md) after the prose written around"
+  echo "this artifact — not this script's checks, which were accurate throughout"
+  echo "— described the page wrongly:"
   echo
   echo "  1. The root <Stack /> renders a header bar, and its title is the route"
   echo "     name, so the page shows 'index' above the placeholder text. It is"

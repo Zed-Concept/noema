@@ -10,9 +10,11 @@
 # durations, and Metro's cold-cache warning. Those fields are replaced with a
 # fixed `<duration>` placeholder, or dropped, by the per-file normalisers
 # below, so that rerunning this script at the commit an artifact was captured
-# at reproduces it byte for byte. Nothing that carries signal is touched:
-# exit codes, pass/fail counts, module counts, bundle sizes, and bundle content
-# hashes all pass through unchanged.
+# at reproduces it byte for byte. What carries signal passes through unchanged:
+# exit codes, pass/fail counts, bundle sizes, and bundle content hashes.
+# Metro's module counts do not — norm_export masks them, on the evidence
+# argued at its comment below. (REVIEW-005 finding 4 corrected this sentence,
+# which used to claim the counts passed through unchanged.)
 #
 # Four outputs here are *not* byte-stable and are not meant to be —
 # environment.txt (machine-local versions), expo-doctor.txt (resolves `@latest`
@@ -146,7 +148,10 @@ capture expo-export.txt norm_export npx expo export --platform all --output-dir 
   echo "android bundles:   $(find dist/_expo/static/js/android -name '*.hbc' 2>/dev/null | wc -l | tr -d ' ')"
   echo "web bundles:       $(find dist/_expo/static/js/web -name '*.js' 2>/dev/null | wc -l | tr -d ' ')"
   echo "static routes:     $(find dist -maxdepth 1 -name '*.html' 2>/dev/null | wc -l | tr -d ' ')"
-  echo "route files:       $(find dist -maxdepth 1 -name '*.html' -exec basename {} \; 2>/dev/null | sort | tr '\n' ' ')"
+  # paste joins with single spaces and no trailing one — the earlier tr '\n' ' '
+  # mapped the final newline to a trailing space, which git diff --check flags
+  # (REVIEW-005 finding 5).
+  echo "route files:       $(find dist -maxdepth 1 -name '*.html' -exec basename {} \; 2>/dev/null | sort | paste -s -d ' ' -)"
   echo "export exit code:  $(sed -n 's/^--- exit code: \([0-9]*\) ---$/\1/p' "$OUT/expo-export.txt")"
   echo "--- exit code: 0 ---"
 } > "$OUT/export-summary.txt"

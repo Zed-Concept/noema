@@ -19,8 +19,9 @@ body contains the Stack header '>index<':    yes
 <title> element as served:                   <title data-rh="true"></title>
 
 Two notes about what is on the page, both corrected by the owner's smoke
-test (../002c-owner-smoke/attestation.md) after an earlier version of
-this file described the page wrongly:
+test (../002c-owner-smoke/attestation.md) after the prose written around
+this artifact — not this script's checks, which were accurate throughout
+— described the page wrongly:
 
   1. The root <Stack /> renders a header bar, and its title is the route
      name, so the page shows 'index' above the placeholder text. It is

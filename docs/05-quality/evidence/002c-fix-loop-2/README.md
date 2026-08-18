@@ -44,8 +44,13 @@ causes it:
 |---|---|---|
 | `lint-file-list.txt` | whether the generated, gitignored `expo-env.d.ts` was on disk. ESLint inspects it when it is there, so the listing reads 5 files in a fresh clone and 6 once any `expo` command has run — including this directory's own export step | `capture.sh` lists only tracked files, and reports problems found in untracked ones as a separate count (`0`). Nothing is hidden: `lint.txt` is the gate and still covers everything ESLint sees. |
 
-Two of the three run-varying artifacts proved the classification in practice
-rather than in theory, during this loop's reruns.
+Three of the four run-varying artifacts proved the classification in practice
+rather than in theory, during this loop's reruns: the two below, and
+`expo-export.txt`, whose in-practice failure of the byte gate is the subject
+of its own section further down — only `environment.txt`'s variance remained
+theoretical. (This sentence said "two of the three" until REVIEW-005
+finding 4; the count became four when `expo-export.txt` was reclassified, and
+this line was not carried along.)
 
 `expo-doctor.txt` returned three different transcripts across the eight runs of
 the same command this loop made against the same tree: **21/21** five times,
