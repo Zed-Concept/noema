@@ -1,0 +1,9 @@
+$ npm ls @supabase/supabase-js
+<package-name>@0.1.0 <repo-root>
+`-- @supabase/supabase-js@2.112.3
+
+--- exit code: 0 ---
+
+$ grep -c '"node_modules/@supabase/supabase-js"' package-lock.json
+1
+--- exit code: 0 ---

@@ -65,7 +65,7 @@ Controller:         CTRL-003 Supabase Wiring
 Builder:            Claude Code
 Model+Effort:       Fable 5 / Ultracode (xhigh + workflows) / fresh session
 Reviewer of record: Codex (Codex Sol / Ultra / fresh session)
-Status:             BUILD
+Status:             REVIEW
 Dispatch:           Unit B — Supabase wiring: add supabase-js, a typed client
                     module fed by staging env config, generated-types plumbing
                     (generation script plus committed placeholder output),
@@ -74,13 +74,37 @@ Dispatch:           Unit B — Supabase wiring: add supabase-js, a typed client
                     or auth policy work, no production access, no provider
                     keys. The owner hands the staging URL + anon key at
                     dispatch; credentials are never committed.
-Evidence:           pending — docs/05-quality/evidence/003a-supabase-wiring/
+Evidence:           docs/05-quality/evidence/003a-supabase-wiring/
 ```
 
 Registered by the controller in the CTRL-003 opening state commit, ahead of
 the builder session. Per the house workflow the builder flips `BUILD` →
 `REVIEW` in its handoff amendment; `MERGED` only by the controller, after
 review.
+
+**Closing note (2026-08-19).** Build complete, staging only.
+`@supabase/supabase-js@2.112.3` is in with the committed lockfile (zero new
+audit advisories — still the accepted 22). `src/lib/supabase.ts` exports one
+shared client typed by the committed placeholder `src/lib/database.types.ts`,
+reads `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
+and throws at load if either is missing (proven, not asserted). `npm run
+types:gen` wraps CLI type generation with the project ref from env at run
+time — the generation run itself is NOT RUN: owner-executed, it needs the
+access token builders do not hold. `.env.example` carries exactly the two
+variables, blank; `.env*` stays ignored. Staging connectivity proven by
+`npm run check:supabase` with owner-handed values via local env only: three
+unauthenticated round-trips plus one local client check, 4/4 pass, exit 0,
+URL/key/host redacted at source and the redaction proven total on the failure
+path. All five CI steps green locally; CI itself NOT RUN (no PR yet). One
+service fact recorded: the REST OpenAPI root rejects publishable-class keys
+by design, so health is probed on a table route. Evidence in
+`docs/05-quality/evidence/003a-supabase-wiring/`, including the Unit A
+stability gate run unmodified at this head (exit 1 — three differences: two
+proven pre-existing at the dispatch base, one this unit's new lintable files;
+triaged in the 003a README, handed to the controller in the HANDOFF, no Unit A
+evidence repaired). Built under Ultracode per ruling 5; workflow disclosure
+per ruling 6 is in the HANDOFF block. Status moved `BUILD` → `REVIEW` in this
+amendment; `MERGED` only by the controller, after review.
 
 ---
 

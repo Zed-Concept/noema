@@ -12,9 +12,12 @@
     "lint": "expo lint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "jest"
+    "test": "jest",
+    "types:gen": "bash scripts/gen-types.sh",
+    "check:supabase": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-supabase-connectivity.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.112.3",
     "expo": "~57.0.14",
     "expo-constants": "~57.0.12",
     "expo-linking": "~57.0.6",

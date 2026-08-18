@@ -8,6 +8,141 @@ Append a new block at the top. Never edit an old one.
 
 ---
 
+## 2026-08-19 — feat/supabase-wiring (CTRL-003 Unit B)
+
+**Controller:** CTRL-003 Supabase Wiring. **Builder:** Claude Code — Fable 5,
+Ultracode (xhigh + workflows), fresh session, model verified against the
+dispatch before work. **Reviewer of record:** Codex (Codex Sol / Ultra, fresh
+session). **Branch cut from:** `main` at
+`98f3c6ae00ccca4af732e573cac02cb3f2c926f2`, fetched and confirmed as the
+dispatch-named tip before any work. **LOCK:** `Status: REVIEW`.
+
+**Disclosure (ruling 6):** workflows run: 1 —
+`verify-unit-b-supabase-wiring`, an adversarial verification pass over the
+staged diff before handoff; subagent fan-out: 18 (4 finder lenses:
+scope/governance, code correctness, evidence integrity, secret hygiene; then
+2 independent refuters per deduped finding, 14 in all). It confirmed 2
+findings, both fixed before this handoff: the connectivity script's redaction
+helper could itself throw on a malformed URL value and print the raw value
+(now total, proven by rerunning the exact failing repro), and the evidence
+README cited a backlog item as covering the Unit A gate staleness which it
+does not (reworded; the staleness is handed to the controller below). Three
+contested findings were judged and also addressed (tsconfig disclosure,
+`auth.getSession` reclassified as a local check, `.env.example` content now
+captured in evidence); one was killed by both refuters. Workflow
+self-verification is supplementary; the reviewer of record gates.
+
+**What I set out to do**
+
+Unit B, staging only: `@supabase/supabase-js` with committed lockfile; one
+shared typed client module reading `EXPO_PUBLIC_SUPABASE_URL` and
+`EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` from Expo env config, failing loudly
+when unset; generated-types plumbing (`types:gen` npm script, project ref
+from env at run time, committed placeholder wired into the client generics,
+README section for the owner-executed run); `.env.example` with the two
+variables blank; staging connectivity evidence with URL and key redacted; the
+five existing CI steps stay green. The dispatch equated the handed
+publishable key with the state files' "anon key" wording — not a mismatch.
+
+**What I changed**
+
+- `package.json` / `package-lock.json` — `@supabase/supabase-js@^2.112.3`
+  (resolved 2.112.3), plus two scripts: `types:gen`, `check:supabase`. Zero
+  new audit advisories (still the accepted 22 — `003a/npm-audit.txt`).
+- `src/lib/supabase.ts` — the one shared client, `createClient<Database>`,
+  throws at load if either variable is missing. Session persistence, token
+  refresh, and URL detection deliberately off until the auth unit ships a
+  storage adapter and policy set (RED-lane-adjacent; reason inline).
+- `src/lib/database.types.ts` — committed placeholder matching the CLI's
+  empty-public-schema output shape; overwritten by the first owner
+  `types:gen` run.
+- `scripts/gen-types.sh` — wraps `supabase gen types typescript` with
+  `SUPABASE_PROJECT_REF` required from env at run time; refuses to clobber
+  the committed file on a failed or malformed generation; never echoes env.
+- `scripts/check-supabase-connectivity.ts` — instantiates the real shared
+  module from env, performs three unauthenticated staging round-trips plus
+  one local client check, redacts URL/host/key from every output path
+  including error text, exits 0/1/2.
+- `tsconfig.json` — exactly one line, `"allowImportingTsExtensions": true`:
+  required so the connectivity script can import the real module with the
+  `.ts` specifier Node's native TS execution demands; legal because the
+  inherited Expo base config sets `noEmit`; behaviorally inert for app code.
+- `.env.example` — the two variables, blank, with a warning that
+  `EXPO_PUBLIC_` values are bundle-embedded and secret-class keys never
+  belong there. `.env*` confirmed gitignored, `.env.example` tracked.
+- `README.md` — a "Supabase" section: env setup, the owner-executed
+  `types:gen` command (needs `SUPABASE_ACCESS_TOKEN`, builders do not hold
+  it), and the connectivity check. `OPERATIONS.md` untouched, its
+  `TODO(owner)` rows intact per the dispatch.
+- `docs/05-quality/evidence/003a-supabase-wiring/` — six scripts, nine
+  transcripts, and a README classifying every artifact
+  (gated / run-varying / fixed-head demonstration) with normalization stated,
+  claims table, Unit A gate triage, and redaction notes.
+- State files: the Unit B LOCK flipped `BUILD` → `REVIEW` with a closing
+  note, the Unit B Active-work row, and this block. Nothing else.
+
+**What I verified, and how**
+
+Full claims table with classifications in `003a-supabase-wiring/README.md`.
+
+| Check | Class | Artifact |
+|---|---|---|
+| npm ci, typecheck, lint, test, format:check — all exit 0 at this head | PASS | `003a/gates.txt` |
+| Client instantiates from env; 3 staging round-trips (client REST answered `PGRST205` for a nonexistent probe table — key accepted; raw REST probe; auth health 200) + 1 local client check | PASS | `003a/connectivity.txt` — 4/4, exit 0, redacted |
+| Client throws at load when env is missing | PASS | `003a/gates.txt`, fail-loudly section |
+| Redaction is total, including the malformed-URL failure path | PASS | fixed after workflow finding; repro rerun prints one redacted FATAL line, exit 1 |
+| `.env*` ignored, `.env.example` tracked and exactly two blank variables | PASS | `003a/gates.txt`, .env hygiene section |
+| No credential shape anywhere in the index (4 defanged patterns, each with a runtime positive control) | PASS | `003a/secret-scan.txt` |
+| 003a gated artifacts regenerate byte-for-byte | PASS | `003a/stability.txt` — two fresh runs, 0 differing |
+| Generated types against live schema | NOT RUN | owner-executed; needs `SUPABASE_ACCESS_TOKEN`. Placeholder committed; command documented in README |
+| CI on this branch | NOT RUN | no PR yet; workflow file untouched |
+| Unit A stability gate at this head | exit 1 — disclosed | `003a/unit-a-gate-at-head.txt`: 3 of 11 differ — `push-state.txt` and `git-ls-files.txt` proven pre-existing at the dispatch base (`003a/unit-a-gate-at-base.txt`), `lint-file-list.txt` is this unit's three new lintable files (5 → 8, all clean) |
+| `npm audit` | FAIL pre-existing | `003a/npm-audit.txt` — 22, unchanged by the new dependency |
+
+**What is broken or uncertain — for the controller**
+
+1. **Adjacent finding, reported not acted on: the Unit A stability gate is
+   stale post-merge and no state file records it.** `push-state.txt` is
+   permanently unreproducible (the remote branch it interrogates was deleted
+   after merge) and `git-ls-files.txt` no longer matches any current head;
+   both differences exist at the dispatch base, before this unit. The
+   existing backlog item covers only gate-set expansion, a different task.
+   Recording the staleness and scheduling its reconciliation are controller
+   calls — this unit deliberately repaired nothing in Unit A's reviewed
+   evidence and manufactured no new differences (see the `deps.txt`
+   package-name masking note in the 003a README).
+2. **Adjacent service fact:** the REST OpenAPI root (`/rest/v1/`) answers
+   401 "Secret API key required" to publishable-class keys by gateway
+   design; health must be probed on table routes. Recorded in the 003a
+   README for future units.
+3. `npm run check:supabase` and `types:gen` require Node 24+ (native
+   TypeScript execution) and the Supabase CLI via `npx` respectively;
+   neither runs in CI, by design.
+4. Nothing else new. The 22 audit advisories, device-rendering NOT RUN, and
+   all previously accepted deviations stand unchanged.
+
+**What I did NOT do**
+
+No schema, no migrations, no RLS or auth-policy work, no auth UI, no storage
+adapter, no production access, no provider keys beyond receiving the staging
+pair via local env, no deploys, no CI change, no CI secrets, no PR, no merge.
+`app.json` untouched (`expo.scheme` frozen per ruling 8); no user-visible
+name strings added; `docs/03-decisions/` and `docs/04-reviews/` untouched;
+no prior HANDOFF or LOCK block edited; no `PROJECT-STATE.md` section touched
+beyond the Unit B Active-work row. The staging URL and key appear in no
+tracked file, no evidence byte, and no script default — proven by
+`secret-scan.txt`, not asserted.
+
+**Next step**
+
+Route the diff to the reviewer of record (Codex, fresh session) for
+REVIEW-008. The owner merges only after a PASS. The first CI run on this
+branch arrives with the PR.
+
+LOCK status line: `Status: REVIEW`.
+
+---
+
 ## 2026-08-19 — CTRL-002 close-out (controller state edit)
 
 **Controller:** CTRL-002 App Skeleton, closing. **Builder:** none — direct
