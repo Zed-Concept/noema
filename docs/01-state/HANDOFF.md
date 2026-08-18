@@ -8,6 +8,101 @@ Append a new block at the top. Never edit an old one.
 
 ---
 
+## 2026-08-19 — feat/supabase-wiring (REVIEW-008 review)
+
+**Controller:** CTRL-003 Supabase Wiring. **Reviewer of record:** Codex Sol,
+ultra effort, fresh session, review only. **Reviewed base:**
+`98f3c6ae00ccca4af732e573cac02cb3f2c926f2`. **Reviewed target:**
+`98c4d6d71d16beea3f521aadf37caabc8edb5339`. **LOCK:** `Status: REVIEW`.
+
+**Dispatch correction:** the v1 dispatch was stopped by the reviewer per
+learning 4 before any review work, file change, verdict, or record. The
+controller corrected the output scope to exactly REVIEW-008 plus this new
+top-of-file HANDOFF block before formal review resumed.
+
+**Disclosure:** review workflows/methods: standards/spec review, Noema
+governance review, and Supabase-specific verification; subagent fan-out: 4
+read-only lanes — standards, specification, security/evidence, and
+dependency/generated types. No subagent edited the repository.
+
+**What happened**
+
+REVIEW-008 verdict is **FAIL**. Three medium findings independently prevent
+PASS, followed by two low evidence/prose findings:
+
+1. The exact 003a stability gate exits 1. Both fresh `deps.txt` copies use
+   npm's valid Unicode `└──` tree glyph where the committed file uses ASCII
+   `` `-- ``. Locale is not recorded or normalized; `LC_ALL=C` reproduces the
+   committed slice, while the review environment's `C.UTF-8` does not.
+2. `OPERATIONS.md` now falsely says Unit B/Supabase wiring does not exist, and
+   the builder HANDOFF neither reports that direct ripple nor requests a
+   controller decision.
+3. `.env` and `.env.*` are ignored, but literal `.env*` is not: `.envrc` and
+   `.envfoo` are not ignored. The named evidence tests only narrower names.
+4. Three PASS claims lack complete committed artifact coverage: each missing
+   env variable, generated-types plumbing, and malformed-URL redaction.
+   Reviewer controls confirm the implementations today; the defect is the
+   evidence record.
+5. The builder HANDOFF says six scripts. The exact 003a tree contains five
+   `.sh`, nine `.txt`, and one README.
+
+Full findings, stable anchors, and claim-by-claim results are in
+`docs/04-reviews/REVIEW-008.md`.
+
+**Fresh verification**
+
+| Check | Class | Result |
+|---|---|---|
+| exact target/range | PASS | local/fetched remote target `98c4d6d`; sole parent and merge-base `98f3c6a`; one non-empty commit; delta whitespace clean |
+| 003a stability | FAIL introduced by this work | `gates.txt` and `secret-scan.txt` matched twice; `deps.txt` differed twice; process exit 1 |
+| five local CI steps | PASS | two fresh captures: install, typecheck, lint, 1/1 Jest test, and format check all encoded exit 0; `003a/gates.txt` |
+| secrets | PASS | exact defanged scan and positive controls reproduced byte-for-byte; independent all-byte and extended-shape scans over 109 blobs / 980,941 bytes found zero credential shapes; `003a/secret-scan.txt` |
+| redaction implementation | PASS with evidence finding | malformed URL and thrown-detail controls returned 1 and retained zero raw URL/host/key bytes; no committed malformed-path control exists |
+| connectivity | PASS from committed artifact; live NOT RUN | `003a/connectivity.txt`: 4 PASS, 0 FAIL, 4/4, exit 0, no credential shape; no staging values used by reviewer |
+| dependency/audit | PASS / FAIL pre-existing | lock resolves `supabase-js` 2.112.3; fresh audit remains accepted 22 (7 moderate, 15 high), with zero advisory delta from new nodes |
+| `.env` hygiene | FAIL introduced by this work | example tracked with exactly two blank values; `.env`/dot-suffix names ignored; `.envrc`/`.envfoo` not ignored |
+| Unit A gate at head | exit 1, attribution PASS | decisive unchanged network/local-bind rerun: 3/11 differ; base rerun proves `push-state.txt` and `git-ls-files.txt` pre-existing; `lint-file-list.txt` is exactly this unit's three clean files; no Unit A evidence repaired |
+| CI on branch | NOT RUN | fresh GitHub query found no PR and no workflow run |
+| state/excluded scope | PASS | Unit B BRANCH-NOTES block only, one PROJECT-STATE row, builder HANDOFF insertion only; LOCK stays REVIEW; no excluded product/governance path |
+| builder ruling-6 disclosure | PASS as recorded | one workflow, fan-out 18, and 4 + 14 breakdown disclosed; workflow testimony is not treated as review evidence |
+
+The first sandboxed Unit A head run is not hidden: it showed the expected three
+differences plus a transient dev-server failure when Expo reported port 8081
+busy. The port was free afterward; the producer regenerated its committed
+HTTP-200 bytes on retry, and the exact unchanged full gate with network/local
+bind then returned only the expected three differences. The decisive result is
+the latter run.
+
+**Adjacent observations**
+
+- `scripts/gen-types.sh` would resolve floating `supabase@2` outside the lock
+  during owner-executed generation, when `SUPABASE_ACCESS_TOKEN` must be
+  present. Current Supabase security guidance prefers an exact version or
+  locked devDependency; controller to adjudicate.
+- `capture.sh`'s secret scan is report-only, and `connectivity.sh` does not
+  propagate the child process status, although both current transcripts are
+  clean and record the child result.
+- `OPERATIONS.md` also contains pre-existing false staging-not-created text at
+  the dispatch base; recorded as adjacent, not charged to Unit B.
+
+**What I did not do**
+
+No live Supabase query, production access, secret use or output, schema,
+migration, auth/RLS/payment change, product/evidence edit, state edit beyond
+this authorized HANDOFF block, PR, deploy, merge, or push. Disposable generated
+bytes were restored and the primary checkout was clean before these two
+authorized records were written.
+
+**Next step**
+
+Return REVIEW-008 FAIL to the controller for a same-builder fix-loop dispatch.
+The owner must not merge on this verdict. The controller, not this review,
+decides the advisory CLI pin and routes any authorized OPERATIONS update.
+
+LOCK status line: `Status: REVIEW`.
+
+---
+
 ## 2026-08-19 — feat/supabase-wiring (CTRL-003 Unit B)
 
 **Controller:** CTRL-003 Supabase Wiring. **Builder:** Claude Code — Fable 5,
