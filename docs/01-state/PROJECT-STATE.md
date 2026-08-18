@@ -3,14 +3,13 @@
 The authoritative record of what is true right now. If this file and your
 memory of the project disagree, this file is right and you are stale.
 
-**Last verified:** 2026-08-19, CTRL-002 close-out, verified against main at
-`8d648bb` (the PR #2 merge, GitHub-signed) and review records
-REVIEW-003 through REVIEW-007
-**Verification method:** controller read of main via GitHub API — state
-files, all five Unit A review records, merge parents confirmed
-(`ed0340d` + `a00593e`) — plus the Actions API for CI runs 1
-(id 32166739595, pull_request, success) and 2 (id 32167057897, push to
-main, success).
+**Last verified:** 2026-08-19, CTRL-003 opening, verified against main at
+`2698332` (the PR #3 merge of the CTRL-002 close-out, GitHub-signed,
+parents `8d648bb` + `9605807`)
+**Verification method:** controller read of main via GitHub API — both
+state files, AGENTS.md (sha256 re-verified `0ff02d20…f013`, 5378 bytes),
+ARCHITECTURE.md, the commit list, and the branch inventory (`main` is the
+only remote branch; no LOCK in BUILD other than controller state lag).
 
 ## Project facts
 
@@ -41,8 +40,8 @@ runs on, where it is deployed.
 
 As of 2026-08-19:
 
-- Repository `Zed-Concept/noema` is **private**; `main` is at `8d648bb`
-  (PR #2 merge).
+- Repository `Zed-Concept/noema` is **private**; `main` is at `2698332`
+  (PR #3, the CTRL-002 close-out state merge).
 - **Unit A is merged**: Expo SDK 57 managed app at the repo root — TypeScript
   strict, expo-router, npm with committed lockfile, ESLint + Prettier,
   jest-expo — one placeholder home screen, user-visible name `ZC App (dev)`.
@@ -87,14 +86,15 @@ What is in flight, who owns it, and what it is blocked on. One row per stream.
 
 | Stream | Owner | Status | Blocked on |
 |---|---|---|---|
-| Unit B — Supabase wiring (supabase-js client, generated types, staging env plumbing) | Claude Code, to be dispatched by CTRL-003 | Next | Owner hands staging URL + anon key at dispatch |
+| Unit B — Supabase wiring (supabase-js client, generated types, staging env plumbing) | Claude Code (Fable 5 / Ultracode / fresh session); RoR Codex | Dispatched by CTRL-003 — LOCK registered, BUILD | Owner hands staging URL + anon key when pasting the dispatch |
 | Production Supabase project | Owner | Parked by ruling — create in East US (North Virginia) before any launch-facing unit | Free-tier slot or Pro upgrade at that time |
 
 Unit A merged 2026-08-19 at `8d648bb` (PR #2, REVIEW-007 PASS); its full
 record lives in the feat/app-skeleton LOCK and the HANDOFF chain.
 
-**Next controller session:** CTRL-003 Supabase Wiring — the successor
-confirms this name against this file before planning anything.
+**Active controller session:** CTRL-003 Supabase Wiring — name confirmed
+against this file at opening (2026-08-19). The successor is named at
+CTRL-003 close-out.
 
 ## RED lane
 
