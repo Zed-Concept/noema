@@ -31,6 +31,59 @@ feature branch and nothing more.
 
 ---
 
+## LOCK — chore/state-ctrl-003-opening
+
+```
+Project:            Noema
+Branch:             chore/state-ctrl-003-opening
+Controller:         CTRL-003 Supabase Wiring
+Builder:            Controller (direct state edit via GitHub API; no product
+                    code — controller-only class per AGENTS.md state ownership)
+Model+Effort:       Fable 5 (controller conversation) / Max / same session
+Reviewer of record: none (controller-only state edits)
+Status:             BUILD
+Dispatch:           CTRL-003 opening state commit: reconcile the
+                    ctrl-002-closeout LOCK to MERGED (PR #3, merge commit
+                    2698332), register the Unit B LOCK (feat/supabase-wiring),
+                    update Active work and the current-state main pointer, and
+                    mark CTRL-003 active. On a branch; owner merges.
+Evidence:           — (documentation-only state edit; the diff is the evidence)
+```
+
+**Known lag.** As with every controller state branch, this block reads `BUILD`
+after the owner merges until the next controller state commit reconciles it —
+learning 5 makes that reconciliation the first act of the next state commit.
+
+---
+
+## LOCK — feat/supabase-wiring
+
+```
+Project:            Noema
+Branch:             feat/supabase-wiring
+Controller:         CTRL-003 Supabase Wiring
+Builder:            Claude Code
+Model+Effort:       Fable 5 / Ultracode (xhigh + workflows) / fresh session
+Reviewer of record: Codex (Codex Sol / Ultra / fresh session)
+Status:             BUILD
+Dispatch:           Unit B — Supabase wiring: add supabase-js, a typed client
+                    module fed by staging env config, generated-types plumbing
+                    (generation script plus committed placeholder output),
+                    .env.example, and a staging connectivity evidence artifact.
+                    Staging only. Exclusions: no schema, no migrations, no RLS
+                    or auth policy work, no production access, no provider
+                    keys. The owner hands the staging URL + anon key at
+                    dispatch; credentials are never committed.
+Evidence:           pending — docs/05-quality/evidence/003a-supabase-wiring/
+```
+
+Registered by the controller in the CTRL-003 opening state commit, ahead of
+the builder session. Per the house workflow the builder flips `BUILD` →
+`REVIEW` in its handoff amendment; `MERGED` only by the controller, after
+review.
+
+---
+
 ## LOCK — chore/state-ctrl-002-closeout
 
 ```
@@ -41,7 +94,9 @@ Builder:            Controller (direct state edit via GitHub API; no product
                     code — controller-only class per AGENTS.md state ownership)
 Model+Effort:       Fable 5 (controller conversation) / Max / same session
 Reviewer of record: none (controller-only state edits)
-Status:             BUILD
+Status:             MERGED — merge commit
+                    2698332fb362af6b69b75cf17624ff238c006b84 (PR #3);
+                    lag reconciled per learning 5
 Dispatch:           CTRL-002 close-out: flip the feat/app-skeleton and
                     ctrl-002-opening LOCKs to MERGED, record the 2026-08-18
                     owner rulings (operating-model seats, effort taxonomy,
