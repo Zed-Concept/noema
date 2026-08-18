@@ -208,6 +208,43 @@ audit advisories are unchanged. Evidence in
 `docs/05-quality/evidence/002b-fix-loop/`. Status stays `REVIEW` for the
 re-review.
 
+**Owner smoke test recorded (2026-08-18).** The owner ran the web target at
+`68c14d1` and it **passed** — the placeholder home screen renders, no error
+overlay, clean hydration. Attestation in
+`docs/05-quality/evidence/002c-owner-smoke/attestation.md`. Rendering is now
+**PASS on web** and **NOT RUN** on simulator, emulator and device; the device
+target is also the only one on which the `ZC App (dev)` name is user-visible,
+so that sighting is still outstanding.
+
+The run corrected two statements this loop had written about the page, both
+now fixed at source: the browser tab reads `index`, not the URL (the served
+`<title>` is empty, but Expo Router sets it on the client after hydration,
+which no server-side capture can observe), and there *is* a header bar, titled
+with the route name, which was in the served markup all along. No check in
+`dev-server.txt` was wrong — the prose around it was. `dev-server.sh` now also
+asserts the header, and `dev-server.txt` has been added to the gated set.
+
+**The gate then caught a defect in the previous commit.** With `dev-server.txt`
+added, the re-run failed on `expo-export.txt`. Two moving fields, in two stages:
+one export in eight reported 1099 iOS modules against 1101 in the other seven,
+while emitting an identical bundle hash and size every time — so the module
+count is a statistic about the build, not a property of it, and is normalised;
+and more seriously, the **web** bundle's content hash is not reproducible at
+all, because `expo export --platform all` bundles concurrently and assigns
+module ids in completion order. Three distinct web hashes were observed, while
+iOS and Android were identical in every run and a web-only export reproduced its
+own hash exactly. The previous commit's claim that bundle content hashes
+reproduced exactly was therefore **wrong for web**, and is corrected on the
+record rather than dropped. The transcript is reclassified run-varying with both
+fields named, and the claim it backed moved to a new gated `export-summary.txt`
+— one bundle per platform, three named static routes, exit code, read from
+`dist/`. The gate is now eleven gated artifacts and four run-varying.
+
+**Adjacent finding, reported not acted on.** The header bar and the browser tab
+both read `index` — the route filename in user-visible chrome. Not introduced
+here and not in scope; it needs a real screen and document title before any of
+this is user-facing. Status stays `REVIEW`.
+
 ---
 
 ## LOCK — chore/state-ctrl-001-closeout

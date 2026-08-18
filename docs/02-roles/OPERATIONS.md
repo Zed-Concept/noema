@@ -11,10 +11,12 @@ Fill each section when the thing it describes first exists, not before.
 
 Every runtime statement in this file is limited to what an artifact under
 `docs/05-quality/evidence/` proves, per the verification rule in `AGENTS.md`.
-Three things are proven today: the committed lockfile installs, `expo export`
-produces iOS, Android and web bundles, and the dev server starts and serves the
-root route. **Nobody has seen the app render.** Where this file would otherwise
-say the app "runs", it says which of those three is meant.
+Four things are proven today: the committed lockfile installs, `expo export`
+produces iOS, Android and web bundles, the dev server starts and serves the root
+route, and — as of the owner's smoke test on 2026-08-18 — **the app renders on
+the web target**. It has still never been seen on a simulator, an emulator, or a
+device. Where this file would otherwise say the app "runs", it says which of
+those is meant.
 
 ## Credential ownership
 
@@ -64,21 +66,30 @@ locally before pushing.
 | `npm ci` installs the committed lockfile | PASS | `docs/05-quality/evidence/002b-fix-loop/environment.txt` and the gate transcripts beside it |
 | `expo export --platform all` produces iOS, Android and web bundles | PASS | `docs/05-quality/evidence/002b-fix-loop/expo-export.txt` |
 | The dev server starts and answers HTTP 200 on `/`, with the placeholder screen's text in the markup it serves | PASS | `docs/05-quality/evidence/002c-fix-loop-2/dev-server.txt` |
-| The app renders on a browser, simulator, or device | **NOT RUN** | none — `docs/05-quality/evidence/002c-owner-smoke/` is the empty slot waiting for it |
+| The app renders **in a browser** | PASS | `docs/05-quality/evidence/002c-owner-smoke/attestation.md` — owner, web, Chrome on macOS, 2026-08-18 |
+| The app renders on a simulator, emulator, or physical device | **NOT RUN** | none — the same slot is still open for a device run |
 
-The distinction the middle two rows turn on: an export is a build product, and
-the dev server's web markup is produced by Expo Router's static rendering inside
-Node. Neither involves a browser laying out a page or React Native mounting a
-view. **No one has looked at a screen.** Until the owner smoke test below is
-run and recorded, treat rendering — on any target — as unverified.
+The distinction the export and dev-server rows turn on: an export is a build
+product, and the dev server's web markup is produced by Expo Router's static
+rendering inside Node. Neither involves a browser laying out a page or React
+Native mounting a view. The browser row is a person having looked at a screen —
+which is why it is the only one of the four an agent could not produce.
+
+The device row matters on its own and is not a formality: the web target runs
+react-native-web, so nothing has yet exercised React Native itself. It is also
+the only target on which the app's name is user-visible.
 
 `npm run ios` and `npm run android` have never been executed at all; they are
 listed above because the scripts exist, not because they are known to work.
 
 ## Owner smoke test
 
-The one check no agent can run: does the app actually appear on a screen. It
-takes a few minutes and closes the last NOT RUN on the skeleton.
+The one check no agent can run: does the app actually appear on a screen.
+
+**Web: done — PASS, 2026-08-18**
+(`docs/05-quality/evidence/002c-owner-smoke/attestation.md`). The procedure is
+kept here because it is worth repeating whenever the skeleton changes, and
+because the device target below has not been run.
 
 **Web — the short version.**
 
@@ -87,18 +98,25 @@ npm ci                  # exact lockfile install
 npm run web             # equivalently: npx expo start --web
 ```
 
-Expected result: a browser tab opens on `http://localhost:8081` and the
-**placeholder home screen** renders — two lines of text, centred in the
-viewport: `Placeholder home screen` above `Edit src/app/index.tsx to replace
-this.`. That is the whole screen. The first line is a heading element, but the
-skeleton applies no font styling of its own, so do not expect it to look large
-or bold; centring and an 8px gap are the only layout it sets.
+Expected result, as observed on 2026-08-18: a browser tab opens on
+`http://localhost:8081`, **the browser tab is titled `index`**, and the page
+shows a **header bar reading `index`** across the top, with the **placeholder
+home screen** centred below it — `Placeholder home screen` above `Edit
+src/app/index.tsx to replace this.`. The first of those two lines is a heading
+element, but the skeleton applies no font styling of its own, so do not expect
+it to look large or bold; centring and an 8px gap are the only layout it sets.
+
+The `index` in both places is the route filename showing through: the root
+`<Stack />` titles its header with the route name, and Expo Router sets the
+document title to the same thing on the client after hydration. It is not a
+fault to report — it is what an untitled placeholder route looks like — but it
+does need a real title before any of this is user-facing.
 
 **Where the `ZC App (dev)` name shows, and where it does not.** On web it does
-**not** appear on screen: the skeleton leaves the document title empty, so the
-browser tab shows the URL, and the name lives only in the web manifest embedded
-in the bundle. To see the name in a user-visible place, run the device target
-instead:
+**not** appear on screen anywhere — not in the tab, not in the header — because
+the skeleton sets no title of its own; the name lives only in the web manifest
+embedded in the bundle. To see the name in a user-visible place, run the device
+target, which has **not** been run:
 
 ```
 npm start               # then scan the QR code with Expo Go
@@ -106,14 +124,14 @@ npm start               # then scan the QR code with Expo Go
 
 Expected result: the Expo Go project list shows **`ZC App (dev)`**, and opening
 it shows the same placeholder home screen. This is the target that exercises
-React Native rather than react-native-web, so it is the more valuable of the
-two if only one is run.
+React Native rather than react-native-web, and after the web run it is the
+outstanding one.
 
 **What to record.** Whichever target is run, the result goes in
 `docs/05-quality/evidence/002c-owner-smoke/` — see the README there for what
 the attestation needs to say. A screenshot is ideal; a written attestation
-naming the target, the date, and what appeared is enough. Until something lands
-there, the rendering row above stays NOT RUN.
+naming the target, the date, and what appeared is enough. The device row above
+stays NOT RUN until one lands.
 
 **If it fails**, that is a real finding about Unit A and not an owner problem:
 record what happened in the same place and hand it back to the controller.
@@ -127,7 +145,7 @@ lane. There is no deployed web app and no store presence.
 
 | Environment | Status | Owner |
 |---|---|---|
-| local | installs, bundles, and serves `/` from the dev server; not yet rendered on any target | any builder |
+| local | installs, bundles, serves `/` from the dev server, and renders in a browser; not yet run on a simulator, emulator, or device | any builder |
 | staging | not created | Ahmed |
 | production | not created | Ahmed |
 

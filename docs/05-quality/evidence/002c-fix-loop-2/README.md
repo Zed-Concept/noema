@@ -32,7 +32,7 @@ involved. Each carried a field that moves on its own.
 | Artifact | What moved | Fix, in the script |
 |---|---|---|
 | `test.txt` | Jest's per-test duration, its `Time:` total, and the slow-suite duration Jest appends to the `PASS` line only when a suite takes over 5 s | `capture.sh` replaces the first two with `<duration>` and drops the third |
-| `expo-export.txt` | Metro's four `Bundled <n>ms` durations, and a cold-cache warning that appears only on a machine with no Metro cache | `capture.sh` replaces the durations and drops the warning |
+| `expo-export.txt` | Metro's four `Bundled <n>ms` durations, a cold-cache warning that appears only on a machine with no Metro cache, and its module counts | `capture.sh` replaces the durations and counts and drops the warning — and it still was not enough; the artifact is reclassified run-varying below, with a derived `export-summary.txt` taking its place inside the gate |
 | `name-scan.txt` | the section-4 count of governance files naming the project — it read the working tree mid-session, so it recorded 14 for a commit holding 21 | `name-scan.sh` section 4 reads the index (`git grep --cached`), which is what is about to be committed and equals HEAD at any committed head |
 | `push-state.txt` | `git rev-parse origin/feat/app-skeleton`, and the ahead/behind count against HEAD | `fix-state.sh` prints no moving SHA at all; it asks whether the remote branch *contains* each already-reviewed commit, which is permanent once true |
 
@@ -67,18 +67,55 @@ Neither file would have survived a byte gate, and neither should have been made
 to.
 
 Nothing that carries signal was normalised away: exit codes, pass/fail counts,
-module counts, bundle sizes, bundle content hashes, route lists, and the
-three-depth name-scan result all pass through untouched. What was removed is
-wall-clock time and one cache-state warning.
+bundle sizes, route lists, and the three-depth name-scan result all pass through
+untouched. What was removed is wall-clock time, one cache-state warning, and —
+on evidence, see below — Metro's module counts.
 
-**Three artifacts cannot be made byte-stable and are classified run-varying**
+**Four artifacts cannot be made byte-stable and are classified run-varying**
 rather than forced. Each is named with the exact fields that vary, in
 `../002b-fix-loop/README.md`: `environment.txt` (the `node`, `npm` and `os`
 lines — machine-local by design), `expo-doctor.txt` (the tool build resolved
-from `@latest`, and its check count) and `npm-audit.txt` (advisory count and
-severities, which come from the upstream database). The byte-stability claim is
-scoped to the remaining ten, and `stability.txt` is that claim re-proven at this
-head.
+from `@latest`, and its check count), `npm-audit.txt` (advisory count and
+severities, which come from the upstream database), and `expo-export.txt` (the
+web bundle's content hash and the ordering of the concurrent log lines — see
+**The export transcript** below). The byte-stability claim is scoped to the
+remaining eleven, and `stability.txt` is that claim re-proven at this head.
+
+### The export transcript — the gate finding its own defect
+
+`expo-export.txt` was gated, and normalising durations, the cold-cache warning
+and module counts was not enough. Running the gate turned up two further moving
+fields, in two stages. Both are worth recording, because the first is a
+normalisation that had to be argued from evidence rather than assumed:
+
+1. **Module counts.** One export in eight reported 1099 iOS modules where the
+   other seven reported 1101 — while emitting a bundle with the *identical*
+   content hash and size in every run, that one included. The count is a
+   statistic about the build process, not a property of the thing built, so it
+   is normalised and the hash and size keep the signal.
+2. **The web bundle's content hash.** This one cannot be argued away.
+   `expo export --platform all` bundles the platforms concurrently and assigns
+   module ids in completion order, so the web bundle's *bytes* differ between
+   runs: three distinct web hashes across this loop's runs. The iOS and Android
+   hashes were identical in every run, and a web-only export reproduced its own
+   hash exactly, which is what points at concurrency as the cause. The `Web` and
+   `λ` log lines swap order for the same reason.
+
+The same hash then surfaced a third time, in `name-scan.txt`: section 3 echoed
+the web bundle's *filename*, which contains it. The manifest that section reads
+out of the bundle is stable — only the path was moving — so the filename is
+printed with the hash masked and the result stays exact.
+
+So the transcript is reclassified run-varying, and the claim it backed moved to
+**`../002b-fix-loop/export-summary.txt`** — one bundle per platform, the three
+static routes by name, and the exit code, read from `dist/` instead of parsed
+out of Metro's prose. Those were stable across every run observed. That artifact
+is gated; the transcript stays committed beside it as the fuller record.
+
+Two honest notes. First, the gate caught this, which is the gate working.
+Second, it means the previous commit's claim that bundle content hashes were
+reproducible was **wrong for web** — corrected here rather than quietly
+dropped.
 
 **One limit is stated rather than engineered around.** `push-state.txt` cannot
 attest that its own commit is pushed — no artifact inside a commit can name that
@@ -109,32 +146,46 @@ having been executed.
 `dev-server.txt` is the new artifact and it is careful about its own limits: the
 markup it captures is produced by Expo Router's static rendering inside Node.
 No browser laid out a page and no device mounted a view. It also records that
-`ZC App (dev)` does **not** appear in what the web target serves — the skeleton
-leaves the document title empty — which is why the smoke procedure sends anyone
-who wants to see the name to the Expo Go target.
+`ZC App (dev)` does **not** appear in what the web target serves, which is why
+the smoke procedure sends anyone who wants to see the name to the Expo Go
+target.
+
+**The owner ran the web smoke test on 2026-08-18 and it passed** — the app
+renders (`../002c-owner-smoke/attestation.md`). That run also falsified two
+statements this loop had written about the page, and both are corrected at
+source: the browser tab reads `index` rather than the URL (the served `<title>`
+really is empty; Expo Router sets it on the client, which no server-side capture
+can see), and there *is* a header bar, titled with the route name, which was in
+the served markup all along. The dev-server checks themselves all still hold —
+what was wrong was the prose built on top of them. It is a clean demonstration
+of why the rendering claim needed a human and could not be argued from markup.
 
 A short **Owner smoke test** section was added to `OPERATIONS.md` with the
 `npm ci` / `npm run web` procedure and the expected result, and
-`../002c-owner-smoke/` was created as the slot its result lands in.
+`../002c-owner-smoke/` was created as the slot its result lands in. It is no
+longer empty: the web attestation is in it. The device and simulator targets are
+still unrun, and Expo Go remains the only place a human could see the
+`ZC App (dev)` name.
 
 ## Claims
 
 | # | Claim | Class | Artifact |
 |---|---|---|---|
-| 1 | The ten gated 002b/002a artifacts regenerate byte-for-byte from their committed scripts at this head | PASS | `stability.txt` |
-| 2 | The three artifacts that cannot be byte-stable are classified run-varying, each naming the fields that vary | PASS | `stability.txt`, and the table in `../002b-fix-loop/README.md` |
+| 1 | The eleven gated artifacts regenerate byte-for-byte from their committed scripts at this head | PASS | `stability.txt` |
+| 2 | The four artifacts that cannot be byte-stable are classified run-varying, each naming the fields that vary | PASS | `stability.txt`, and the table in `../002b-fix-loop/README.md` |
 | 3 | No evidence output was edited by hand — every artifact came from running its committed script | PASS | the diff: the four scripts changed, and the transcripts changed only in the ways those scripts produce |
 | 4 | The dev server starts and serves the root route with HTTP 200 | PASS | `dev-server.txt` |
-| 5 | The markup it serves contains the placeholder screen's own strings | PASS | `dev-server.txt` section 2 |
+| 5 | The markup it serves contains the placeholder screen's own strings, and the route-named `<Stack />` header | PASS | `dev-server.txt` section 2 |
 | 6 | `OPERATIONS.md` makes no runtime claim beyond claims 4 and 5 and the export | PASS | the `OPERATIONS.md` diff |
 | 7 | The owner smoke procedure and its evidence slot exist | PASS | `OPERATIONS.md` **Owner smoke test**, `../002c-owner-smoke/README.md` |
 | 8 | Typecheck, lint, test and format:check still exit 0 | PASS | `../002b-fix-loop/typecheck.txt`, `lint.txt`, `test.txt`, `prettier-check.txt` |
-| 9 | The app still bundles for iOS, Android and web | PASS | `../002b-fix-loop/expo-export.txt` |
+| 9 | The app still bundles for iOS, Android and web | PASS | `../002b-fix-loop/export-summary.txt` (one bundle per platform, three routes, exit 0) |
 | 10 | Dependencies still match what Expo SDK 57 expects | PASS | `../002b-fix-loop/expo-doctor.txt` (21/21) |
 | 11 | `npm audit` is unchanged by this loop | FAIL pre-existing | `../002b-fix-loop/npm-audit.txt` |
 | 12 | CI runs install → typecheck → lint → test → format:check on PR and push-to-main | NOT RUN | still no PR; this loop adds a commit, not a trigger |
 | 13 | The gates fail on a real violation and return to green | NOT RUN | not re-run; no gate, config or script the 002a negative control exercises was touched |
-| 14 | The app renders on a device, simulator, or browser | NOT RUN | `../002c-owner-smoke/` — the slot, deliberately empty |
+| 14 | The app renders in a browser | PASS | `../002c-owner-smoke/attestation.md` — owner, web, Chrome on macOS, 2026-08-18 |
+| 15 | The app renders on a simulator, emulator, or physical device — the only place the `ZC App (dev)` name is user-visible | NOT RUN | the same slot; no device run yet |
 
 ## Re-running this
 
@@ -148,4 +199,7 @@ From the repository root, after `npm ci` and `git fetch origin`:
   at a committed head that is the same thing as HEAD.
 - `dev-server.sh` — `dev-server.txt`. Starts the dev server on port 8081,
   probes `/`, and kills it. Stops rather than running if port 8081 is already
-  held, so that the transcript cannot silently record a different port.
+  held, so that the transcript cannot silently record a different port. Its
+  output is in the gated set: it reports statuses and string checks, and the
+  Metro per-request bundle log, which is not reproducible, is deliberately
+  excluded.

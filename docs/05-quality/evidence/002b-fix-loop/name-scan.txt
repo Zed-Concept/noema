@@ -22,7 +22,7 @@ resolved name matches /noema/i: false
 --- exit code: 0 ---
 
 === 3. the manifest embedded in the exported web bundle ===
-$ <extract the embedded manifest from dist/_expo/static/js/web/entry-015f4c22de3368067e962b8ff9753ce7.js>
+$ <extract the embedded manifest from dist/_expo/static/js/web/entry-<hash>.js>
 name            user-visible  "ZC App (dev)"
 web.name        user-visible  "ZC App (dev)"
 web.shortName   user-visible  "ZC App (dev)"

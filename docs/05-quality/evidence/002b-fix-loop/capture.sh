@@ -14,11 +14,16 @@
 # exit codes, pass/fail counts, module counts, bundle sizes, and bundle content
 # hashes all pass through unchanged.
 #
-# Three outputs here are *not* byte-stable and are not meant to be —
-# environment.txt (machine-local versions), expo-doctor.txt (resolves
-# `@latest` from the registry) and npm-audit.txt (upstream advisory database).
-# They are classified run-varying in README.md and excluded from the gate that
-# ../002c-fix-loop-2/stability.sh enforces.
+# Four outputs here are *not* byte-stable and are not meant to be —
+# environment.txt (machine-local versions), expo-doctor.txt (resolves `@latest`
+# from the registry), npm-audit.txt (upstream advisory database), and
+# expo-export.txt (Metro bundles the platforms concurrently, so the web bundle's
+# content hash and the interleaving of the log lines both move between runs).
+# They are classified run-varying in README.md, with their varying fields named,
+# and excluded from the gate that ../002c-fix-loop-2/stability.sh enforces.
+# expo-export.txt is still normalised for durations, module counts and the
+# cold-cache warning, so that a reviewer diffing their run against the committed
+# one sees only the fields the classification actually names.
 
 set -u
 OUT="docs/05-quality/evidence/002b-fix-loop"
@@ -38,11 +43,19 @@ norm_test() {
     -e 's/^Time:.*$/Time:        <duration>/'
 }
 
-# Metro prints per-platform bundling durations, and a cold-cache warning that
-# only appears when no Metro cache is present on the machine.
+# Metro prints per-platform bundling durations, a cold-cache warning that only
+# appears when no Metro cache is present, and a count of the modules it walked.
+#
+# The module count is normalised too, on evidence rather than suspicion. One
+# export in eight reported 1099 iOS modules where the other seven reported
+# 1101 — while emitting a bundle with the identical content hash and size in
+# every run, including that one. The count is a statistic about the build
+# process, not a property of the thing built. The hash and size are the real
+# signal for "the bundle did not change", and they stay inside the gate.
 norm_export() {
   sed -E \
     -e 's/Bundled [0-9]+ms/Bundled <duration>ms/' \
+    -e 's/\(([0-9]+) modules?\)/(<modules> modules)/' \
     -e '/^warning: Bundler cache is empty, rebuilding/d'
 }
 
@@ -122,4 +135,21 @@ capture test.txt norm_test npm test
 capture prettier-check.txt norm_none npx prettier --check .
 capture expo-doctor.txt norm_none npx expo-doctor@latest
 capture expo-export.txt norm_export npx expo export --platform all --output-dir dist --clear
+
+# The export transcript is run-varying and is not gated — see README.md, "Byte
+# stability". What is stable is *what the export produced*, so that is captured
+# separately here, read from `dist/` rather than parsed out of the prose above.
+# This is the artifact the "it bundles for three platforms" claim rests on.
+{
+  echo "\$ <what the export produced, read from dist/>"
+  echo "ios bundles:       $(find dist/_expo/static/js/ios -name '*.hbc' 2>/dev/null | wc -l | tr -d ' ')"
+  echo "android bundles:   $(find dist/_expo/static/js/android -name '*.hbc' 2>/dev/null | wc -l | tr -d ' ')"
+  echo "web bundles:       $(find dist/_expo/static/js/web -name '*.js' 2>/dev/null | wc -l | tr -d ' ')"
+  echo "static routes:     $(find dist -maxdepth 1 -name '*.html' 2>/dev/null | wc -l | tr -d ' ')"
+  echo "route files:       $(find dist -maxdepth 1 -name '*.html' -exec basename {} \; 2>/dev/null | sort | tr '\n' ' ')"
+  echo "export exit code:  $(sed -n 's/^--- exit code: \([0-9]*\) ---$/\1/p' "$OUT/expo-export.txt")"
+  echo "--- exit code: 0 ---"
+} > "$OUT/export-summary.txt"
+echo "wrote $OUT/export-summary.txt"
+
 capture npm-audit.txt norm_none npm audit

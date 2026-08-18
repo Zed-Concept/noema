@@ -1,18 +1,25 @@
 # Evidence — 002c owner smoke test (Unit A, CTRL-002)
 
-**This directory is deliberately empty of results.** It is a slot, not a
-record. It holds the one Unit A check no agent can perform: whether the app
+**Filled 2026-08-18 — see `attestation.md`. Result: PASS on web.** This
+directory holds the one Unit A check no agent can perform: whether the app
 appears on a screen when a human runs it.
 
-Until something lands here beside this README, claim 15 of the Unit A evidence
-— *the app renders on a device, simulator, or browser* — stays **NOT RUN**, in
-`../002b-fix-loop/README.md`, in `docs/02-roles/OPERATIONS.md`, and anywhere
-else it is repeated. An empty slot is the honest state, not an oversight.
+The owner ran the web target at `68c14d1` and the placeholder home screen
+rendered, with no error overlay and clean hydration. That closes the rendering
+claim for **web only**; iOS Simulator, Android emulator and Expo Go on a
+physical device are still unrun, and Expo Go is the only target where the
+`ZC App (dev)` name is user-visible, so that particular observation is still
+outstanding.
 
-## Why an agent cannot fill it
+The attestation also **corrected two things this loop had written** about what
+the page looks like — the browser tab reads `index`, not the URL, and there *is*
+a header bar. Both are fixed at the source now; the detail is in
+`attestation.md`.
 
-Everything an agent can prove about running this app has been proved, and none
-of it is rendering:
+## Why an agent could not fill it
+
+Everything an agent can prove about running this app was proved, and none of it
+was rendering:
 
 | Proven | Where |
 |---|---|
@@ -25,24 +32,31 @@ markup is produced by Expo Router's static rendering inside Node. No browser
 performed layout, no device mounted a React Native view, and no pixels were
 drawn. A page that server-renders correctly can still be blank in a browser.
 
-## The procedure
+The gap turned out to be more than theoretical. The server-side capture was
+accurate about everything it checked and the prose built on it was wrong twice
+over, in both directions — it missed a header bar that was in the markup, and it
+asserted a browser-tab behaviour that only the client determines. That is what
+the human run was for.
+
+## The procedure, for the targets still open
 
 Written out in full in `docs/02-roles/OPERATIONS.md` under **Owner smoke test**.
-In short:
+The web target is done; this is what was run, and what a device run repeats:
 
 ```
 npm ci
 npm run web             # equivalently: npx expo start --web
 ```
 
-Expected: the placeholder home screen renders — `Placeholder home screen` above
-`Edit src/app/index.tsx to replace this.`, centred, nothing else on the page.
+Expected, as confirmed on web: a header bar titled `index`, and below it the
+placeholder home screen — `Placeholder home screen` above `Edit
+src/app/index.tsx to replace this.`, centred. The browser tab also reads
+`index`.
 
-The device target (`npm start`, then Expo Go) is worth more if only one is run:
-it exercises React Native rather than react-native-web, and it is the only
-target where the `ZC App (dev)` name is user-visible. On web the name is not on
-screen at all — the skeleton leaves the document title empty — so a web-only
-attestation should not claim to have seen it.
+**The device target (`npm start`, then Expo Go) is the one still worth
+running.** It exercises React Native rather than react-native-web, and it is the
+only target where the `ZC App (dev)` name is user-visible. On web the name is
+not on screen anywhere, so the web attestation correctly does not claim it.
 
 ## What the attestation has to say
 
@@ -72,6 +86,6 @@ to withhold the attestation; the record of the failure *is* the evidence.
 
 ## Status
 
-**Empty as of 2026-08-18.** Waiting on the owner. This is the last NOT RUN on
-the Unit A skeleton that a person can close; the other one, CI, closes itself
-when the pull request opens.
+**Web: PASS, 2026-08-18, `attestation.md`.** Device and simulator targets: still
+unrun, and with them the only user-visible sighting of `ZC App (dev)`. CI is the
+other outstanding NOT RUN, and it closes itself when the pull request opens.

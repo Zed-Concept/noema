@@ -5,8 +5,10 @@
 # What this is not. It is not a rendering check. The dev server's web target
 # is server-rendered by Expo Router's static rendering, so the markup below is
 # produced by Node, not by a browser laying it out or by React Native mounting
-# on a device. Nobody has looked at a screen. That is what
-# ../002c-owner-smoke/ exists to collect.
+# on a device. The rendering itself is attested separately, by a human, in
+# ../002c-owner-smoke/attestation.md — and that attestation corrected two
+# claims this script previously made about the page, which is a fair summary of
+# how far a server-side capture can be trusted to describe a screen.
 #
 # Determinism. The transcript records the HTTP status, whether the placeholder
 # screen's own strings are present in the served markup, and the server's
@@ -61,16 +63,32 @@ has() {
   echo "body contains 'Placeholder home screen':     $(has 'Placeholder home screen')"
   echo "body contains 'Edit src/app/index.tsx':      $(has 'Edit src/app/index.tsx')"
   echo "body contains 'ZC App (dev)':                $(has 'ZC App (dev)')"
+  echo "body contains the Stack header '>index<':    $(has '>index<')"
   echo "<title> element as served:                   $(grep -o '<title[^>]*>[^<]*</title>' "$BODY" | head -1)"
   echo
-  echo "The app name is not on this page. Expo puts it in the web manifest"
-  echo "embedded in the bundle (../002b-fix-loop/name-scan.txt section 3) and in"
-  echo "the Expo Go project list, not in the served document title, which the"
-  echo "skeleton leaves empty."
+  echo "Two notes about what is on the page, both corrected by the owner's smoke"
+  echo "test (../002c-owner-smoke/attestation.md) after an earlier version of"
+  echo "this file described the page wrongly:"
+  echo
+  echo "  1. The root <Stack /> renders a header bar, and its title is the route"
+  echo "     name, so the page shows 'index' above the placeholder text. It is"
+  echo "     in the markup above and always was."
+  echo "  2. The <title> is empty *as served*. Expo Router sets it on the client"
+  echo "     after hydration, to the same route name, so a real browser tab"
+  echo "     reads 'index'. A server-side capture cannot see that; the owner"
+  echo "     observed it directly."
+  echo
+  echo "Neither says 'ZC App (dev)'. The app name reaches a user through the web"
+  echo "manifest embedded in the bundle (../002b-fix-loop/name-scan.txt section"
+  echo "3) and through the Expo Go project list — not through anything drawn on"
+  echo "this page."
   echo
   echo "=== 3. what this does not show ==="
-  echo "This markup came from Expo Router's static rendering, in Node. No"
-  echo "browser, simulator or device rendered anything. Rendering is NOT RUN."
+  echo "This markup came from Expo Router's static rendering, in Node. Nothing"
+  echo "here is a browser, a simulator or a device rendering anything, and no"
+  echo "rendering claim rests on this file. The browser is attested separately"
+  echo "by a person, in ../002c-owner-smoke/attestation.md (web, PASS,"
+  echo "2026-08-18); simulator, emulator and device remain NOT RUN."
   echo "--- exit code: $([ "$CODE" = "200" ] && echo 0 || echo 1) ---"
 } > "$OUT"
 echo "wrote $OUT"

@@ -51,6 +51,7 @@ docs/05-quality/evidence/002b-fix-loop/capture.sh
 docs/05-quality/evidence/002b-fix-loop/environment.txt
 docs/05-quality/evidence/002b-fix-loop/expo-doctor.txt
 docs/05-quality/evidence/002b-fix-loop/expo-export.txt
+docs/05-quality/evidence/002b-fix-loop/export-summary.txt
 docs/05-quality/evidence/002b-fix-loop/fix-state.sh
 docs/05-quality/evidence/002b-fix-loop/lint-file-list.txt
 docs/05-quality/evidence/002b-fix-loop/lint.txt
@@ -68,6 +69,7 @@ docs/05-quality/evidence/002c-fix-loop-2/dev-server.txt
 docs/05-quality/evidence/002c-fix-loop-2/stability.sh
 docs/05-quality/evidence/002c-fix-loop-2/stability.txt
 docs/05-quality/evidence/002c-owner-smoke/README.md
+docs/05-quality/evidence/002c-owner-smoke/attestation.md
 eslint.config.js
 jest.config.js
 package-lock.json
@@ -79,4 +81,4 @@ tsconfig.json
 --- exit code: 0 ---
 
 $ git ls-files | wc -l
-      77
+      79

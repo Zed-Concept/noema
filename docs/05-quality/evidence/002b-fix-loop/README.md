@@ -40,7 +40,7 @@ the 002a capture, so the transcripts are comparable line for line.
 | 6 | The test suite still passes | PASS | `test.txt` (1 passed, 1 total) |
 | 7 | Prettier still reports every matched file formatted | PASS | `prettier-check.txt` (exit 0) |
 | 8 | Dependencies still match what Expo SDK 57 expects | PASS | `expo-doctor.txt` (21/21) |
-| 9 | The app still bundles for iOS, Android, and web after the rename | PASS | `expo-export.txt` (three bundles, exit 0) |
+| 9 | The app still bundles for iOS, Android, and web after the rename | PASS | `export-summary.txt` (one bundle per platform, three routes, exit 0); fuller transcript in `expo-export.txt` |
 | 10 | Every reviewed commit of this branch is contained in `origin/feat/app-skeleton` — the branch is pushed, which is what made the 002a narrative stale | PASS | `push-state.txt` |
 | 11 | The tracked-file listing matches the tree it describes | PASS | `../002a-app-skeleton/git-ls-files.txt` |
 | 12 | `npm audit` is unchanged by this loop — still 22 advisories | FAIL pre-existing | `npm-audit.txt` |
@@ -104,8 +104,8 @@ output in this directory was edited by hand.
 | Artifact | The field that moved | Fix |
 |---|---|---|
 | `test.txt` | Jest's per-test duration (`(166 ms)`), its `Time:` total, and the duration Jest appends to the `PASS` line only when a suite runs over 5 s | `capture.sh` replaces the first two with `<duration>` and drops the third. Pass/fail counts, suite names and the exit code are untouched. |
-| `expo-export.txt` | Metro's per-platform `Bundled 88047ms` durations, and a `Bundler cache is empty` warning that only appears when the machine has no Metro cache | `capture.sh` replaces the durations with `<duration>` and drops the cold-cache line. Module counts, bundle sizes, bundle content hashes, route list and exit code are untouched. |
-| `name-scan.txt` | The section-4 count of governance files naming the project, which read 14 for a commit containing 21 | `name-scan.sh` section 4 now reads the **index** (`git grep --cached`) instead of the working tree, so it describes the tree being committed rather than whatever is on disk mid-session. Sections 1–3, which carry the finding-1 result, were already stable and are unchanged. |
+| `expo-export.txt` | Metro's per-platform `Bundled 88047ms` durations, a `Bundler cache is empty` warning that only appears when the machine has no Metro cache, and its module counts | `capture.sh` replaces the durations and module counts with placeholders and drops the cold-cache line — but that was not enough, and the artifact is now **run-varying**; see the table below. The stable facts it used to carry moved to `export-summary.txt`, which is gated. |
+| `name-scan.txt` | The section-4 count of governance files naming the project, which read 14 for a commit containing 21; and, found later by the gate, the web bundle's content hash inside the filename section 3 echoes | `name-scan.sh` section 4 now reads the **index** (`git grep --cached`) instead of the working tree, so it describes the tree being committed rather than whatever is on disk mid-session. Section 3 prints the bundle path with its hash masked, for the reason given in the `expo-export.txt` row below. The three-depth result that carries the finding-1 conclusion is unchanged and exact. |
 | `push-state.txt` | `git rev-parse origin/feat/app-skeleton` and the ahead/behind count against `HEAD` — both move on every push, and the ahead/behind pair reads `1 0` between committing and pushing | `fix-state.sh` no longer prints any moving SHA. It asks, of each already-reviewed commit, whether `origin/feat/app-skeleton` contains it. Those answers are permanent once true. Requires `git fetch origin` first. |
 | `lint-file-list.txt` | whether the generated, gitignored `expo-env.d.ts` was on disk — ESLint inspects it when present, so the listing read 5 files in a fresh clone and 6 after any `expo` command | `capture.sh` lists only tracked files and reports problems found in untracked ones as a separate count, which is 0. Found while proving the gate, not by REVIEW-004; recorded because it is the same defect. |
 
@@ -124,13 +124,13 @@ verified the ordinary way: by the reviewer fetching and looking.
 set against the committed bytes. It restores the directory from the index
 afterwards, so running the gate never rewrites evidence.
 
-**Gated — must regenerate byte-for-byte** (10 artifacts): `typecheck.txt`,
+**Gated — must regenerate byte-for-byte** (11 artifacts): `typecheck.txt`,
 `lint.txt`, `lint-file-list.txt`, `test.txt`, `prettier-check.txt`,
-`expo-export.txt`, `name-scan.txt`, `push-state.txt`, `app-json-diff.txt`, and
-`../002a-app-skeleton/git-ls-files.txt`. The export's bundle content hashes and
-sizes are inside the gate, not normalised away — they reproduced exactly.
+`export-summary.txt`, `name-scan.txt`, `push-state.txt`, `app-json-diff.txt`,
+`../002a-app-skeleton/git-ls-files.txt`, and
+`../002c-fix-loop-2/dev-server.txt`.
 
-**Run-varying — classified, not gated** (3 artifacts). Each is named here with
+**Run-varying — classified, not gated** (4 artifacts). Each is named here with
 exactly which fields vary:
 
 | Artifact | Fields that vary | Why it cannot be normalised |
@@ -138,6 +138,16 @@ exactly which fields vary:
 | `environment.txt` | `node`, `npm` and `os` lines | These are the machine's own versions. The whole point of the artifact is to say which machine produced the others; pinning them would make it say nothing. `tsc` and `expo` come from the lockfile and are in fact stable. |
 | `expo-doctor.txt` | the tool build resolved by `npx expo-doctor@latest`, its check count (`21/21` today), and which of its checks could reach Expo's services | The command deliberately fetches the current release from the npm registry, so the number of checks is upstream's to change. Two of the checks call out to Expo services and fail when those are unreachable — observed twice in this loop as `20/21` with *"Directory check failed with unexpected server response"*, and once as `getaddrinfo ENOTFOUND exp.host`. Those failures are upstream availability, not this project. |
 | `npm-audit.txt` | advisory count and severities (`22` today: 7 moderate, 15 high) | The answer comes from the upstream advisory database, which changes without this repository changing. The count moving is information, not noise — it is exactly what an audit is for. |
+| `expo-export.txt` | the **web** bundle's content hash, and the order in which the concurrent `Web` and `λ` (SSR) log lines appear | `expo export --platform all` bundles the platforms concurrently and assigns module ids in completion order, so the web bundle's bytes — and its hash — differ between runs. Three distinct web hashes were observed across this loop's runs, while the **iOS and Android hashes were identical in every one**, and a web-*only* export reproduced its own hash exactly. Durations, module counts and the cold-cache line are still normalised, so a reviewer's diff shows only the two fields named here. |
+
+### What replaced the export transcript inside the gate
+
+`export-summary.txt` carries what the "it bundles for iOS, Android and web"
+claim actually needs, read from `dist/` rather than parsed out of Metro's prose:
+one bundle per platform, the three static routes by name, and the export's exit
+code. Those were stable across every run observed, including the ones whose
+transcripts differed. The transcript stays committed beside it as the fuller,
+run-varying record.
 
 The byte-stability claim in this loop is therefore **scoped to the gated set**,
 and `../002c-fix-loop-2/stability.txt` is that claim re-proven at the committed
@@ -154,21 +164,22 @@ head.
   control exercised was touched, so `../002a-app-skeleton/gate-negative-control.txt`
   still describes the current gates. Re-running would have produced a
   second identical transcript, not new information.
-- **Rendering (claim 15).** No simulator, emulator, or browser session was run.
-  The three-platform export proves the app bundles under the new name, not that
-  it renders. Still NOT RUN after the REVIEW-004 loop, which added one adjacent
-  fact and no rendering: the dev server starts and serves the root route
-  (`../002c-fix-loop-2/dev-server.txt`), but that markup comes from static
-  rendering in Node. The slot for the real thing is `../002c-owner-smoke/`.
+- **Rendering (claim 15).** Not run *in this loop* — no simulator, emulator, or
+  browser session. The three-platform export proves the app bundles under the
+  new name, not that it renders. **Since superseded:** the REVIEW-004 loop added
+  the dev-server fact (`../002c-fix-loop-2/dev-server.txt` — served, not
+  rendered), and on 2026-08-18 the owner ran the web smoke test and it passed
+  (`../002c-owner-smoke/attestation.md`). Rendering is now PASS on web and
+  **still NOT RUN** on simulator, emulator and device.
 
 ## Re-running these checks
 
 Every artifact here comes from a committed script. Run any of them from the
 repository root:
 
-- `capture.sh` — the gate transcripts, `expo-doctor`, the three-platform export,
-  and `npm audit`. Same shape as the 002a script; only the output directory
-  differs.
+- `capture.sh` — the gate transcripts, `expo-doctor`, the three-platform export
+  and its derived `export-summary.txt`, and `npm audit`. Same shape as the 002a
+  script; only the output directory differs.
 - `name-scan.sh` — `name-scan.txt`. Section 3 needs `dist/` from `capture.sh`
   and reports itself skipped without it.
 - `fix-state.sh` — `push-state.txt` and `app-json-diff.txt`. Run `git fetch

@@ -8,6 +8,108 @@ Append a new block at the top. Never edit an old one.
 
 ---
 
+## 2026-08-18 — feat/app-skeleton (owner smoke test recorded)
+
+**Controller:** CTRL-002 App Skeleton. **Builder:** Claude Code, Opus, high
+effort — same session as the REVIEW-004 fix loop, continuing it to record a
+result the owner produced. **Reviewer of record:** Codex. **Base:**
+`68c14d1ffea2ce55d8ca66247d711c04957c2625`. **LOCK:** `Status: REVIEW`.
+
+**What happened**
+
+The owner ran the web smoke test at `68c14d1` and it **passed** — the
+placeholder home screen renders, no error overlay, clean hydration. The
+attestation is `docs/05-quality/evidence/002c-owner-smoke/attestation.md`, and
+`002c-owner-smoke/` is no longer an empty slot.
+
+**The owner's run falsified two things I had written, and both are corrected**
+
+1. **"The browser tab shows the URL."** It reads **`index`**. The served
+   `<title>` is genuinely empty — `dev-server.txt` captured that correctly — but
+   Expo Router sets the title on the client after hydration. A server-side
+   capture cannot see a client-side title; I generalised from it anyway.
+2. **"There is no navigation bar."** There is one. The root `<Stack />` renders
+   a header titled with the route name, so `index` appears above the placeholder
+   text. It was in the served markup all along, at `aria-level="1"
+   role="heading"` — I checked the markup for the strings I expected and did not
+   look for anything else.
+
+No check in `dev-server.txt` was wrong; the prose built on it was. That is the
+concrete argument for why the rendering claim needed a person, and it is written
+into the evidence rather than quietly patched.
+
+**What I changed**
+
+- New `docs/05-quality/evidence/002c-owner-smoke/attestation.md`; that
+  directory's README updated from "deliberately empty" to the web result.
+- `dev-server.sh` now also checks the `<Stack />` header in the served markup,
+  states the title fact correctly, and no longer says rendering is NOT RUN
+  outright. `dev-server.txt` regenerated from it.
+- `dev-server.txt` **added to the gated set** in `stability.sh`, which now also
+  runs `dev-server.sh`.
+- **`expo-export.txt` reclassified run-varying, and `export-summary.txt` added
+  in its place inside the gate.** The gate is 11 artifacts and 4 run-varying.
+- `OPERATIONS.md`: rendering split into two rows — **browser PASS**, simulator/
+  emulator/device **NOT RUN**; the smoke section's expected result corrected;
+  the local environments row updated.
+- `002c-fix-loop-2/README.md` and `002b-fix-loop/README.md` claim tables updated
+  to match; state files as below.
+
+**Classification now**
+
+| Check | Class | Artifact |
+|---|---|---|
+| The app renders in a browser | **PASS** | `002c-owner-smoke/attestation.md` (owner, Chrome/macOS, 2026-08-18) |
+| The app renders on simulator, emulator, or device | NOT RUN | no device run; the only target where `ZC App (dev)` is user-visible |
+| Eleven gated artifacts regenerate byte-for-byte | PASS | `002c-fix-loop-2/stability.txt` |
+| Typecheck, lint, test, format:check, expo-doctor | PASS | `002b-fix-loop/` transcripts |
+| The app bundles for iOS, Android and web | PASS | `002b-fix-loop/export-summary.txt` |
+| `npm audit` | FAIL pre-existing | 22 advisories, unchanged — the owner's own `npm ci` reproduced exactly this count |
+| CI | NOT RUN | still no PR |
+
+**The gate caught a defect in my own previous commit**
+
+Re-running it after adding `dev-server.txt` failed on `expo-export.txt`, twice
+over, and the correction is on the record rather than quietly applied:
+
+- One export in eight reported 1099 iOS modules against 1101 in the other seven,
+  while emitting a bundle with the identical content hash and size every time.
+  A module count is a statistic about the build, not a property of the built
+  thing, so it is normalised — argued from that evidence, not assumed.
+- **The web bundle's content hash is not reproducible.** `expo export --platform
+  all` bundles concurrently and assigns module ids in completion order, so the
+  web bundle's bytes differ run to run — three distinct hashes observed. iOS and
+  Android were identical every time, and a web-only export reproduced its own
+  hash exactly, which is what identifies concurrency as the cause.
+
+**My previous commit's claim that bundle content hashes reproduced exactly was
+therefore wrong for web.** The transcript is now run-varying with both fields
+named; the claim it backed moved to `export-summary.txt` — one bundle per
+platform, three named static routes, exit code — read from `dist/` rather than
+parsed from Metro's prose, and stable across every run observed.
+
+**What is broken or uncertain**
+
+- **Adjacent finding, reported not acted on.** The header bar and the browser
+  tab both read `index` — the route filename leaking into user-visible chrome.
+  Not introduced by this loop and not in its scope; it wants a real screen title
+  and a document title before anything here is user-facing. Handing it to the
+  controller.
+- React Native itself is still unexercised. The web target runs
+  react-native-web; only an Expo Go or simulator run touches RN, and that is
+  also the only way a human sees the `ZC App (dev)` name.
+- I killed a dev server the owner had left running on port 8081 in order to
+  regenerate `dev-server.txt`, after the attestation had been recorded.
+
+**Next step**
+
+Route to a fresh Codex re-review. A device smoke run would close the last
+human-closable NOT RUN, but nothing blocks review on it.
+
+LOCK status line: `Status: REVIEW`.
+
+---
+
 ## 2026-08-18 — feat/app-skeleton (REVIEW-004 fix loop)
 
 **Controller:** CTRL-002 App Skeleton. **Builder:** Claude Code, Opus, high

@@ -18,9 +18,10 @@
 # index at the end, whether it matched or not, so running the gate never
 # rewrites evidence.
 #
-# Prerequisites: `npm ci` done, `git fetch origin` done, and every artifact
-# below staged (it reads the index, not the working tree). Run from the repo
-# root. Takes several minutes — it runs a full three-platform export.
+# Prerequisites: `npm ci` done, `git fetch origin` done, port 8081 free, and
+# every artifact below staged (it reads the index, not the working tree). Run
+# from the repo root. Takes several minutes — it runs a full three-platform
+# export and starts a dev server.
 
 set -u
 ROOT="docs/05-quality/evidence"
@@ -34,11 +35,12 @@ GATED=(
   "$B/lint-file-list.txt"
   "$B/test.txt"
   "$B/prettier-check.txt"
-  "$B/expo-export.txt"
+  "$B/export-summary.txt"
   "$B/name-scan.txt"
   "$B/push-state.txt"
   "$B/app-json-diff.txt"
   "$A/git-ls-files.txt"
+  "$ROOT/002c-fix-loop-2/dev-server.txt"
 )
 
 # file | the fields that vary
@@ -46,6 +48,7 @@ RUN_VARYING=(
   "environment.txt|node, npm and OS versions of the machine that ran it"
   "expo-doctor.txt|the expo-doctor build resolved from @latest, and its check count"
   "npm-audit.txt|the upstream npm advisory database"
+  "expo-export.txt|the web bundle's content hash, and the order of the concurrent Web and SSR log lines"
 )
 
 SAVE=$(mktemp -d)
@@ -64,6 +67,7 @@ bash "$B/capture.sh"      > /dev/null
 bash "$B/name-scan.sh"    > /dev/null
 bash "$B/fix-state.sh"    > /dev/null
 bash "$B/tracked-files.sh" > /dev/null
+bash "$ROOT/002c-fix-loop-2/dev-server.sh" > /dev/null
 
 {
   echo "\$ bash docs/05-quality/evidence/002c-fix-loop-2/stability.sh"
@@ -93,6 +97,7 @@ bash "$B/tracked-files.sh" > /dev/null
 } > "$OUT"
 
 # Leave the tree as found — this is a check, not a capture.
-git checkout-index -f -- "${GATED[@]}" "$B/environment.txt" "$B/expo-doctor.txt" "$B/npm-audit.txt"
+git checkout-index -f -- "${GATED[@]}" "$B/environment.txt" "$B/expo-doctor.txt" \
+  "$B/npm-audit.txt" "$B/expo-export.txt"
 
 cat "$OUT"

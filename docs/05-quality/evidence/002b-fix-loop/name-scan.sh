@@ -11,6 +11,8 @@
 #   4. every tracked occurrence of the name, in and outside governance prose
 #
 # Section 3 needs `dist/` from capture.sh; it reports itself skipped if absent.
+# It masks the web bundle's content hash in the filename it echoes — see the
+# comment at that section for why the hash cannot be reproduced.
 #
 # Section 4 reads the *index* (`git grep --cached`), not the working tree
 # (REVIEW-004 finding 1). The first version read the working tree, which counts
@@ -86,7 +88,12 @@ OUT="docs/05-quality/evidence/002b-fix-loop/name-scan.txt"
   if [ -z "$BUNDLE" ]; then
     echo "SKIPPED — no dist/ export present. Run capture.sh first."
   else
-    echo "\$ <extract the embedded manifest from $BUNDLE>"
+    # The web bundle's filename carries its content hash, and that hash is not
+    # reproducible: `expo export --platform all` bundles the platforms
+    # concurrently and assigns module ids in completion order, so the web
+    # bundle's bytes differ between runs. The manifest read out of it does not.
+    # Print the path with the hash masked, and keep the result exact.
+    echo "\$ <extract the embedded manifest from ${BUNDLE%/*}/entry-<hash>.js>"
     node -e "
       const fs = require('fs');
       const s = fs.readFileSync(process.argv[1], 'utf8');

@@ -1,0 +1,8 @@
+$ <what the export produced, read from dist/>
+ios bundles:       1
+android bundles:   1
+web bundles:       1
+static routes:     3
+route files:       +not-found.html _sitemap.html index.html 
+export exit code:  0
+--- exit code: 0 ---
