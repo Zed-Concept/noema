@@ -8,6 +8,32 @@ Append a new block at the top. Never edit an old one.
 
 ---
 
+## 2026-08-19 — CTRL-002 close-out (controller state edit)
+
+**Controller:** CTRL-002 App Skeleton, closing. **Builder:** none — direct
+controller edit via GitHub API, controller-only class. **Branch:**
+`chore/state-ctrl-002-closeout`, owner merges. **LOCK:** `Status: BUILD`
+(documented lag; CTRL-003's first state commit reconciles it per learning 5).
+
+**What happened this session**
+
+Unit A shipped: Expo skeleton + CI baseline, merged at `8d648bb` via PR #2
+after REVIEW-003/004/005/006 FAIL loops and REVIEW-007 PASS. CI's first two
+runs are green. Staging Supabase created by the owner (`noema-staging`,
+East US N. Virginia); production deferred by ruling. Linear mirror
+bootstrapped (team NOE). Operating model amended: Fable 5 seats, effort
+taxonomy, disclosure line, dispatch-confirmation practice — all in the
+Binding rulings table. Learnings 5-7 added. Backlog nits recorded.
+
+**Next step**
+
+CTRL-003 Supabase Wiring: reconcile this branch's LOCK first (learning 5),
+then dispatch Unit B — supabase-js client, generated types, staging env
+plumbing; owner hands staging URL + anon key at dispatch. All RED-lane
+boundaries unchanged.
+
+---
+
 ## 2026-08-19 — feat/app-skeleton (REVIEW-007 re-review)
 
 **Controller:** CTRL-002 App Skeleton. **Reviewer of record:** Codex Sol,
