@@ -32,8 +32,8 @@ scheme          internal      "noema"
 user-visible shipped fields matching /noema/i: 0
 --- exit code: 0 ---
 
-=== 4. tracked occurrences of the name ===
-$ git grep -n -i noema -- ':!docs/'   # outside governance prose
+=== 4. tracked occurrences of the name (read from the index) ===
+$ git grep --cached -n -i noema -- ':!docs/'   # outside governance prose
 AGENTS.md:1:# AGENTS.md — Noema
 AGENTS.md:35:- **Controller** — the Noema Controller Claude Project conversation.
 README.md:1:# Noema
@@ -44,6 +44,6 @@ package-lock.json:8:      "name": "noema",
 package.json:2:  "name": "noema",
 --- exit code: 0 ---
 
-$ git grep -l -i noema -- 'docs/' | wc -l   # governance files naming the project
-      14
+$ git grep --cached -l -i noema -- 'docs/' | wc -l   # governance files naming the project
+      22
 --- exit code: 0 ---

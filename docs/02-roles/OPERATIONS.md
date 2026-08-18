@@ -9,6 +9,13 @@ of the environments table has changed. Everything else is still a stub: no
 staging or production environment, no deploy target, and no monitoring exists.
 Fill each section when the thing it describes first exists, not before.
 
+Every runtime statement in this file is limited to what an artifact under
+`docs/05-quality/evidence/` proves, per the verification rule in `AGENTS.md`.
+Three things are proven today: the committed lockfile installs, `expo export`
+produces iOS, Android and web bundles, and the dev server starts and serves the
+root route. **Nobody has seen the app render.** Where this file would otherwise
+say the app "runs", it says which of those three is meant.
+
 ## Credential ownership
 
 This part is already decided and binds now.
@@ -24,7 +31,8 @@ This part is already decided and binds now.
 
 The Expo app skeleton lives at the repository root and targets iOS, Android, and
 web. There is no backend, no `.env`, and nothing to configure: Supabase wiring is
-Unit B and does not exist yet, so a fresh clone runs with no credentials at all.
+Unit B and does not exist yet, so no credentials are needed to install or start
+it.
 
 Requires Node and npm. CI pins **Node 24 LTS**; Unit A was built and verified on
 Node 26. No global Expo CLI install — `npx` resolves the version in the lockfile.
@@ -49,21 +57,77 @@ CI runs five of these in order — `npm ci`, typecheck, lint, test, format:check
 The definition is `.github/workflows/ci.yml`; it is the same set you can run
 locally before pushing.
 
-**Not yet verified:** nobody has rendered the app on a simulator, emulator, or
-browser. `expo export --platform all` produces iOS, Android, and web bundles
-(`docs/05-quality/evidence/002a-app-skeleton/expo-export.txt`), which proves it
-bundles, not that it renders. First run on a real target is still open work.
+### What is actually proven, and what is not
+
+| Statement | Class | Artifact |
+|---|---|---|
+| `npm ci` installs the committed lockfile | PASS | `docs/05-quality/evidence/002b-fix-loop/environment.txt` and the gate transcripts beside it |
+| `expo export --platform all` produces iOS, Android and web bundles | PASS | `docs/05-quality/evidence/002b-fix-loop/expo-export.txt` |
+| The dev server starts and answers HTTP 200 on `/`, with the placeholder screen's text in the markup it serves | PASS | `docs/05-quality/evidence/002c-fix-loop-2/dev-server.txt` |
+| The app renders on a browser, simulator, or device | **NOT RUN** | none — `docs/05-quality/evidence/002c-owner-smoke/` is the empty slot waiting for it |
+
+The distinction the middle two rows turn on: an export is a build product, and
+the dev server's web markup is produced by Expo Router's static rendering inside
+Node. Neither involves a browser laying out a page or React Native mounting a
+view. **No one has looked at a screen.** Until the owner smoke test below is
+run and recorded, treat rendering — on any target — as unverified.
+
+`npm run ios` and `npm run android` have never been executed at all; they are
+listed above because the scripts exist, not because they are known to work.
+
+## Owner smoke test
+
+The one check no agent can run: does the app actually appear on a screen. It
+takes a few minutes and closes the last NOT RUN on the skeleton.
+
+**Web — the short version.**
+
+```
+npm ci                  # exact lockfile install
+npm run web             # equivalently: npx expo start --web
+```
+
+Expected result: a browser tab opens on `http://localhost:8081` and the
+**placeholder home screen** renders — two lines of text, centred in the
+viewport: `Placeholder home screen` above `Edit src/app/index.tsx to replace
+this.`. That is the whole screen. The first line is a heading element, but the
+skeleton applies no font styling of its own, so do not expect it to look large
+or bold; centring and an 8px gap are the only layout it sets.
+
+**Where the `ZC App (dev)` name shows, and where it does not.** On web it does
+**not** appear on screen: the skeleton leaves the document title empty, so the
+browser tab shows the URL, and the name lives only in the web manifest embedded
+in the bundle. To see the name in a user-visible place, run the device target
+instead:
+
+```
+npm start               # then scan the QR code with Expo Go
+```
+
+Expected result: the Expo Go project list shows **`ZC App (dev)`**, and opening
+it shows the same placeholder home screen. This is the target that exercises
+React Native rather than react-native-web, so it is the more valuable of the
+two if only one is run.
+
+**What to record.** Whichever target is run, the result goes in
+`docs/05-quality/evidence/002c-owner-smoke/` — see the README there for what
+the attestation needs to say. A screenshot is ideal; a written attestation
+naming the target, the date, and what appeared is enough. Until something lands
+there, the rendering row above stays NOT RUN.
+
+**If it fails**, that is a real finding about Unit A and not an owner problem:
+record what happened in the same place and hand it back to the controller.
 
 ## Environments
 
-**Local** exists as of Unit A: an Expo dev server with no backend and no keys.
-**Staging and production do not exist** — TODO(owner). No Supabase project has
-been created; that is an owner task and RED lane. There is no deployed web app
-and no store presence.
+**Local** is the only environment: the repository, installed from its lockfile,
+with no backend and no keys. **Staging and production do not exist** —
+TODO(owner). No Supabase project has been created; that is an owner task and RED
+lane. There is no deployed web app and no store presence.
 
 | Environment | Status | Owner |
 |---|---|---|
-| local | app skeleton runs; no backend, no keys | any builder |
+| local | installs, bundles, and serves `/` from the dev server; not yet rendered on any target | any builder |
 | staging | not created | Ahmed |
 | production | not created | Ahmed |
 

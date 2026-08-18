@@ -1,13 +1,26 @@
-$ git rev-parse 670b5365a78417523fee26741425dda3a6c4b45c   # REVIEW-003 head
-670b5365a78417523fee26741425dda3a6c4b45c
+$ git rev-parse --verify --quiet refs/remotes/origin/feat/app-skeleton >/dev/null
+  remote-tracking ref: present
 
-$ git rev-parse refs/remotes/origin/feat/app-skeleton
-670b5365a78417523fee26741425dda3a6c4b45c
+$ git merge-base --is-ancestor 05a92a8d857c38df2cf415c843e45f362f576fd8 refs/remotes/origin/feat/app-skeleton
+  Unit A app skeleton — the commit 002a described as unpushed
+  contained in origin/feat/app-skeleton: yes
 
-$ git log --oneline -1 refs/remotes/origin/feat/app-skeleton
-670b536 docs: REVIEW-003 (FAIL) — Unit A review record
+$ git merge-base --is-ancestor 9708fc223dff97343e7a1dad5389b701609d692f refs/remotes/origin/feat/app-skeleton
+  CTRL-002 amendment — format:check in CI, LOCK to REVIEW
+  contained in origin/feat/app-skeleton: yes
 
-$ git rev-list --left-right --count HEAD...refs/remotes/origin/feat/app-skeleton
-  (local-only commits <TAB> origin-only commits)
-0	0
+$ git merge-base --is-ancestor 670b5365a78417523fee26741425dda3a6c4b45c refs/remotes/origin/feat/app-skeleton
+  REVIEW-003 record
+  contained in origin/feat/app-skeleton: yes
+
+$ git merge-base --is-ancestor c2ffd15becf9a5bd40fc2f60c129f89b79756710 refs/remotes/origin/feat/app-skeleton
+  REVIEW-003 fix loop
+  contained in origin/feat/app-skeleton: yes
+
+$ git merge-base --is-ancestor 52061c95b660b5efc39d558da04563da9a6e0aaf refs/remotes/origin/feat/app-skeleton
+  REVIEW-004 record
+  contained in origin/feat/app-skeleton: yes
+
+No line above names the remote's current head, and none names HEAD.
+Both move; containment does not.
 --- exit code: 0 ---

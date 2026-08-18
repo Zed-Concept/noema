@@ -5,11 +5,11 @@ $ npm test
 
 PASS src/__tests__/home-screen.test.tsx
   placeholder home screen
-    ✓ renders (166 ms)
+    ✓ renders (<duration> ms)
 
 Test Suites: 1 passed, 1 total
 Tests:       1 passed, 1 total
 Snapshots:   0 total
-Time:        2.194 s, estimated 3 s
+Time:        <duration>
 Ran all test suites.
 --- exit code: 0 ---

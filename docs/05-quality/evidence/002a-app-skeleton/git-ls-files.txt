@@ -18,6 +18,7 @@ docs/03-decisions/ADR-NNN-template.md
 docs/04-reviews/REVIEW-001.md
 docs/04-reviews/REVIEW-002.md
 docs/04-reviews/REVIEW-003.md
+docs/04-reviews/REVIEW-004.md
 docs/04-reviews/REVIEW-NNN.md
 docs/05-quality/evidence/001-scaffold/git-ls-files.txt
 docs/05-quality/evidence/001-scaffold/repo-visibility.json
@@ -61,6 +62,12 @@ docs/05-quality/evidence/002b-fix-loop/push-state.txt
 docs/05-quality/evidence/002b-fix-loop/test.txt
 docs/05-quality/evidence/002b-fix-loop/tracked-files.sh
 docs/05-quality/evidence/002b-fix-loop/typecheck.txt
+docs/05-quality/evidence/002c-fix-loop-2/README.md
+docs/05-quality/evidence/002c-fix-loop-2/dev-server.sh
+docs/05-quality/evidence/002c-fix-loop-2/dev-server.txt
+docs/05-quality/evidence/002c-fix-loop-2/stability.sh
+docs/05-quality/evidence/002c-fix-loop-2/stability.txt
+docs/05-quality/evidence/002c-owner-smoke/README.md
 eslint.config.js
 jest.config.js
 package-lock.json
@@ -72,4 +79,4 @@ tsconfig.json
 --- exit code: 0 ---
 
 $ git ls-files | wc -l
-      70
+      77

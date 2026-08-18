@@ -70,7 +70,7 @@ What is in flight, who owns it, and what it is blocked on. One row per stream.
 
 | Stream | Owner | Status | Blocked on |
 |---|---|---|---|
-| Unit A — app skeleton (Expo init + CI baseline; no Supabase) | Claude Code, dispatched by CTRL-002 | LOCK `REVIEW`; REVIEW-003 (FAIL) fix loop complete — all four findings resolved, evidence in `docs/05-quality/evidence/002b-fix-loop/`. Gates re-run green; CI still NOT RUN until the PR opens. | Re-review of the fix commit |
+| Unit A — app skeleton (Expo init + CI baseline; no Supabase) | Claude Code, dispatched by CTRL-002 | LOCK `REVIEW`; REVIEW-004 (FAIL) fix loop complete — both findings resolved. Evidence regeneration is byte-stable across ten gated artifacts, with three classified run-varying and their fields named; `OPERATIONS.md` runtime claims are now per-statement with classes and artifacts. Evidence in `docs/05-quality/evidence/002c-fix-loop-2/`, amended artifacts in `002b-fix-loop/`. Gates re-run green; CI still NOT RUN until the PR opens; rendering still NOT RUN pending the owner smoke test in `002c-owner-smoke/`. | Re-review of the fix commit, and the owner's rendering attestation |
 | Unit B — Supabase wiring (supabase-js, generated types, staging env plumbing) | Controller + owner | Queued | Staging Supabase project creation (owner task, RED lane) |
 | Supabase projects, staging + production | Owner, guided by CTRL-002 | In progress | — |
 

@@ -1,0 +1,28 @@
+$ CI=1 npx expo start --web --port 8081   # backgrounded, then killed
+
+=== 1. the server's own startup output ===
+Starting project at <repo-root>
+Using src/app as the root directory for Expo Router.
+React Compiler enabled
+Metro is running in CI mode, reloads are disabled. Remove CI=true to enable watch mode.
+Starting Metro Bundler
+
+Waiting on http://localhost:8081
+
+=== 2. what it served on / ===
+$ curl -s -o body.html -w '%{http_code}' http://localhost:8081/
+http status:                                 200
+body contains 'Placeholder home screen':     yes
+body contains 'Edit src/app/index.tsx':      yes
+body contains 'ZC App (dev)':                no
+<title> element as served:                   <title data-rh="true"></title>
+
+The app name is not on this page. Expo puts it in the web manifest
+embedded in the bundle (../002b-fix-loop/name-scan.txt section 3) and in
+the Expo Go project list, not in the served document title, which the
+skeleton leaves empty.
+
+=== 3. what this does not show ===
+This markup came from Expo Router's static rendering, in Node. No
+browser, simulator or device rendered anything. Rendering is NOT RUN.
+--- exit code: 0 ---

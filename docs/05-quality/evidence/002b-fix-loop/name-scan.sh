@@ -11,6 +11,20 @@
 #   4. every tracked occurrence of the name, in and outside governance prose
 #
 # Section 3 needs `dist/` from capture.sh; it reports itself skipped if absent.
+#
+# Section 4 reads the *index* (`git grep --cached`), not the working tree
+# (REVIEW-004 finding 1). The first version read the working tree, which counts
+# whatever happens to be on disk at the moment of the run, including files not
+# yet staged; it recorded 14 governance files for a commit that contains 21.
+# Reading the index makes the section describe the tree that is about to be
+# committed, and at any committed head the index equals HEAD, so a rerun there
+# reproduces the transcript byte for byte.
+#
+# While building, that means the same fixed-point discipline tracked-files.sh
+# uses: `git add -A`, run this script, `git add -A`, run it again, and repeat
+# until the output stops changing. Two passes normally suffice — this file's own
+# output is one of the tracked files section 4 counts.
+#
 # Run from the repo root.
 
 set -u
@@ -99,13 +113,13 @@ OUT="docs/05-quality/evidence/002b-fix-loop/name-scan.txt"
   fi
   echo
 
-  echo "=== 4. tracked occurrences of the name ==="
-  echo "\$ git grep -n -i noema -- ':!docs/'   # outside governance prose"
-  git grep -n -i noema -- ':!docs/'
+  echo "=== 4. tracked occurrences of the name (read from the index) ==="
+  echo "\$ git grep --cached -n -i noema -- ':!docs/'   # outside governance prose"
+  git grep --cached -n -i noema -- ':!docs/'
   echo "--- exit code: $? ---"
   echo
-  echo "\$ git grep -l -i noema -- 'docs/' | wc -l   # governance files naming the project"
-  git grep -l -i noema -- 'docs/' | wc -l
+  echo "\$ git grep --cached -l -i noema -- 'docs/' | wc -l   # governance files naming the project"
+  git grep --cached -l -i noema -- 'docs/' | wc -l
   echo "--- exit code: 0 ---"
 } > "$OUT" 2>&1
 echo "wrote $OUT"

@@ -3,12 +3,11 @@ Using src/app as the root directory for Expo Router.
 React Compiler enabled
 Starting Metro Bundler
 
-warning: Bundler cache is empty, rebuilding (this may take a minute)
-iOS Bundled 88047ms node_modules/expo-router/entry.js (1101 modules)
-Android Bundled 119251ms node_modules/expo-router/entry.js (1230 modules)
+iOS Bundled <duration>ms node_modules/expo-router/entry.js (1101 modules)
+Android Bundled <duration>ms node_modules/expo-router/entry.js (1230 modules)
 Static rendering is enabled. Learn more: https://docs.expo.dev/router/web/static-rendering/
-λ Bundled 83111ms node_modules/expo/node_modules/@expo/cli/node_modules/@expo/router-server/node/render.js (823 modules)
-Web Bundled 84700ms node_modules/expo-router/entry.js (773 modules)
+λ Bundled <duration>ms node_modules/expo/node_modules/@expo/cli/node_modules/@expo/router-server/node/render.js (823 modules)
+Web Bundled <duration>ms node_modules/expo-router/entry.js (773 modules)
 
 › ios bundles (1):
 _expo/static/js/ios/entry-a16639743fa3d42e38f763445dce5189.hbc (2.3MB)
