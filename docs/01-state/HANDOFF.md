@@ -8,6 +8,63 @@ Append a new block at the top. Never edit an old one.
 
 ---
 
+## 2026-08-18 — feat/app-skeleton (REVIEW-006 re-review)
+
+**Controller:** CTRL-002 App Skeleton. **Reviewer of record:** Codex Sol,
+ultra effort, fresh session, review only. **Reviewed base:**
+`a5258d77ac963a769707c34e093107c9c4b37178`. **Reviewed target:**
+`c59b932d1e9f387375aa4cbb72fd402418de9e53`. **LOCK:** `Status: REVIEW`.
+
+**What happened**
+
+REVIEW-006 verdict is **FAIL**. All five REVIEW-005 findings pass their direct
+re-checks, including the stability gate's real process status, the two-sided
+negative control and exact restoration, the real install artifact and
+OPERATIONS pointer, the authorized one-row PROJECT-STATE shape, the three
+source prose corrections, regenerated artifacts, and the clean exact-range
+whitespace check.
+
+One new low evidence-producer finding prevents PASS. A fresh run of the
+committed `npm-ci.sh` completed 1,085 packages and encoded npm exit 0, but npm
+used the valid shorter summary `added 1085 packages in 2m`. The script's
+duration normalizer matches only the form containing `, and audited ...
+packages`, so it left the raw `2m` duration in place despite the script and
+002d README saying the summary duration is masked to `<duration>`. The install
+claim remains proven; the defect is the new producer's normalization contract.
+Full finding: `docs/04-reviews/REVIEW-006.md`.
+
+**Fresh verification**
+
+| Check | Class | Result |
+|---|---|---|
+| Exact base, target and remote | PASS | base is sole parent/merge-base; one fix commit; local, origin and fetched remote all `c59b932` before review |
+| committed `npm-ci.sh` | PASS with finding | real 1,085-package install, encoded npm exit 0; shorter valid summary leaks raw duration — REVIEW-006 finding 1 |
+| standalone stability gate | PASS | 11 gated, 0 differing, process exit 0 |
+| negative control, failing side | PASS | exactly one `DIFFERS`, encoded and process exit 1 |
+| negative control, restored side | PASS | 11 identical, encoded and process exit 0; transcript byte-identical |
+| tracked tree and index restoration | PASS | full before/after fingerprints identical; cached and unstaged diffs clean |
+| PROJECT-STATE | PASS | no raw counts; pointer resolves; exactly one Active-work row changed; controller authorization confirmed |
+| three prose corrections | PASS | exact source corrections present; generated transcripts reproduced by the gate |
+| accepted six-path listing delta | PASS | five 002d files plus REVIEW-005; 79 → 85 |
+| exact-range whitespace | PASS | two-dot and three-dot `git diff --check`, and `git show --check`, exit 0; producer fixed |
+| CI | NOT RUN | unchanged; no PR |
+| simulator/emulator/device rendering | NOT RUN | accepted; owner web PASS stands |
+
+**What remains**
+
+One low finding in the npm install evidence producer. No product, runtime,
+security, state-boundary, or stability-gate finding remains. Every controller
+confirmation and prior accepted deviation was carried without re-litigation.
+
+**Next step**
+
+Route REVIEW-006 to the same builder for a bounded fix to the duration
+normalizer, then a fresh re-review. Do not merge on REVIEW-006.
+
+LOCK status line: `Status: REVIEW`.
+
+---
+
 ## 2026-08-18 — feat/app-skeleton (REVIEW-005 fix loop)
 
 **Controller:** CTRL-002 App Skeleton. **Builder:** Claude Code — Fable 5,
