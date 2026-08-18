@@ -8,6 +8,75 @@ Append a new block at the top. Never edit an old one.
 
 ---
 
+## 2026-08-18 — feat/app-skeleton (REVIEW-004)
+
+**Controller:** CTRL-002 App Skeleton. **Reviewer of record:** Codex, fresh
+session, review only. **Target:**
+`c2ffd15becf9a5bd40fc2f60c129f89b79756710`. **Fix-loop base:**
+`670b5365a78417523fee26741425dda3a6c4b45c`.
+
+**What I set out to do**
+
+Re-review only the REVIEW-003 fix-loop commit. Reproduce the three-depth name
+scan, all committed 002b scripts, the fresh-install gates, and the directed
+state-file checks. Preserve every settled ruling and do not fix, merge, deploy,
+or open a PR.
+
+**Verdict: FAIL**
+
+Two medium findings remain. First, the dispatch's byte-stable evidence gate
+fails: four non-network 002b artifacts change when the committed scripts run at
+the committed head. Second, `OPERATIONS.md` now documents the correct commands
+but asserts that the app and local environment "run" while the same file says
+runtime rendering is unverified. Full evidence, classifications, blob IDs, and
+line citations are in `docs/04-reviews/REVIEW-004.md`.
+
+**What I verified**
+
+- **REVIEW-003 finding 1 — PASS/fixed.** Fresh `name-scan.sh` returned zero
+  `/noema/i` matches in user-visible fields at all three depths: `app.json`,
+  resolved Expo config, and the exported web manifest. The three visible names
+  resolve to `ZC App (dev)`. Controller-classified identifiers were not flagged.
+- **REVIEW-003 finding 2 — FAIL/open.** The stale "nothing exists" prose is
+  removed, but its replacement makes unproven runtime assertions.
+- **REVIEW-003 finding 3 — PASS/fixed, with a new evidence defect.** The 002a
+  narrative correctly says the feature branch is pushed and CI is still NOT
+  RUN. Fresh origin state is `c2ffd15` and `0 0`; committed `push-state.txt`
+  instead records `670b536` and changes on rerun.
+- **REVIEW-003 finding 4 — PASS/fixed.** `tracked-files.sh` regenerated its
+  artifact byte-for-byte; all 70 paths equal the exact target tree.
+- **Fresh install and five commands — PASS.** `npm ci`, typecheck, lint,
+  `npm test -- --ci`, and format:check each exited 0. Expo Doctor returned
+  21/21 with network access; all three platform exports succeeded.
+- **Evidence byte stability — FAIL introduced by this work.** `push-state.txt`,
+  `name-scan.txt`, `test.txt`, and `expo-export.txt` changed without relying on
+  network. The initial sandboxed Expo Doctor and audit calls could not resolve
+  the registry; network-enabled reruns reproduced 21/21 and the accepted 22
+  advisories, so those two files are not needed to establish the failure.
+- **State discipline — PASS.** HANDOFF is +140/-0 and preserves prior blocks;
+  BRANCH-NOTES is +34/-0 inside the Unit A LOCK; PROJECT-STATE changes only the
+  Unit A Active-work row; no `docs/03` or `docs/04` path is in the reviewed fix
+  delta.
+- **CI — NOT RUN.** No PR or push-to-main event exists, as accepted.
+
+**What I changed**
+
+- Added immutable `docs/04-reviews/REVIEW-004.md`.
+- Appended this HANDOFF block above all prior blocks.
+
+No reviewed application, configuration, state row, LOCK block, or evidence
+artifact was edited. No PR was opened and nothing was merged or deployed.
+
+**Next step**
+
+Return the two open findings to the same builder on `feat/app-skeleton`, then
+route the next fix commit to a fresh immutable re-review. CI remains for the
+owner's PR-open step after a PASS.
+
+LOCK status line: `Status: REVIEW`.
+
+---
+
 ## 2026-08-18 — feat/app-skeleton (REVIEW-003 fix loop)
 
 **Controller:** CTRL-002 App Skeleton. **Builder:** Claude Code, Opus / high
