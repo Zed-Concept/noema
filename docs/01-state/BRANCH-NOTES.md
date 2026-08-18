@@ -304,6 +304,40 @@ simulator, emulator and device. Evidence in
 `docs/05-quality/evidence/002d-fix-loop-3/`. Status stays `REVIEW` for the
 re-review.
 
+**REVIEW-006 fix loop closing note (2026-08-18).** REVIEW-006 (Codex Sol,
+verdict FAIL) recorded a single low finding: `npm-ci.sh`'s duration mask was
+not total — it required the `, and audited N packages` clause, so npm's
+equally valid shorter summary (`added 1085 packages in 2m` in the reviewer's
+fresh run) leaked its raw duration, contradicting the script's and the 002d
+README's stated contract. Fixed here — same builder, same branch, fresh
+session, `Status: REVIEW` throughout, all priors byte-preserved and every
+ruling standing.
+
+The mask now accepts both documented summary forms, the audited clause
+optional, and replaces everything after the summary's final ` in `, covering
+every duration shape npm formats (`Nms`, `Ns`, `N.Ns`, `Nm`, `NmNs`).
+Totality is proven by a committed positive control
+(`002d-fix-loop-3/normalizer-control.txt`): ten sample lines — each form
+crossed with each duration shape, including the reviewer's exact observed
+line — piped through `npm-ci.sh --filter`, the same committed expression the
+transcript is produced with; all ten came back masked, zero unmasked, encoded
+and process exit 0. The control was also probed from its failing side with a
+disposable scratch copy carrying the old regex: five `UNMASKED`, exit 1 — a
+green control is not vacuous. `npm ci` was rerun in full through the fixed
+script, first attempt, no retry: 1,085 packages, encoded exit 0; the fresh
+transcript reproduced the committed `npm-ci.txt` byte for byte (same-day,
+warm-cache coincidence, disclosed in the README — the classification stays
+run-varying). `git-ls-files.txt` was regenerated to a fixed point and lists
+three new paths (85 → 88): the REVIEW-006 record, committed at this loop's
+base, and the two normalizer-control files.
+
+Gates at this head: the full stability gate ran green — zero differing gated
+artifacts, process exit 0 — regenerating the typecheck, lint, test and
+format:check transcripts byte-identically, all exit 0. CI is still **NOT
+RUN** — this loop adds a commit, not a trigger. Rendering remains PASS on web
+and NOT RUN on simulator, emulator and device. Status stays `REVIEW` for the
+re-review.
+
 ---
 
 ## LOCK — chore/state-ctrl-001-closeout

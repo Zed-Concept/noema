@@ -4,9 +4,11 @@ Branch `feat/app-skeleton`, same builder, same LOCK, `Status: REVIEW`
 throughout. Base for this loop is the REVIEW-005 record commit
 `a5258d77ac963a769707c34e093107c9c4b37178`.
 
-This directory covers **only** the five REVIEW-005 findings. Nothing settled
-in REVIEW-004 or earlier was reopened, and no controller ruling was
-relitigated.
+This directory covers **only** the five REVIEW-005 findings, plus — added by
+the REVIEW-006 fix loop on the same branch and LOCK — the fix for that
+review's single finding against this directory's own install producer (see
+"The install transcript" below). Nothing settled in REVIEW-004 or earlier was
+reopened, and no controller ruling was relitigated.
 
 One deliberate omission: no file in this directory contains the project's
 name. The gated `../002b-fix-loop/name-scan.txt` counts the docs files that
@@ -68,21 +70,69 @@ reasons as `../002b-fix-loop/npm-audit.txt`: npm prints deprecation notices in
 download-completion order, and the closing audit summary is the upstream
 advisory database's answer on the day of the run. The single normalisation is
 the wall-clock duration npm appends to its `added …` summary line, masked to
-`<duration>` — it measures the machine, not the lockfile. What the OPERATIONS
+`<duration>` — it measures the machine, not the lockfile. The mask is total
+over npm's two documented summary forms, with and without the `, and audited
+N packages` clause, and over every duration shape npm formats (`Nms`, `Ns`,
+`N.Ns`, `Nm`, `NmNs`); totality is proven by the committed positive control
+below (REVIEW-006 finding 1 — the first normalizer required the audited
+clause, so the shorter form npm actually printed in the reviewer's run,
+`added 1085 packages in 2m`, leaked its raw duration). What the OPERATIONS
 row claims is
 carried by the stable part: the package count, which comes from the committed
 lockfile, and the exit code.
 
-**One disclosed retry.** The first run of `npm-ci.sh` in this loop failed with
+**One disclosed retry (REVIEW-005 loop).** The first run of `npm-ci.sh` in
+the REVIEW-005 fix loop failed with
 `ENOTEMPTY: directory not empty, rmdir 'node_modules/@jest'` — npm racing
 something else on the machine while deleting the old tree, exit 190. That is
 an environmental failure of the same class as the reviewer's sandbox failures
 in REVIEW-005: it says nothing about the lockfile. `node_modules` was removed
-and the script rerun unchanged; the committed transcript is that second run,
-complete with its exit code. The failed transcript is disclosed here rather
-than committed, because the claim under test is "the committed lockfile
-installs", and it does — the artifact records the install, this paragraph
-records the retry.
+and the script rerun unchanged; that loop committed the second run. The
+failed transcript is disclosed here rather than committed, because the claim
+under test is "the committed lockfile installs", and it does — the artifact
+records the install, this paragraph records the retry.
+
+The REVIEW-006 fix loop reran the fixed script in full — a fresh `npm ci` at
+that loop's head, first attempt, no retry: 1,085 packages, encoded exit 0,
+audited-form summary, duration masked. The resulting transcript reproduced
+the committed `npm-ci.txt` byte for byte, so the file carries no diff in that
+loop. That is a same-day, warm-cache coincidence, not a stability claim: the
+run-varying classification names what *may* vary, and it stands.
+
+## The normalizer positive control — REVIEW-006 finding 1
+
+REVIEW-006 found that the normalizer above was not total: it matched only the
+summary form containing `, and audited … packages`, so the equally valid
+shorter summary npm printed in the reviewer's fresh run — `added 1085
+packages in 2m` — passed through with its raw duration, contradicting the
+script's and this README's stated contract. The fix is in `npm-ci.sh`: the
+mask now accepts both documented forms, with the audited clause optional, and
+replaces everything after the summary's final ` in `, which covers every
+duration shape npm formats rather than enumerating them.
+
+`normalizer-control.sh` proves the fixed mask total. It pipes one sample line
+of each summary form crossed with each duration shape (`Nms`, `Ns`, `N.Ns`,
+`Nm`, `NmNs` — ten lines, including the exact line the reviewer observed)
+through `npm-ci.sh --filter`, the same committed expression the transcript is
+produced with, and requires each output to equal its input with the duration
+replaced by `<duration>`, exactly. `normalizer-control.txt` records every
+in/out pair, the counts line (`samples: 10    unmasked: 0`), and the encoded
+exit code; the process exit matches it, same contract as the stability gate.
+During this loop the control was also probed from its failing side with a
+disposable scratch copy of the script carrying the old audited-only regex: it
+reported the five short-form samples `UNMASKED` and exited 1, so a green
+control is not vacuous. The probe is disposable by nature — it requires a
+deliberately broken script, which is not committed.
+
+`normalizer-control.txt` is deterministic — fixed sample strings through a
+committed filter, nothing read from the environment — and a rerun at the
+committed head reproduces it byte for byte. It is **not added to the gated
+set**: the gate's artifact list and counts are frozen inside two committed
+transcripts (`negative-control.txt` and `../002c-fix-loop-2/stability.txt`),
+so widening the set would force both to regenerate, far beyond this loop's
+single bounded finding. The control does not need the gate to fail loudly:
+its own process and encoded exit are its contract, and rerunning it takes
+under a second. Gating it later is a controller call.
 
 ## What was regenerated, and why
 
@@ -96,6 +146,14 @@ nothing was hand-edited.
 | `../002a-app-skeleton/git-ls-files.txt` | six paths are new since it was last regenerated (79 → 85): the five files of this directory, and the REVIEW-005 record, committed at this loop's base after the previous loop last regenerated the listing; the listing is defined as the index to a fixed point |
 | `../002b-fix-loop/name-scan.txt` | unchanged — kept byte-identical by the naming rule at the top of this file; listed here so its absence from the diff is legible as a checked fact, not an oversight |
 
+Regenerated by the **REVIEW-006 fix loop** (same rule — committed scripts
+only, nothing hand-edited):
+
+| Artifact | Why it changed |
+|---|---|
+| `npm-ci.txt` | REVIEW-006 finding 1 — regenerated by the fixed `npm-ci.sh`, a fresh install at that loop's head with the now-total mask; the fresh transcript reproduced the committed bytes exactly (same-day, warm-cache coincidence — the previous run's summary was the audited form, which both the old and fixed masks handle identically), so the artifact shows no diff |
+| `../002a-app-skeleton/git-ls-files.txt` | three paths are new since the REVIEW-005 loop regenerated it (85 → 88): the REVIEW-006 record, committed at this loop's base, and the two normalizer-control files; same fixed-point rule as before |
+
 ## Claims
 
 | # | Claim | Class | Artifact |
@@ -108,6 +166,7 @@ nothing was hand-edited.
 | 6 | Typecheck, lint, test and format:check still exit 0 | PASS | their transcripts under `../002b-fix-loop/`, regenerated byte-identically inside the gate runs |
 | 7 | CI runs install → typecheck → lint → test → format:check on PR and push-to-main | NOT RUN | still no PR; this loop adds commits, not a trigger |
 | 8 | The app renders on a simulator, emulator, or physical device | NOT RUN | unchanged; the owner's web PASS stands in `../002c-owner-smoke/attestation.md` |
+| 9 | The install summary's duration mask is total over npm's documented summary forms and duration shapes | PASS | `normalizer-control.txt` — 10 samples, 0 unmasked, encoded and process exit 0 (REVIEW-006 loop) |
 
 ## Re-running this
 
@@ -115,6 +174,9 @@ From the repository root, after `git fetch origin`:
 
 - `npm-ci.sh` — deletes and rebuilds `node_modules`, writes `npm-ci.txt`.
   Run-varying; expect the registry-sourced lines to differ.
+- `normalizer-control.sh` — pipes the ten summary samples through
+  `npm-ci.sh --filter`, writes `normalizer-control.txt`. Deterministic;
+  expect a byte-identical transcript and exit 0.
 - `negative-control.sh` — runs the full gate twice (expect ten minutes or
   more; port 8081 must be free, everything staged, `npm ci` done). Restores
   the working copy and the index exactly; the injected line never reaches a

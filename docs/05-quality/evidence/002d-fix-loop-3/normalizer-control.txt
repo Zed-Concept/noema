@@ -1,0 +1,25 @@
+$ bash docs/05-quality/evidence/002d-fix-loop-3/normalizer-control.sh
+
+in:  added 1085 packages in 950ms
+out: added 1085 packages in <duration>   [masked]
+in:  added 1085 packages in 4s
+out: added 1085 packages in <duration>   [masked]
+in:  added 1085 packages in 2.5s
+out: added 1085 packages in <duration>   [masked]
+in:  added 1085 packages in 2m
+out: added 1085 packages in <duration>   [masked]
+in:  added 1085 packages in 1m30s
+out: added 1085 packages in <duration>   [masked]
+in:  added 1085 packages, and audited 1086 packages in 950ms
+out: added 1085 packages, and audited 1086 packages in <duration>   [masked]
+in:  added 1085 packages, and audited 1086 packages in 4s
+out: added 1085 packages, and audited 1086 packages in <duration>   [masked]
+in:  added 1085 packages, and audited 1086 packages in 2.5s
+out: added 1085 packages, and audited 1086 packages in <duration>   [masked]
+in:  added 1085 packages, and audited 1086 packages in 2m
+out: added 1085 packages, and audited 1086 packages in <duration>   [masked]
+in:  added 1085 packages, and audited 1086 packages in 1m30s
+out: added 1085 packages, and audited 1086 packages in <duration>   [masked]
+
+samples: 10    unmasked: 0
+--- exit code: 0 ---

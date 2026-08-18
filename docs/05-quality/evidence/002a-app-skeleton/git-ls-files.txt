@@ -20,6 +20,7 @@ docs/04-reviews/REVIEW-002.md
 docs/04-reviews/REVIEW-003.md
 docs/04-reviews/REVIEW-004.md
 docs/04-reviews/REVIEW-005.md
+docs/04-reviews/REVIEW-006.md
 docs/04-reviews/REVIEW-NNN.md
 docs/05-quality/evidence/001-scaffold/git-ls-files.txt
 docs/05-quality/evidence/001-scaffold/repo-visibility.json
@@ -74,6 +75,8 @@ docs/05-quality/evidence/002c-owner-smoke/attestation.md
 docs/05-quality/evidence/002d-fix-loop-3/README.md
 docs/05-quality/evidence/002d-fix-loop-3/negative-control.sh
 docs/05-quality/evidence/002d-fix-loop-3/negative-control.txt
+docs/05-quality/evidence/002d-fix-loop-3/normalizer-control.sh
+docs/05-quality/evidence/002d-fix-loop-3/normalizer-control.txt
 docs/05-quality/evidence/002d-fix-loop-3/npm-ci.sh
 docs/05-quality/evidence/002d-fix-loop-3/npm-ci.txt
 eslint.config.js
@@ -87,4 +90,4 @@ tsconfig.json
 --- exit code: 0 ---
 
 $ git ls-files | wc -l
-      85
+      88
