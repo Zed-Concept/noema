@@ -1,0 +1,9 @@
+# Malformed-URL redaction control: run the connectivity script with a
+# non-URL value; it must fail loudly printing only redacted output.
+$ EXPO_PUBLIC_SUPABASE_URL=<synthetic malformed non-URL value> EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<synthetic> \
+    node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-supabase-connectivity.ts
+FATAL: Error: Invalid supabaseUrl: Must be a valid HTTP or HTTPS URL.
+--- exit code: 1 (1 = failed loudly on the malformed value, as designed) ---
+raw malformed-URL-value occurrences in that output: 0 (0 required)
+raw synthetic-key occurrences in that output: 0 (0 required)
+--- enforced: exit 1 with zero raw occurrences, or capture.sh exits 1 (fail closed) ---

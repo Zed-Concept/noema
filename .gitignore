@@ -20,8 +20,9 @@ android/
 .easignore
 
 # Environment and secrets — never commit these
-.env
-.env.*
+# Literal .env* (REVIEW-008 finding 3): covers .env, dot-suffix forms, and
+# non-conventional names like .envrc or .envfoo; only .env.example is negated.
+.env*
 !.env.example
 *.pem
 *.p8

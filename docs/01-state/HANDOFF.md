@@ -8,6 +8,117 @@ Append a new block at the top. Never edit an old one.
 
 ---
 
+## 2026-08-19 — feat/supabase-wiring (REVIEW-008 fix cycle 1)
+
+**Controller:** CTRL-003 Supabase Wiring. **Builder:** Claude Code — Fable 5,
+Max effort per ruling 5 (fix loops are Max-class, not Ultracode), fresh
+session, model verified against the dispatch before any work. **Reviewer of
+record:** Codex (Codex Sol / Ultra, fresh session). **Fix base:**
+`b14b925283082193a9cb6ff9a8b00cbf7528e59b` (the REVIEW-008 record commit,
+parent `98c4d6d`), fetched and confirmed as the dispatch-named origin tip
+before any work. **LOCK:** `Status: REVIEW — fix cycle 1 complete, awaiting
+re-review`.
+
+**Disclosure (ruling 6):** workflows run: 0; subagent fan-out: none. Every
+change and verification in this cycle was made directly in this session.
+
+**What this cycle cleared** — all five REVIEW-008 findings, plus the three
+advisory items the controller adjudicated into scope:
+
+1. **F1 — locale-variant stability gate.** `capture.sh` now pins
+   `LC_ALL=C LANG=C` for every producer; npm's locale-dependent tree glyphs
+   (`└──` under UTF-8 locales, `` `-- `` under C) were the disproven
+   variable. The pinned locale is recorded in `environment.txt`, the
+   normalization is stated in the 003a README per learning 7, and the gate
+   reran fresh at this head: five gated artifacts, two runs each,
+   **0 differing, process exit 0** (`003a/stability.txt`). The regenerated
+   `deps.txt` is byte-identical to the reviewed copy — the pin reproduces
+   the committed form in any locale.
+2. **F2 — OPERATIONS.md false-existence lines.** The local-run section no
+   longer says there is no backend/configuration and that Unit B does not
+   exist; it now states minimally what Unit B shipped, under the
+   controller's ruling superseding the v1 exclusion for those lines only.
+   Verified before writing: no screen imports the client, so install/start
+   still need no credentials. `TODO(owner)` rows untouched; the pre-existing
+   staging contradiction (`OPERATIONS.md` credential-ownership and
+   environments sections) left exactly as backlogged by the controller.
+3. **F3 — `.env*` coverage.** `.gitignore` now ignores literal `.env*` with
+   `!.env.example` the sole negation. The ignore-probe evidence extends to
+   `.envrc` and the non-conventional `.envfoo`, plus the negative probe —
+   `.env.example` is not ignored (exit 1) and remains tracked
+   (`003a/gates.txt`).
+4. **F4 — artifactless PASS claims.** Three committed artifacts close the
+   gaps: the fail-loudly section now proves URL-only and key-only, not just
+   both-missing (`003a/gates.txt`); `003a/types-plumbing.txt` proves the
+   generated-types plumbing (npm script reaches the script, `bash -n`,
+   missing-ref refusal before any CLI invocation, exact CLI pin,
+   placeholder-import typecheck); `003a/redaction-control.txt` commits the
+   malformed-URL repro — exit 1, zero raw occurrences of either synthetic
+   value. Claims 3, 4, and new claim 11 reclassified against these
+   artifacts in the 003a README.
+5. **F5 — inventory count.** The prior Unit B HANDOFF block said "six
+   scripts, nine transcripts, and a README"; the true count at the review
+   target `98c4d6d` was **five** `.sh`, nine `.txt`, one README. That block
+   is immutable and was not edited — the correction is recorded here. After
+   this cycle the directory holds **five `.sh`, eleven `.txt`, and the
+   README** (both new transcripts are produced by the existing
+   `capture.sh`, not by new scripts), and the count now lives in the 003a
+   README beside the classification table, verified against a fresh
+   directory listing before this block was written.
+
+**Adjudications (REVIEW-008 advisory section, ruled in scope):**
+
+- `scripts/gen-types.sh` pins the exact CLI version — `supabase@2.115.0`,
+  the current release resolved at fix time (2026-08-19) — recorded in the
+  script and the README's Supabase section, replacing floating `supabase@2`.
+- `connectivity.sh` now exits with the child check's status. Green-path
+  transcript bytes are unchanged, and the committed `connectivity.txt` (the
+  2026-08-19 capture) was **not** regenerated — no staging values were
+  handed or used this cycle; the committed transcript remains the evidence
+  boundary.
+- `capture.sh` fails closed: exit 1 on any secret-scan file match, broken
+  positive control, or broken redaction control — after writing the
+  transcript that shows why.
+
+**What I verified, and how**
+
+| Check | Class | Artifact |
+|---|---|---|
+| 003a stability gate: five gated artifacts, two fresh runs each | PASS — 0 differing, exit 0 | `003a/stability.txt` |
+| Five CI steps at this head (inside both fresh captures) | PASS — all exit 0 | `003a/gates.txt` |
+| Fail-loudly: neither set / URL-only / key-only | PASS — throws in all three | `003a/gates.txt` |
+| Literal `.env*` ignored; `.env.example` negated and tracked | PASS | `003a/gates.txt` |
+| Generated-types plumbing, incl. pinned CLI | PASS (plumbing) / NOT RUN (generation — owner-executed) | `003a/types-plumbing.txt` |
+| Malformed-URL redaction totality | PASS — exit 1, zero raw bytes | `003a/redaction-control.txt` |
+| Secret scan, now fail-closed | PASS — 0 files, all controls matched | `003a/secret-scan.txt` |
+| `npm audit` | FAIL pre-existing — the accepted 22 | `003a/npm-audit.txt` |
+| Staging connectivity | NOT RE-RUN by design — committed transcript stands | `003a/connectivity.txt`, unchanged |
+| CI on this branch | NOT RUN — still no PR | — |
+
+**What I did NOT do**
+
+No staging credentials were handed this cycle and none were used;
+`connectivity.txt` is untouched (verifiable in the diff). No schema,
+migrations, RLS/auth or policy work, no production access, no provider keys,
+no CI changes or secrets, no PR, no merge; commits and push on
+`feat/supabase-wiring` only, as authorized. `app.json` untouched
+(`expo.scheme` frozen, ruling 8); no user-visible name strings;
+`docs/03-decisions/` and `docs/04-reviews/` untouched; no prior HANDOFF or
+LOCK content edited — the LOCK status line was restated and a fix-loop
+closing note appended, per house precedent. The Unit A gate's post-merge
+staleness and the OPERATIONS staging contradiction remain with the
+controller, as recorded at dispatch.
+
+**Next step**
+
+Route the fix-cycle delta (`b14b925..HEAD` on `feat/supabase-wiring`) to the
+reviewer of record for re-review, fresh session. The owner merges only after
+a PASS.
+
+LOCK status line: `Status: REVIEW — fix cycle 1 complete, awaiting re-review`.
+
+---
+
 ## 2026-08-19 — feat/supabase-wiring (REVIEW-008 review)
 
 **Controller:** CTRL-003 Supabase Wiring. **Reviewer of record:** Codex Sol,

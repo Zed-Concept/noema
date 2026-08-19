@@ -12,7 +12,12 @@ out="src/lib/database.types.ts"
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 
-npx --yes supabase@2 gen types typescript \
+# CLI version pinned exact per REVIEW-008 adjudication and Supabase's npm
+# security guidance (no floating tag resolved outside the lockfile while
+# SUPABASE_ACCESS_TOKEN is present). 2.115.0 was the current release when
+# pinned, 2026-08-19; bump deliberately, recording the new version here and
+# in the README's Supabase section.
+npx --yes supabase@2.115.0 gen types typescript \
   --project-id "$SUPABASE_PROJECT_REF" \
   --schema public > "$tmp"
 

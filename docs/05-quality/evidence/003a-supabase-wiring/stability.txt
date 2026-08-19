@@ -1,10 +1,14 @@
 $ bash docs/05-quality/evidence/003a-supabase-wiring/stability.sh
 # two fresh capture.sh runs, each gated artifact compared to the committed copy
-gates.txt          run1: identical
-gates.txt          run2: identical
-deps.txt           run1: identical
-deps.txt           run2: identical
-secret-scan.txt    run1: identical
-secret-scan.txt    run2: identical
-gated artifacts: 3    differing comparisons: 0
+gates.txt              run1: identical
+gates.txt              run2: identical
+deps.txt               run1: identical
+deps.txt               run2: identical
+types-plumbing.txt     run1: identical
+types-plumbing.txt     run2: identical
+redaction-control.txt  run1: identical
+redaction-control.txt  run2: identical
+secret-scan.txt        run1: identical
+secret-scan.txt        run2: identical
+gated artifacts: 5    differing comparisons: 0
 --- encoded exit code: 0 ---

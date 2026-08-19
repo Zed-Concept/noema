@@ -20,7 +20,10 @@ empty public schema; regenerate it after any schema change with:
 
 This is owner-executed: the Supabase CLI authenticates with
 `SUPABASE_ACCESS_TOKEN`, which builders do not hold. The project ref is read
-from the environment at run time and is not committed anywhere.
+from the environment at run time and is not committed anywhere. The CLI
+version is pinned exact in `scripts/gen-types.sh` — `supabase@2.115.0`, the
+current release when pinned on 2026-08-19, per Supabase's npm security
+guidance against floating `npx` tags — bump it deliberately, in both places.
 
 **Connectivity check.** With the two `EXPO_PUBLIC_` variables set (Node 24+):
 

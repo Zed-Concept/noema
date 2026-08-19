@@ -32,12 +32,26 @@ $ env -u EXPO_PUBLIC_SUPABASE_URL -u EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY node -
 throws as designed: Supabase is not configured: EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY must both be set. Copy .env.example to .env and fill in the staging values (owner-held).
 --- exit code: 0 (0 = threw as designed) ---
 
-# .env hygiene
-$ git check-ignore .env .env.local .env.staging
+# fail-loudly: URL set but key missing must throw the same way
+$ env -u EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY EXPO_PUBLIC_SUPABASE_URL=<synthetic> node -e "import('./src/lib/supabase.ts')..."
+throws as designed: Supabase is not configured: EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY must both be set. Copy .env.example to .env and fill in the staging values (owner-held).
+--- exit code: 0 (0 = threw as designed) ---
+
+# fail-loudly: key set but URL missing must throw the same way
+$ env -u EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<synthetic> node -e "import('./src/lib/supabase.ts')..."
+throws as designed: Supabase is not configured: EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY must both be set. Copy .env.example to .env and fill in the staging values (owner-held).
+--- exit code: 0 (0 = threw as designed) ---
+
+# .env hygiene — literal .env* is ignored; .env.example alone is negated back
+$ git check-ignore .env .env.local .env.staging .envrc .envfoo
 .env
 .env.local
 .env.staging
---- exit code: 0 (0 = ignored) ---
+.envrc
+.envfoo
+--- exit code: 0 (0 = ignored; every probed name must be echoed above) ---
+$ git check-ignore .env.example   # negative probe: must NOT be ignored
+--- exit code: 1 (1 = not ignored, as required) ---
 $ git ls-files --error-unmatch .env.example >/dev/null && echo tracked
 tracked
 --- exit code: 0 ---

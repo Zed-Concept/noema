@@ -1,0 +1,29 @@
+# Generated-types plumbing at this head. Produced by capture.sh; the
+# authenticated generation run is owner-executed and NOT RUN here.
+
+$ grep -n '"types:gen"' package.json   # the npm script reaches the executable script
+16:    "types:gen": "bash scripts/gen-types.sh",
+--- exit code: 0 ---
+
+$ bash -n scripts/gen-types.sh   # shell syntax check
+--- exit code: 0 ---
+
+$ grep -n 'supabase@' scripts/gen-types.sh   # CLI version pinned exact, not floating
+20:npx --yes supabase@2.115.0 gen types typescript \
+--- exit code: 0 ---
+
+$ env -u SUPABASE_PROJECT_REF bash scripts/gen-types.sh   # missing-ref refusal
+scripts/gen-types.sh: line 9: SUPABASE_PROJECT_REF: SUPABASE_PROJECT_REF is required — the project ref from the Supabase dashboard URL
+--- exit code: 1 (nonzero = refused before any CLI invocation) ---
+
+$ grep -n 'database.types\|createClient<Database>' src/lib/supabase.ts   # placeholder wired as the client generic
+3:import type { Database } from './database.types';
+18:export const supabase = createClient<Database>(supabaseUrl, supabasePublishableKey, {
+--- exit code: 0 ---
+
+$ grep -c 'export type Database' src/lib/database.types.ts   # the committed placeholder exports Database
+1
+--- exit code: 0 ---
+
+$ npx tsc --noEmit   # the placeholder import typechecks
+--- exit code: 0 ---

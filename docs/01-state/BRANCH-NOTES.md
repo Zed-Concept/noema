@@ -64,8 +64,9 @@ Branch:             feat/supabase-wiring
 Controller:         CTRL-003 Supabase Wiring
 Builder:            Claude Code
 Model+Effort:       Fable 5 / Ultracode (xhigh + workflows) / fresh session
+                    (fix cycles: Fable 5 / Max per ruling 5, fresh session)
 Reviewer of record: Codex (Codex Sol / Ultra / fresh session)
-Status:             REVIEW
+Status:             REVIEW — fix cycle 1 complete, awaiting re-review
 Dispatch:           Unit B — Supabase wiring: add supabase-js, a typed client
                     module fed by staging env config, generated-types plumbing
                     (generation script plus committed placeholder output),
@@ -105,6 +106,41 @@ triaged in the 003a README, handed to the controller in the HANDOFF, no Unit A
 evidence repaired). Built under Ultracode per ruling 5; workflow disclosure
 per ruling 6 is in the HANDOFF block. Status moved `BUILD` → `REVIEW` in this
 amendment; `MERGED` only by the controller, after review.
+
+**REVIEW-008 fix loop closing note (2026-08-19).** REVIEW-008 (Codex Sol,
+verdict FAIL) recorded three medium findings — locale-variant `deps.txt`
+breaking the byte-stability claim, `OPERATIONS.md` falsely asserting Unit B
+does not exist, and only-partial `.env*` ignore coverage — plus two low
+(three PASS claims without committed artifacts; a wrong HANDOFF inventory
+count) and three advisory items the controller adjudicated into this cycle.
+All cleared here — same builder, same branch, fresh session at Max effort per
+ruling 5, `Status: REVIEW` throughout, no staging credentials handed or used.
+
+`capture.sh` pins `LC_ALL=C LANG=C` (the omitted variable REVIEW-008
+identified) and now fails closed on a secret-scan match, broken positive
+control, or broken redaction control. The gated set grew three → five:
+`types-plumbing.txt` (npm script reachable, `bash -n`, missing-ref refusal
+before any CLI invocation, pinned CLI, placeholder-import typecheck) and
+`redaction-control.txt` (the malformed-URL repro committed: exit 1, zero raw
+occurrences). Fail-loudly now proves URL-only and key-only, not just
+both-missing. `.gitignore` ignores literal `.env*` with `.env.example` the
+sole negation, probed from both sides including `.envrc`/`.envfoo` and the
+negative probe. `OPERATIONS.md`'s local-run section states what Unit B
+shipped (controller ruling superseded the v1 exclusion for those lines only;
+the pre-existing staging contradiction stays backlogged, untouched).
+`scripts/gen-types.sh` pins `supabase@2.115.0` exact (resolved at fix time),
+recorded in script and README. `connectivity.sh` propagates the child exit
+status; the committed `connectivity.txt` was not regenerated — the evidence
+boundary stands.
+
+Stability gate fresh at this head: five gated artifacts, two runs each,
+0 differing, process exit 0; the regenerated `deps.txt` is byte-identical to
+the reviewed copy. The five CI steps re-ran green inside both captures; CI
+itself still NOT RUN (no PR). The 003a directory now holds five scripts,
+eleven transcripts, and the README (the new transcripts come from the
+existing `capture.sh`, not new scripts) — the prior HANDOFF block's "six
+scripts" (finding 5) is corrected in the new HANDOFF block, never by editing
+the old one. Status stays `REVIEW` for the re-review.
 
 ---
 
