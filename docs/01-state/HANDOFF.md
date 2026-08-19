@@ -8,6 +8,176 @@ Append a new block at the top. Never edit an old one.
 
 ---
 
+## 2026-08-20 — feat/schema-rls-v1 (CTRL-004 Unit C, Phase A)
+
+**Controller:** CTRL-004 Schema and RLS v1. **Builder:** Claude Code — Fable
+5, Ultracode (xhigh + workflows) per ruling 5, fresh session, model verified
+against the dispatch before any work. **Reviewer of record:** Codex (Codex
+Sol / Ultra, fresh session); **advisory reviewer** DeepSeek V4 Pro on the
+RLS/auth policy diff (RED-on-arrival trigger per ADR-001). **Branch cut
+from:** `main` at `64c1ce603491fb2cb6e8b7b948a369731a436c7f`, fetched and
+confirmed as the dispatch-named tip before any work. **RED-lane
+authorization** restated in the dispatch (ruling 7): owner approval
+2026-08-19 on the CTRL-004 v1 entity scope, ratified by the PR #7 merge
+registering the LOCK; it covers exactly this unit's schema/RLS scope.
+**LOCK:** `Status: BUILD` — unchanged by dispatch design: Phase A ends with
+this handoff, and Phase B (fresh session, separate dispatch) flips to
+REVIEW.
+
+**Disclosure (ruling 6):** workflows run: 2; total subagent fan-out: 21.
+
+1. `verify-unit-c-migrations` — adversarial verification of the four
+   migrations before evidence was built: 6 subagents (5 finder lenses —
+   dispatch-spec compliance, RLS security, Supabase platform behavior,
+   Postgres semantics, governance/scope — plus 1 consolidation judge; the
+   refuter stage never spawned because no finding was refute-worthy).
+   Result: zero defects; one operational caveat (FORCE RLS blinds
+   postgres-role dashboard tooling), disclosed in the 004a README and
+   below.
+2. `audit-unit-c-evidence` — audit of the evidence suite, state edit, and
+   delta before this handoff: 15 subagents (3 auditor lenses + 12 refuters,
+   2 per finding over 6 findings). 11 raw findings → 5 confirmed, 1 killed,
+   5 raw-unrefuted. Everything confirmed or unrefuted was fixed before this
+   handoff: `stability.txt` and the state-file edit were staged (they had
+   been left out of the index); `verify-migrations.mjs` gained append-class
+   bounds (exact per-file statement counts, exactly six RLS ALTERs with no
+   countermanding subtype, exactly 17 schema-qualified policies, exactly
+   three triggers, full-body equality for both functions — 67 → 72
+   assertions); two append-class negative-control scenarios were added
+   (5 → 7); a config-provenance annotation that overstated a grep exit was
+   corrected; the README's re-running preconditions now name the
+   materialized-lockfile requirement. Workflow self-verification is
+   supplementary; the reviewer of record gates.
+
+**What I set out to do**
+
+Unit C Phase A, static only: author the owner-ruled v1 schema and first RLS
+policy set as SQL migrations in-repo (application to staging is
+owner-executed, ruling 10), with minimal Supabase CLI scaffolding and an
+evidence suite proving everything statically provable. No database was
+touched; no credentials were handed or used.
+
+**What I changed**
+
+- `supabase/config.toml` + `supabase/.gitignore` — verbatim
+  `supabase@2.115.0 init` output (the Unit B pin), proven byte-identical in
+  evidence; `project_id = "noema"` is an internal identifier (ruling 8
+  exempt). The init-generated `supabase/.temp` stays untracked and ignored.
+- `supabase/migrations/20260820100000_v1_core_schema.sql` — the three ruled
+  entities exactly (profiles, captures, transcripts), FK-supporting
+  indexes, `updated_at` triggers where the column exists. The transcripts
+  `user_id`-consistency guarantee is a composite FK
+  `(capture_id, user_id) → captures (id, user_id)` backed by
+  `UNIQUE (id, user_id)` — database-enforced, no trigger logic.
+- `supabase/migrations/20260820100100_v1_rls_policies.sql` — explicit
+  grants to `authenticated` only (load-bearing: staging post-dates
+  Supabase's auto-expose default change, so new tables carry no Data API
+  privileges until granted; `anon` and `service_role` deliberately get
+  nothing), ENABLE + FORCE on all three tables, and the per-operation
+  owner-only policy matrix with initplan-wrapped `(select auth.uid())`
+  predicates.
+- `supabase/migrations/20260820100200_v1_profile_provisioning.sql` —
+  `handle_new_user` (SECURITY DEFINER, `search_path` pinned to `''`, body
+  exactly one schema-qualified insert), AFTER INSERT trigger on
+  `auth.users`, and an INSERT-only `TO postgres` policy that exists because
+  FORCE RLS would otherwise deny the definer insert at signup (hosted
+  `postgres` has no BYPASSRLS; `auth.uid()` is null in that context).
+  Widens nothing client-facing: `postgres` is not a Data API role.
+- `supabase/migrations/20260820100300_v1_storage_captures_audio.sql` —
+  private `captures-audio` bucket (plain insert, fails loudly if one
+  already exists) and four owner-only `storage.objects` policies pinned to
+  the bucket and a `{user_id}/` leading path segment; keys with no folder
+  fail closed.
+- `docs/05-quality/evidence/004a-schema-rls/` — three producers
+  (`capture.sh`, `stability.sh`, `verify-migrations.mjs`), eight
+  transcripts, and the claims-table README. The core artifact is AST-level:
+  the real PostgreSQL 17 parser (pinned `libpg-query@17.7.4`) parses all
+  four migrations (38 statements) and 72 assertions pin the dispatch scope
+  column-by-column, the full policy matrix with exact predicates, and
+  append-class bounds; a seven-scenario negative control proves the gate
+  discriminates; scaffolding provenance is byte-compared against a fresh
+  pinned-CLI init; the stability gate ran 6 gated artifacts × 2 runs,
+  0 differing, exit 0.
+- State files: the Unit C Active-work row and this block. Nothing else.
+
+**What I verified, and how**
+
+Full claims table with classifications in `004a-schema-rls/README.md`.
+
+| Check | Class | Artifact |
+| --- | --- | --- |
+| All four migrations parse under the real PG17 grammar (38 statements, 0 failures) | PASS | `004a/sql-assertions.txt` |
+| Entity scope exactly the owner-ruled v1 set, column-by-column, nothing extra (statement whitelist + count bounds) | PASS | `004a/sql-assertions.txt` — 72/72 |
+| transcripts.user_id provably consistent with the parent capture (composite FK) | PASS | `004a/sql-assertions.txt` |
+| RLS ENABLE + FORCE ×3; owner-only per-operation matrix TO authenticated; no anon/PUBLIC policy; the one postgres-scoped provisioning INSERT documented | PASS | `004a/sql-assertions.txt` |
+| Storage: private bucket + four `{user_id}/`-scoped policies | PASS | `004a/sql-assertions.txt` |
+| The assertion gate discriminates (7 tamper scenarios, incl. append-class) | PASS | `004a/assertions-negative-control.txt` |
+| supabase/ scaffolding byte-identical to pinned-CLI init; `.temp` untracked + ignored | PASS | `004a/config-provenance.txt` |
+| Four non-install CI steps at this head, all exit 0; no dependency delta vs base (probe) | PASS / install NOT RUN with reason | `004a/gates.txt` |
+| No credential shape in the index (5 patterns, positive controls) | PASS | `004a/secret-scan.txt` |
+| Gated artifacts regenerate byte-for-byte (6 × 2 runs) | PASS | `004a/stability.txt` |
+| Migrations apply cleanly to noema-staging | NOT RUN — owner-executed (ruling 10); requested below | — |
+| Live RLS denial/allow, storage scoping, signup provisioning | NOT RUN — needs the applied schema; Phase B evidence | — |
+| Types regeneration against the applied schema | NOT RUN — owner-executed; Phase B commits it | — |
+| `supabase db lint` / local stack | NOT RUN — needs Docker + a live database; Phase A is static by dispatch | — |
+| CI on this branch | NOT RUN — no PR yet | — |
+
+**What is broken or uncertain — for the controller**
+
+1. **Operational caveat (workflow-surfaced, no code change):** FORCE RLS
+   plus hosted `postgres` lacking BYPASSRLS means the dashboard Table
+   Editor/SQL editor see zero rows in the three tables and
+   `supabase db dump --data-only` skips them. Signup provisioning, platform
+   backups, and FK cascades are unaffected. FORCE is the dispatch-mandated
+   posture; inspecting data goes through an authenticated client or
+   dashboard user impersonation. Whether OPERATIONS.md should record this
+   is a controller call — not edited here (exclusions).
+2. **Two hosted-apply surfaces are provable only at apply time:** CREATE
+   TRIGGER on `auth.users` and CREATE POLICY on `storage.objects` as
+   `postgres` (both documented Supabase migration patterns). A refusal
+   surfaces loudly in the owner's `db push` transcript and would come back
+   to a fix cycle.
+3. `supabase/config.toml` carries the generated `[db] major_version = 17`;
+   `supabase link` warns if staging's Postgres major differs — worth
+   confirming in the owner's transcript.
+4. Nothing else new. The 22 accepted advisories, the Unit A gate staleness,
+   and all backlog items stand unchanged; no dependency was added.
+
+**What I did NOT do**
+
+No database connection of any kind — staging, production, or local; no
+credentials handed, requested, or used; no `supabase link`, `db push`, or
+MCP database tooling. No schema beyond the ruled entities; no auth UI or
+client feature code; no edits to `src/`, `package.json`, the lockfile,
+`app.json` (`expo.scheme` frozen, ruling 8), CI, or anything under
+`docs/03-decisions/` or `docs/04-reviews/`; no prior HANDOFF or LOCK bytes
+touched; the LOCK stays `BUILD` by dispatch design. Migrations were
+authored, never applied — nothing RED beyond the approved scope was
+touched.
+
+**Next step — owner-executed (ruling 10), then Phase B**
+
+1. Owner, from a checkout of `feat/schema-rls-v1` (branch pushed): link the
+   staging project (`supabase link --project-ref <staging ref>` — owner
+   holds the ref, the DB password, and `SUPABASE_ACCESS_TOKEN`; builders
+   never do) and run `supabase db push`; the four migrations apply in
+   filename order. Expected transcript notes: the bucket insert fails
+   loudly if a `captures-audio` bucket already exists (by design); a
+   version warning appears if staging is not Postgres 17; post-apply, the
+   dashboard Table Editor showing zero rows in the three tables is the
+   FORCE-RLS posture working, not a failure.
+2. Owner: `SUPABASE_PROJECT_REF=<staging ref> npm run types:gen` to
+   regenerate `src/lib/database.types.ts` against the applied schema. Do
+   not commit — Phase B commits it.
+3. Hand both transcripts to the controller. Phase B (fresh session, Fable
+   5 / Max per ruling 5, separate dispatch) commits the regenerated types,
+   produces the post-apply RLS-denial evidence against staging, and flips
+   the LOCK to REVIEW for the reviewer of record + advisory review.
+
+LOCK status line: `Status: BUILD`.
+
+---
+
 ## 2026-08-19 — feat/supabase-wiring (REVIEW-010 re-review)
 
 **Controller:** CTRL-003 Supabase Wiring. **Reviewer of record:** Codex Sol,

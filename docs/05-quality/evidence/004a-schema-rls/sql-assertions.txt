@@ -1,0 +1,94 @@
+= Unit C Phase A — static verification of supabase/migrations =
+parser: libpg-query@17.7.4 (libpg_query, PostgreSQL 17 grammar)
+
+-- parse validity --
+OK   20260820100000_v1_core_schema.sql  statements=9
+OK   20260820100100_v1_rls_policies.sql  statements=21
+OK   20260820100200_v1_profile_provisioning.sql  statements=3
+OK   20260820100300_v1_storage_captures_audio.sql  statements=5
+
+-- statement inventory --
+PASS migration files are exactly the four v1 files, in apply order
+PASS statement counts per file are exactly 9, 21, 3, 5 (38 total — appended statements cannot hide)
+PASS every statement type is on the expected whitelist
+PASS exactly three tables are created: public.profiles, public.captures, public.transcripts
+PASS exactly three triggers are created in the whole set (two set_updated_at, one provisioning)
+PASS the only INSERT targets storage.buckets
+PASS exactly two functions are created: public.set_updated_at, public.handle_new_user
+-- public.profiles --
+PASS profiles columns are exactly (id, display_name, locale, created_at, updated_at)
+PASS profiles.id uuid PRIMARY KEY
+PASS profiles.id FK -> auth.users(id) ON DELETE CASCADE
+PASS profiles.display_name text, nullable
+PASS profiles.locale text NOT NULL DEFAULT 'en'
+PASS profiles.locale CHECK (locale IN ('en','ar'))
+PASS profiles.created_at timestamptz NOT NULL DEFAULT now()
+PASS profiles.updated_at timestamptz NOT NULL DEFAULT now()
+-- public.captures --
+PASS captures columns are exactly (id, user_id, status, audio_path, duration_ms, captured_at, created_at, updated_at)
+PASS captures.id uuid PRIMARY KEY DEFAULT gen_random_uuid()
+PASS captures.user_id uuid NOT NULL FK -> auth.users(id) ON DELETE CASCADE
+PASS captures.status text NOT NULL DEFAULT 'recorded'
+PASS captures.status CHECK (status IN ('recorded','transcribing','ready','failed'))
+PASS captures.audio_path text, nullable
+PASS captures.duration_ms integer, nullable, CHECK (duration_ms >= 0)
+PASS captures.captured_at timestamptz NOT NULL DEFAULT now()
+PASS captures.created_at timestamptz NOT NULL DEFAULT now()
+PASS captures.updated_at timestamptz NOT NULL DEFAULT now()
+PASS captures UNIQUE (id, user_id) — the referenced key for the composite FK
+-- public.transcripts --
+PASS transcripts columns are exactly (id, capture_id, user_id, text, language, provider, created_at)
+PASS transcripts.id uuid PRIMARY KEY DEFAULT gen_random_uuid()
+PASS transcripts.capture_id uuid NOT NULL
+PASS transcripts.user_id uuid NOT NULL FK -> auth.users(id) ON DELETE CASCADE
+PASS transcripts.text text NOT NULL
+PASS transcripts.language text, nullable (provider-agnostic)
+PASS transcripts.provider text, nullable (provider-agnostic)
+PASS transcripts.created_at timestamptz NOT NULL DEFAULT now(); no updated_at column
+PASS user_id-consistency guarantee: composite FK (capture_id, user_id) -> public.captures (id, user_id) ON DELETE CASCADE
+-- indexes and updated_at triggers --
+PASS FK-supporting indexes: captures(user_id), transcripts(capture_id,user_id), transcripts(user_id)
+PASS set_updated_at: returns trigger, plpgsql, SECURITY INVOKER, search_path pinned to ''
+PASS set_updated_at body is exactly the updated_at reassignment plus return new — nothing else
+PASS BEFORE UPDATE row triggers run set_updated_at on exactly profiles and captures (transcripts has no updated_at)
+-- grants (staging post-dates the auto-expose default change) --
+PASS each of the three tables is granted exactly select,insert,update,delete
+PASS grants go to authenticated only — never anon, service_role, or PUBLIC
+-- RLS: enable + force --
+PASS ALTER TABLE statements are exactly the six RLS enable/force commands — no DISABLE, NO FORCE, or any other subtype anywhere
+PASS public.profiles: ENABLE ROW LEVEL SECURITY
+PASS public.profiles: FORCE ROW LEVEL SECURITY
+PASS public.captures: ENABLE ROW LEVEL SECURITY
+PASS public.captures: FORCE ROW LEVEL SECURITY
+PASS public.transcripts: ENABLE ROW LEVEL SECURITY
+PASS public.transcripts: FORCE ROW LEVEL SECURITY
+-- RLS: owner-only policy matrix --
+PASS every policy names its schema explicitly (public or storage) and the total is exactly 17 — an unqualified or extra policy cannot hide
+PASS public.profiles select: one permissive policy TO authenticated, (select auth.uid()) = id
+PASS public.profiles insert: one permissive policy TO authenticated, (select auth.uid()) = id on WITH CHECK
+PASS public.profiles update: one permissive policy TO authenticated, (select auth.uid()) = id on USING and WITH CHECK
+PASS public.profiles delete: one permissive policy TO authenticated, (select auth.uid()) = id
+PASS public.captures select: one permissive policy TO authenticated, (select auth.uid()) = user_id
+PASS public.captures insert: one permissive policy TO authenticated, (select auth.uid()) = user_id on WITH CHECK
+PASS public.captures update: one permissive policy TO authenticated, (select auth.uid()) = user_id on USING and WITH CHECK
+PASS public.captures delete: one permissive policy TO authenticated, (select auth.uid()) = user_id
+PASS public.transcripts select: one permissive policy TO authenticated, (select auth.uid()) = user_id
+PASS public.transcripts insert: one permissive policy TO authenticated, (select auth.uid()) = user_id on WITH CHECK
+PASS public.transcripts update: one permissive policy TO authenticated, (select auth.uid()) = user_id on USING and WITH CHECK
+PASS public.transcripts delete: one permissive policy TO authenticated, (select auth.uid()) = user_id
+PASS the 13th public policy is the provisioning path: INSERT TO postgres WITH CHECK (true) on profiles only
+PASS no policy anywhere names anon or PUBLIC
+-- profiles provisioning --
+PASS handle_new_user: returns trigger, plpgsql, SECURITY DEFINER, search_path pinned to ''
+PASS handle_new_user body is exactly the single schema-qualified profiles insert plus return new — nothing else runs as definer
+PASS trigger on_auth_user_created: AFTER INSERT FOR EACH ROW on auth.users -> public.handle_new_user
+-- storage: private bucket + owner-only object policies --
+PASS bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false)
+PASS storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped
+PASS storage.objects insert: one policy TO authenticated, bucket-pinned and {user_id}/-scoped on WITH CHECK
+PASS storage.objects update: one policy TO authenticated, bucket-pinned and {user_id}/-scoped on USING and WITH CHECK
+PASS storage.objects delete: one policy TO authenticated, bucket-pinned and {user_id}/-scoped
+PASS storage.objects has exactly those four policies and no table-level ALTER (platform-managed table)
+
+RESULT: 72 assertions, 72 PASS, 0 FAIL, parse failures 0
+--- exit code: 0 (0 = every assertion passed) ---

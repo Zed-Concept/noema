@@ -1,0 +1,4 @@
+node: v26.0.0
+npm: 11.12.1
+os: Darwin 24.6.0
+locale: LC_ALL=C LANG=C (pinned by capture.sh; see README normalization note)

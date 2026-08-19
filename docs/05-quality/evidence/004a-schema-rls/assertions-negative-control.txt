@@ -1,0 +1,33 @@
+# Negative control: verify-migrations.mjs must go red on each tampered copy.
+# Each scenario: fresh copy of supabase/migrations into scratch, one mutation,
+# one run. Expected: exit 1 and the named assertion FAILs.
+
+scenario: FORCE ROW LEVEL SECURITY removed from captures
+expected failing assertion: public.captures: FORCE ROW LEVEL SECURITY
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: transcripts DELETE policy deleted
+expected failing assertion: public.transcripts delete: one permissive policy TO authenticated, (select auth.uid()) = user_id
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: storage INSERT policy widened to anon
+expected failing assertion: storage.objects insert: one policy TO authenticated, bucket-pinned and {user_id}/-scoped on WITH CHECK
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: composite FK narrowed to capture_id only (user_id consistency lost)
+expected failing assertion: user_id-consistency guarantee: composite FK (capture_id, user_id) -> public.captures (id, user_id) ON DELETE CASCADE
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: provisioning function demoted to SECURITY INVOKER
+expected failing assertion: handle_new_user: returns trigger, plpgsql, SECURITY DEFINER, search_path pinned to ''
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: DISABLE ROW LEVEL SECURITY appended after the enable/force block
+expected failing assertion: public.captures: ENABLE ROW LEVEL SECURITY
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: schema-unqualified USING (true) policy appended
+expected failing assertion: every policy names its schema explicitly (public or storage) and the total is exactly 17 — an unqualified or extra policy cannot hide
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+--- enforced: every scenario exits 1 with its named FAIL line, or capture.sh exits 1 (fail closed) ---

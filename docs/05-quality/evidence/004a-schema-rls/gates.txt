@@ -1,0 +1,31 @@
+# Four CI steps at this head. npm ci is deliberately NOT run here: this
+# unit's delta contains no dependency change (proven below), and 002d/003a
+# document the destructive npm-ci ENOTEMPTY transient under a live editor.
+# The install step runs in CI itself when the PR opens.
+
+$ git diff 64c1ce603491fb2cb6e8b7b948a369731a436c7f --name-only -- package.json package-lock.json   # no dependency delta vs the dispatch base
+<none>
+--- dependency files changed since base: 0 ---
+
+$ npx tsc --noEmit
+--- exit code: 0 ---
+
+$ npx expo lint
+--- exit code: 0 ---
+
+$ npx jest
+PASS src/__tests__/home-screen.test.tsx
+  placeholder home screen
+    ✓ renders
+
+Test Suites: 1 passed, 1 total
+Tests:       1 passed, 1 total
+Snapshots:   0 total
+Time: <duration>
+Ran all test suites.
+--- exit code: 0 ---
+
+$ npx prettier --check .
+Checking formatting...
+All matched files use Prettier code style!
+--- exit code: 0 ---

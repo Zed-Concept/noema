@@ -96,7 +96,7 @@ What is in flight, who owns it, and what it is blocked on. One row per stream.
 
 | Stream | Owner | Status | Blocked on |
 |---|---|---|---|
-| Unit C — Schema and RLS v1 (`feat/schema-rls-v1`) | Claude Code | LOCK registered ahead of dispatch; RED on arrival, advisory seat DeepSeek V4 Pro | Owner's v1 entity-scope ruling, then dispatch |
+| Unit C — Schema and RLS v1 (`feat/schema-rls-v1`) | Claude Code | Phase A built: four migrations + static evidence (`004a-schema-rls`), HANDOFF requests the owner-executed apply; RED, advisory seat DeepSeek V4 Pro; LOCK stays BUILD by dispatch | Owner-executed staging apply + `types:gen` (ruling 10), then the Phase B dispatch |
 | Production Supabase project | Owner | Parked by ruling — create in East US (North Virginia) before any launch-facing unit | Free-tier slot or Pro upgrade at that time |
 
 Unit A merged 2026-08-19 at `8d648bb` (PR #2, REVIEW-007 PASS); its full
