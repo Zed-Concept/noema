@@ -1,0 +1,74 @@
+# Five CI steps at this head. Produced by capture.sh; normalization in README.md.
+
+$ npm ci
+added 1093 packages in <duration>
+--- exit code: 0 ---
+
+$ npx tsc --noEmit
+--- exit code: 0 ---
+
+$ npx expo lint
+--- exit code: 0 ---
+
+$ npx jest
+PASS src/__tests__/home-screen.test.tsx
+  placeholder home screen
+    ✓ renders
+
+Test Suites: 1 passed, 1 total
+Tests:       1 passed, 1 total
+Snapshots:   0 total
+Time: <duration>
+Ran all test suites.
+--- exit code: 0 ---
+
+$ npx prettier --check .
+Checking formatting...
+All matched files use Prettier code style!
+--- exit code: 0 ---
+
+# fail-loudly: importing the shared client with neither env var set must throw
+$ env -u EXPO_PUBLIC_SUPABASE_URL -u EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY node -e "import('./src/lib/supabase.ts')..."
+throws as designed: Supabase is not configured: EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY must both be set. Copy .env.example to .env and fill in the staging values (owner-held).
+--- exit code: 0 (0 = threw as designed) ---
+
+# fail-loudly: URL set but key missing must throw the same way
+$ env -u EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY EXPO_PUBLIC_SUPABASE_URL=<synthetic> node -e "import('./src/lib/supabase.ts')..."
+throws as designed: Supabase is not configured: EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY must both be set. Copy .env.example to .env and fill in the staging values (owner-held).
+--- exit code: 0 (0 = threw as designed) ---
+
+# fail-loudly: key set but URL missing must throw the same way
+$ env -u EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<synthetic> node -e "import('./src/lib/supabase.ts')..."
+throws as designed: Supabase is not configured: EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY must both be set. Copy .env.example to .env and fill in the staging values (owner-held).
+--- exit code: 0 (0 = threw as designed) ---
+
+# .env hygiene — literal .env* is ignored; .env.example alone is negated back
+$ git check-ignore .env .env.local .env.staging .envrc .envfoo
+.env
+.env.local
+.env.staging
+.envrc
+.envfoo
+--- exit code: 0 (0 = ignored; every probed name must be echoed above) ---
+# negative probe (REVIEW-009): .env.example must NOT be ignored. The path is
+# tracked, and default check-ignore never reports tracked paths — it exits 1
+# whatever the patterns say — so only --no-index evaluates the rules
+# themselves. Expected: exit 1, no output. If the !.env.example negation were
+# removed, .env* would match and this form would print the path and exit 0.
+$ git check-ignore --no-index .env.example
+--- exit code: 1 (1 = not ignored, decided by pattern evaluation) ---
+# same probe, verbose, to name the source of that decision: the line printed
+# must be .gitignore's !.env.example negation. In -v mode a negation match
+# counts as a match — exit 0 with the line printed is the expected result, and
+# the discriminating exit code stays with the plain form above. With the
+# negation removed, -v would name the .env* line instead.
+$ git check-ignore --no-index -v .env.example
+.gitignore:26:!.env.example	.env.example
+--- exit code: 0 (0 = a pattern matched; the line above names the deciding negation) ---
+$ git ls-files --error-unmatch .env.example >/dev/null && echo tracked
+tracked
+--- exit code: 0 ---
+$ grep -E '^[A-Z_]+=' .env.example   # exactly the two variables, values blank
+EXPO_PUBLIC_SUPABASE_URL=
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+--- exit code: 0 ---

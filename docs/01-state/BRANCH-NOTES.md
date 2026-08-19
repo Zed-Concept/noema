@@ -64,8 +64,9 @@ Branch:             feat/supabase-wiring
 Controller:         CTRL-003 Supabase Wiring
 Builder:            Claude Code
 Model+Effort:       Fable 5 / Ultracode (xhigh + workflows) / fresh session
+                    (fix cycles: Fable 5 / Max per ruling 5, fresh session)
 Reviewer of record: Codex (Codex Sol / Ultra / fresh session)
-Status:             BUILD
+Status:             REVIEW — fix cycle 2 complete, awaiting re-review
 Dispatch:           Unit B — Supabase wiring: add supabase-js, a typed client
                     module fed by staging env config, generated-types plumbing
                     (generation script plus committed placeholder output),
@@ -74,13 +75,109 @@ Dispatch:           Unit B — Supabase wiring: add supabase-js, a typed client
                     or auth policy work, no production access, no provider
                     keys. The owner hands the staging URL + anon key at
                     dispatch; credentials are never committed.
-Evidence:           pending — docs/05-quality/evidence/003a-supabase-wiring/
+Evidence:           docs/05-quality/evidence/003a-supabase-wiring/
 ```
 
 Registered by the controller in the CTRL-003 opening state commit, ahead of
 the builder session. Per the house workflow the builder flips `BUILD` →
 `REVIEW` in its handoff amendment; `MERGED` only by the controller, after
 review.
+
+**Closing note (2026-08-19).** Build complete, staging only.
+`@supabase/supabase-js@2.112.3` is in with the committed lockfile (zero new
+audit advisories — still the accepted 22). `src/lib/supabase.ts` exports one
+shared client typed by the committed placeholder `src/lib/database.types.ts`,
+reads `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
+and throws at load if either is missing (proven, not asserted). `npm run
+types:gen` wraps CLI type generation with the project ref from env at run
+time — the generation run itself is NOT RUN: owner-executed, it needs the
+access token builders do not hold. `.env.example` carries exactly the two
+variables, blank; `.env*` stays ignored. Staging connectivity proven by
+`npm run check:supabase` with owner-handed values via local env only: three
+unauthenticated round-trips plus one local client check, 4/4 pass, exit 0,
+URL/key/host redacted at source and the redaction proven total on the failure
+path. All five CI steps green locally; CI itself NOT RUN (no PR yet). One
+service fact recorded: the REST OpenAPI root rejects publishable-class keys
+by design, so health is probed on a table route. Evidence in
+`docs/05-quality/evidence/003a-supabase-wiring/`, including the Unit A
+stability gate run unmodified at this head (exit 1 — three differences: two
+proven pre-existing at the dispatch base, one this unit's new lintable files;
+triaged in the 003a README, handed to the controller in the HANDOFF, no Unit A
+evidence repaired). Built under Ultracode per ruling 5; workflow disclosure
+per ruling 6 is in the HANDOFF block. Status moved `BUILD` → `REVIEW` in this
+amendment; `MERGED` only by the controller, after review.
+
+**REVIEW-008 fix loop closing note (2026-08-19).** REVIEW-008 (Codex Sol,
+verdict FAIL) recorded three medium findings — locale-variant `deps.txt`
+breaking the byte-stability claim, `OPERATIONS.md` falsely asserting Unit B
+does not exist, and only-partial `.env*` ignore coverage — plus two low
+(three PASS claims without committed artifacts; a wrong HANDOFF inventory
+count) and three advisory items the controller adjudicated into this cycle.
+All cleared here — same builder, same branch, fresh session at Max effort per
+ruling 5, `Status: REVIEW` throughout, no staging credentials handed or used.
+
+`capture.sh` pins `LC_ALL=C LANG=C` (the omitted variable REVIEW-008
+identified) and now fails closed on a secret-scan match, broken positive
+control, or broken redaction control. The gated set grew three → five:
+`types-plumbing.txt` (npm script reachable, `bash -n`, missing-ref refusal
+before any CLI invocation, pinned CLI, placeholder-import typecheck) and
+`redaction-control.txt` (the malformed-URL repro committed: exit 1, zero raw
+occurrences). Fail-loudly now proves URL-only and key-only, not just
+both-missing. `.gitignore` ignores literal `.env*` with `.env.example` the
+sole negation, probed from both sides including `.envrc`/`.envfoo` and the
+negative probe. `OPERATIONS.md`'s local-run section states what Unit B
+shipped (controller ruling superseded the v1 exclusion for those lines only;
+the pre-existing staging contradiction stays backlogged, untouched).
+`scripts/gen-types.sh` pins `supabase@2.115.0` exact (resolved at fix time),
+recorded in script and README. `connectivity.sh` propagates the child exit
+status; the committed `connectivity.txt` was not regenerated — the evidence
+boundary stands.
+
+Stability gate fresh at this head: five gated artifacts, two runs each,
+0 differing, process exit 0; the regenerated `deps.txt` is byte-identical to
+the reviewed copy. The five CI steps re-ran green inside both captures; CI
+itself still NOT RUN (no PR). The 003a directory now holds five scripts,
+eleven transcripts, and the README (the new transcripts come from the
+existing `capture.sh`, not new scripts) — the prior HANDOFF block's "six
+scripts" (finding 5) is corrected in the new HANDOFF block, never by editing
+the old one. Status stays `REVIEW` for the re-review.
+
+**REVIEW-009 fix loop closing note (2026-08-19).** REVIEW-009 (Codex Sol,
+verdict FAIL) recorded a single low, verdict-driving evidence finding: the
+committed `.env.example` negative probe ran `git check-ignore` without
+`--no-index`, and a tracked path is index-suppressed by default — exit 1
+regardless of the patterns — so `gates.txt` proved nothing about the
+`!.env.example` negation. Fixed here — same builder, same branch, fresh
+session at Max effort per ruling 5, `Status: REVIEW` throughout, no staging
+credentials handed or used.
+
+The committed probe is now pattern-evaluating and two-sided in one transcript:
+plain `git check-ignore --no-index .env.example` exits 1 — and would print the
+path and exit 0 if the negation were removed — and the verbose form names
+`.gitignore`'s `!.env.example` as the deciding line. One git semantic the fix
+had to honor, verified from both sides in a disposable scratch repo before the
+edit: in `-v` mode a negation match counts as a match, so the verbose
+invocation exits 0 by design and the discriminating exit code stays with the
+plain form. The dispatch's single-probe shorthand therefore resolves to those
+two invocations — the same pair REVIEW-009's own methodology ran. `gates.txt`
+was regenerated through `capture.sh`; among gated artifacts only `gates.txt`
+changed, `deps.txt` regenerated byte-identical under the pinned locale, and
+`connectivity.txt` is untouched. The 003a README's gates row and claim 5 now
+describe the pattern-evaluating probe, and — per an in-flight controller
+amendment — its normalization statement records the observed `deps.txt`
+path-mask sensitivity in one sentence, the mask itself left unrepaired
+(adjacent finding). Counts unchanged: five `.sh`, eleven `.txt`, one README.
+
+Stability gate fresh at this head: five gated artifacts, two runs each,
+0 differing, process exit 0. Disclosed in full in the HANDOFF block: the gate
+ran in a disposable clone of this exact head carrying this cycle's three
+changed files (byte-identical gated inputs to this commit), because the
+session's environment reproduced the 002d-documented npm `ENOTEMPTY`
+transient on every full-tree `npm ci` (three of three; npm's log names
+`rmdir node_modules/@jest`, errno -66, shell exit 190). Two capture attempts
+hit that transient and transiently rewrote working-tree artifacts before the
+clean regeneration restored every byte; nothing red was staged or committed.
+Status stays `REVIEW` for the re-review.
 
 ---
 

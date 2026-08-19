@@ -1,0 +1,3 @@
+$ npm audit  # summary line only; the full tree reorders run to run
+22 vulnerabilities (7 moderate, 15 high)
+--- exit code: 1 (nonzero while advisories exist) ---

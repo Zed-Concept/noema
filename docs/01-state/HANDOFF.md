@@ -8,6 +8,724 @@ Append a new block at the top. Never edit an old one.
 
 ---
 
+## 2026-08-19 — feat/supabase-wiring (REVIEW-010 re-review)
+
+**Controller:** CTRL-003 Supabase Wiring. **Reviewer of record:** Codex Sol,
+ultra effort, fresh session, review only. **Reviewed base:**
+`8847ca6b770d70c0bf6c46dc83244da8ebd23ad7`. **Reviewed target:**
+`acfd53f0b85c7d80c5f721a49a8635a9aa621a5f`. **Verdict:** PASS. **LOCK:**
+`Status: REVIEW — fix cycle 2 complete, awaiting re-review` (left unchanged;
+MERGED is controller-only).
+
+**Disclosure:** review methods: fixed-range Standards/Spec review, Noema
+governance review, and Supabase evidence-boundary verification. Subagent
+fan-out: three read-only lanes — Standards, specification, and
+governance/evidence boundaries. No subagent edited the repository.
+
+**What happened**
+
+REVIEW-010 is **PASS with no new findings**. REVIEW-009's single low,
+verdict-driving finding is cleared. The committed negative probe now evaluates
+patterns with plain `git check-ignore --no-index .env.example`, records the
+discriminating exit 1, and uses the verbose form to name
+`.gitignore:26:!.env.example` as the deciding negation. In an independent
+scratch repo, removing the negation made the plain form print `.env.example`
+and exit 0 and made the verbose form name `.env*`; restoring the negation
+returned plain 1 and verbose 0 naming `!.env.example`.
+
+The expected seven-file touch set correctly resolves to six changed files.
+The omitted `stability.txt` has identical base/head Git blob `b051b85b...`.
+The exact committed `stability.sh` was rerun in a clean plain-path clone pinned
+to the actual target: five gated artifacts × two runs, all ten identical,
+0 differing, encoded and process exit 0. The fresh `stability.txt` was clean
+against the target and had SHA-256
+`758d3f7f83cade576b8c23d1c2490b65f5c9f3d2226165b4f6c43ab515a1f12b`.
+That independently validates the deterministic no-hunk resolution.
+
+`capture.sh` and `gates.txt` each have one delta hunk, confined to the probe.
+Only those two files and the authorized 003a README differ under the evidence
+directory. Every other gated artifact reproduced byte-identically; `deps.txt`,
+`connectivity.txt`, `stability.txt`, `stability.sh`, and all other 003a
+artifacts outside the three authorized paths retain their prior blobs. Counts
+remain five `.sh`, eleven `.txt`, one README. The exact-head secret scan is
+clean: all four positive-controlled patterns report zero matching files, and
+four independent target-index checks also returned no matches.
+
+**Incident assessment**
+
+The committed builder HANDOFF fully discloses the npm `ENOTEMPTY` incident:
+three failing full-tree attempts and exits, suspected watcher cause, transient
+artifact rewrites and restoration, external user-cache residue, both clone
+locations/results, and all four adjacent findings. No broken-run output remains
+in 003a evidence; incident terms occur only in the required disclosure.
+
+One methodology observation is retained, not promoted to a finding: the
+builder's disclosed clone was `8847ca6` plus the three evidence-file overlays,
+not literally the final six-file Git tree/index. Since `capture.sh` reads the
+whole tree and index, that run alone was not sufficient exact-head proof. The
+reviewer's actual-`acfd53f` clone rerun reproduced every gated byte and closes
+that provenance gap.
+
+The controller-amended README sentence is sufficient: it names the `deps.txt`
+`$PWD` mask, npm 11 redaction mechanism, UUID-shaped-path condition, failure
+effect, and plain-path requirement. The repair remains backlogged exactly as
+directed.
+
+**Adjacent findings adjudicated**
+
+1. `capture.sh` can exit 0 despite a nonzero CI-step transcript (the same
+   coarseness includes Prettier): **accepted and backlogged, not
+   verdict-driving**. The exact byte gate detects the changed exit/text.
+2. The redaction control can accept an unrelated exit-1 failure with zero raw
+   values: **accepted and backlogged, not verdict-driving**. The committed
+   expected transcript plus byte comparison distinguishes module-not-found.
+3. The fail-loudly probes accept any import rejection: **accepted and
+   backlogged, not verdict-driving**, for the same transcript-comparison reason.
+4. The `deps.txt` path-mask sensitivity: **accepted and backlogged, not
+   verdict-driving**. It fails red, is fully disclosed, and repair was excluded.
+
+**Other verification**
+
+- Fresh fetch: checked-out branch, local ref, remote-tracking ref, and
+  `FETCH_HEAD` all `acfd53f`; sole parent and merge-base `8847ca6`; one commit.
+- Delta: six authorized paths, whitespace clean; state changes are limited to
+  the Unit B Active-work row, Unit B LOCK restatement/additive closing note,
+  and the new builder HANDOFF top prepend. Prior HANDOFF bytes and all immutable
+  reviews/decisions are preserved; excluded paths are untouched.
+- GitHub branch CI: NOT RUN — fresh queries found zero PRs and zero workflow
+  runs for `feat/supabase-wiring`.
+- Staging connectivity: NOT RUN; unchanged committed evidence stands.
+- Authenticated type generation: NOT RUN; owner-executed by design.
+
+**What I did NOT do**
+
+No staging or production Supabase query, credentials, authenticated type
+generation, product/evidence remediation, prior-record edit, PR, merge,
+deployment, or push. Disposable scratch/clone trees were deleted. The primary
+checkout was clean before the two authorized reviewer records were written.
+
+**Next step**
+
+REVIEW-010 permits the owner/controller flow to proceed. The LOCK remains
+REVIEW in this reviewer commit; the owner merges and the controller alone
+records MERGED afterward.
+
+LOCK status line: `Status: REVIEW — fix cycle 2 complete, awaiting re-review`.
+
+---
+
+## 2026-08-19 — feat/supabase-wiring (REVIEW-009 fix cycle 2)
+
+**Controller:** CTRL-003 Supabase Wiring. **Builder:** Claude Code — Fable 5,
+Max effort per ruling 5 (fix loops are Max-class), fresh session, model
+verified against the dispatch before any work. **Reviewer of record:** Codex
+(Codex Sol / Ultra, fresh session). **Fix base:**
+`8847ca6b770d70c0bf6c46dc83244da8ebd23ad7` (the REVIEW-009 record commit,
+parent `c221006`), fetched and confirmed as the dispatch-named origin tip
+before any work. **LOCK:** `Status: REVIEW — fix cycle 2 complete, awaiting
+re-review`.
+
+**Disclosure (ruling 6):** workflows run: 0; subagent fan-out: none. Every
+change and verification in this cycle was made directly in this session.
+
+**What this cycle cleared** — the single REVIEW-009 finding (low,
+verdict-driving): the committed `.env.example` negative probe was vacuous.
+`capture.sh` ran `git check-ignore .env.example` on a tracked path, which
+default `check-ignore` suppresses — exit 1 regardless of the patterns — so
+the committed `gates.txt` never exercised the `!.env.example` negation.
+
+The probe is now pattern-evaluating, and the committed transcript carries
+both sides:
+
+- `git check-ignore --no-index .env.example` — no output, **exit 1**: not
+  ignored, decided by the pattern rules themselves. Remove the negation and
+  this form prints the path and exits 0.
+- `git check-ignore --no-index -v .env.example` — prints the verbose line
+  `.gitignore:26:!.env.example` against the path: the transcript names the
+  negation as the deciding rule.
+- One git semantic had to be honored, so the dispatch's single-probe
+  shorthand resolves to those two invocations: in `-v` mode a negation match
+  counts as a match, meaning the verbose form exits **0** by design and
+  cannot carry the discriminating exit code — the plain form carries it.
+  Verified from both sides in a disposable scratch repo before the edit:
+  negation present → plain exit 1, verbose exit 0 naming `!.env.example`;
+  negation removed → plain prints the path and exits 0, verbose names the
+  `.env*` line. REVIEW-009's own methodology ran the same pair ("a correct
+  fresh `git check-ignore --no-index .env.example` returned 1, and the
+  verbose form identified `.gitignore:26:!.env.example`"). Together the two
+  committed results also exclude the no-rule-at-all state, in which both
+  forms are silent and both exit 1.
+
+**Regeneration and gate**
+
+`gates.txt` was regenerated through `capture.sh`. The full delta at this
+head: `capture.sh` (the probe block), `gates.txt` (the probe section only —
+every other section reproduced byte-identically, all five CI steps exit 0),
+the 003a `README.md` (the gates artifact row and claim 5 now describe the
+pattern-evaluating probe, plus the controller-amended one-sentence
+path-mask-sensitivity note in the normalization statement), and the three
+state files (this block, the Unit B Active-work row, the LOCK status
+restatement plus closing note). The
+dispatch's fresh `stability.txt` is committed in the only form git can
+record: the fresh run's transcript is **byte-identical** to the
+already-committed `stability.txt` — a green run of this gate is
+deterministic by design (no timestamps, same five artifacts, same zero
+count) — verified by `cmp` after copying the fresh file into the tree, so
+the delta carries no `stability.txt` hunk and the committed file is the
+fresh run's bytes. Reproducing the green gate at this head is the standing
+proof, exactly as the re-review will run it. Among gated artifacts only
+`gates.txt` changed;
+**`deps.txt` regenerated byte-identical** under the pinned locale, as the
+dispatch required; **`connectivity.txt` is untouched** — no staging
+credentials were handed or used. Counts unchanged: five `.sh`, eleven
+`.txt`, one README.
+
+Stability gate at this head: **five gated artifacts, two runs each,
+0 differing, process exit 0** (`003a/stability.txt`).
+
+**Environmental incident** (disclosed here in full per the dispatch's
+ruling-6 instruction — nothing in this cycle is chat-only):
+
+- This session's environment reproduces the npm `ENOTEMPTY` transient that
+  002d documented as a single-retry event: `npm ci` over a **full**
+  committed `node_modules` tree failed three of three times (twice inside
+  capture runs, once in a controlled reproduction), each shell exit 190;
+  npm's debug log names `rmdir node_modules/@jest`, errno -66. Installs
+  starting from a race-gutted tree passed every time. Two VS Code TypeScript
+  server processes and a typings installer were live against the working
+  copy throughout (this session runs inside the VS Code extension); they are
+  the prime suspect for the mid-delete interference, and cycle 1's green
+  runs on this same machine this morning are consistent with the watcher
+  simply not being active then. Not acted on beyond diagnosis — killing the
+  owner's editor processes or changing machine state is not this builder's
+  call.
+- Consequence 1: the first two capture attempts ran their downstream steps
+  against a race-gutted tree and transiently rewrote four artifacts in the
+  working tree (a bogus registry `tsc` answered `npx tsc`, the fail-loudly
+  and redaction probes threw module-not-found, `npm ls` printed an empty
+  tree). The clean regeneration restored every byte; nothing red was ever
+  staged or committed — the delta contains exactly the intended files.
+- Consequence 2: those broken attempts installed fallback packages into the
+  user-level npx cache (`~/.npm/_npx`): a bogus registry `tsc@2.0.4` plus
+  `expo` and `jest` copies. Machine state outside the repo, inert while
+  `node_modules` is healthy, left in place — flagged for the owner.
+- Consequence 3: `stability.sh` as committed runs `capture.sh` twice
+  back-to-back, so its second run always starts from a full tree — in this
+  session's environment that run cannot survive the race. The gate was
+  therefore run, byte-unmodified, in a **disposable clone of this exact
+  head** (`8847ca6` with this cycle's three changed files overlaid — gated
+  inputs byte-identical to this commit) at a path outside the editor's
+  watch scope; the committed `stability.txt` is that run's transcript. This
+  is the method REVIEW-009 itself used ("In a detached disposable
+  exact-head clone ... I ran the exact 003a stability gate"). Confirming
+  the diagnosis, full-tree `npm ci` never raced in any clone run. The
+  clones were deleted afterwards.
+- Consequence 4 — one instrument fact found on the way, disclosed for
+  future gate runs: the first clone attempt sat under this session's
+  scratchpad directory, whose absolute path contains a UUID-shaped
+  segment. npm 11 redacts credential-shaped strings in its output — it
+  printed that segment as `***` in the `npm ls` header — so `capture.sh`'s
+  `$PWD` → `<repo-root>` mask could not match, `deps.txt` alone compared
+  DIFFERS twice, and that gate run correctly exited 1 (its transcript was
+  superseded, not committed). Every other artifact, `gates.txt` included,
+  compared identical in that same run — the race-free property held. The
+  committed `stability.txt` comes from a second clone at a plain path
+  (`/private/tmp/noema-fixcycle2-gate`), where npm prints the path
+  unredacted and the mask holds. The committed masked `deps.txt` bytes are
+  path-independent either way; the redaction defeats only the masking
+  sed's ability to recognize the running tree's own path at capture time,
+  in any tree whose absolute path contains a UUID-shaped segment.
+
+**Adjacent findings — reported, not acted on** (items 1–3 are one family:
+transcript pass conditions coarser than the specific behavior they exist to
+prove, with the byte-stability comparison as the actual gate; item 4 is an
+environment sensitivity):
+
+1. `capture.sh` exits 0 even when `npm ci`, typecheck, lint, or jest record
+   nonzero exit codes — fail-closed covers only the secret scan and the
+   redaction control. A red run cannot produce a committable green set (its
+   bytes differ from the committed transcripts), but the process exit is
+   misleading on that path.
+2. The redaction control's pass condition (exit 1 + zero raw occurrences)
+   was satisfied by an unrelated failure mode during the broken runs —
+   module-not-found also exits 1 and prints no raw values. The control does
+   not pin which failure path ran; only the byte comparison caught it.
+3. The fail-loudly probes accept any import rejection as "throws as
+   designed" — during the broken runs they printed exactly that for
+   module-not-found. Same class.
+4. `deps.txt`'s path mask (Consequence 4 above) assumes npm prints the
+   checkout path verbatim; npm 11's output redaction of credential-shaped
+   segments defeats it in any tree whose absolute path contains one. Per
+   the in-flight controller amendment this sensitivity is recorded in one
+   sentence in the 003a README's normalization statement; the mask itself
+   is left unrepaired — reported, not acted on.
+
+**What I verified**
+
+| Check | Class | Artifact |
+|---|---|---|
+| Negative probe, plain form: pattern-evaluating, exit 1 | PASS | `003a/gates.txt` |
+| Negative probe, verbose form names `.gitignore:26:!.env.example` | PASS | `003a/gates.txt` |
+| Probe discriminates when the negation is removed | PASS — pre-edit scratch-repo counterfactual: plain prints the path and exits 0, verbose names `.env*` | session testimony; both outcomes stated in the committed transcript's comment lines |
+| 003a stability gate: five gated artifacts × two fresh runs | PASS — 0 differing, exit 0, in the exact-head clone | `003a/stability.txt` |
+| Five CI steps at this head (inside the committed capture) | PASS — all exit 0 | `003a/gates.txt` |
+| `deps.txt` byte-identical under the pinned locale | PASS — absent from the delta | the delta itself |
+| `connectivity.txt` untouched | PASS — absent from the delta | the delta itself |
+| Secret scan | PASS — 0 files, all positive controls matched | `003a/secret-scan.txt` |
+| Prettier over the final tree, incl. these state-file edits | PASS — session check; re-proven by any fresh capture at this head | — |
+| Staging connectivity | NOT RE-RUN by design — committed transcript stands | `003a/connectivity.txt`, unchanged |
+| CI on this branch | NOT RUN — still no PR | — |
+
+**What I did NOT do**
+
+No staging credentials were handed this cycle and none were used. No schema,
+migrations, RLS/auth or policy work, no production access, no provider keys,
+no CI changes or secrets, no PR, no merge; commits and push on
+`feat/supabase-wiring` only, as authorized. `app.json` untouched
+(`expo.scheme` frozen, ruling 8); no user-visible name strings;
+`docs/03-decisions/` and `docs/04-reviews/` untouched; no prior HANDOFF or
+LOCK content edited — the LOCK status line was restated and a fix-loop
+closing note appended, per house precedent. `stability.sh`,
+`connectivity.sh`, and every other committed script are byte-unchanged; the
+clone gate ran the committed `stability.sh` as-is. The Unit A gate
+staleness, the OPERATIONS staging contradiction, and the accepted 22
+advisories remain with the controller, as recorded.
+
+**Next step**
+
+Route the fix-cycle delta (`8847ca6..HEAD` on `feat/supabase-wiring`) to the
+reviewer of record for re-review, fresh session. The owner merges only after
+a PASS.
+
+LOCK status line: `Status: REVIEW — fix cycle 2 complete, awaiting re-review`.
+
+---
+
+## 2026-08-19 — feat/supabase-wiring (REVIEW-009 re-review)
+
+**Controller:** CTRL-003 Supabase Wiring. **Reviewer of record:** Codex Sol,
+ultra effort, fresh session, review only. **Reviewed base:**
+`b14b925283082193a9cb6ff9a8b00cbf7528e59b`. **Reviewed target:**
+`c2210068da0a8c8ff5b6ab838b2fbcc09c32f9e2`. **Verdict:** FAIL. **LOCK:**
+`Status: REVIEW — fix cycle 1 complete, awaiting re-review`.
+
+**Disclosure:** review methods: Noema governance review, exact-head
+reproducibility, and Supabase env/security/types verification; subagent fan-out:
+3 read-only lanes — reproducibility/fail-closed, governance/scope, and
+env/security/types. No subagent edited the repository.
+
+**What happened**
+
+REVIEW-009 is **FAIL** on one low, verdict-driving evidence defect. Four of the
+five REVIEW-008 findings are cleared. F3's implementation is also correct, but
+its required committed negative proof is not:
+
+- `.gitignore` correctly uses literal `.env*` with `!.env.example` as its sole
+  negation. Correct fresh `--no-index` probes pass from both sides.
+- The committed producer instead runs `git check-ignore .env.example` without
+  `--no-index`. Because `.env.example` is already tracked, Git suppresses it and
+  returns 1 even if it is ignored. Thus `gates.txt` does not prove the negation
+  its README/HANDOFF claims, and F3 is not fully cleared under AGENTS.md's
+  committed-artifact rule.
+
+Full finding, exact anchors, and all classifications are in
+`docs/04-reviews/REVIEW-009.md`.
+
+**REVIEW-008 disposition**
+
+| Prior finding | Status |
+|---|---|
+| F1 locale-pinned stability | cleared — 5 artifacts × 2 runs, 0 differing, exit 0; fresh `deps.txt` byte-identical |
+| F2 OPERATIONS false-existence lines | cleared — only the ruled local-run lines corrected; excluded contradictions/TODOs untouched |
+| F3 literal `.env*` and two-sided probes | **not cleared** — behavior fixed, committed tracked-file negative probe vacuous |
+| F4 three artifact gaps | cleared — single-missing cases, types plumbing, and malformed redaction are committed and honestly classified |
+| F5 inventory | cleared — 5 `.sh`, 11 `.txt`, 1 README; prior HANDOFF preserved |
+
+**Fresh verification**
+
+| Check | Class | Result |
+|---|---|---|
+| exact target/range | PASS | local/fetched remote `c2210068`; sole parent/merge-base `b14b9252`; one commit; clean; whitespace clean |
+| exact 003a stability in native `C.UTF-8` | PASS | five gated artifacts, two runs, all ten identical, process exit 0 |
+| pinned `deps.txt` | PASS | fresh/committed SHA-256 `dfe44342df00494e0fe9c718f2bb2150b586ef17d4665d442c9d9cbecc62973a` |
+| capture fail-closed negative control | PASS | broken positive sample made capture exit 1 with one violation before audit; disposable tree restored clean |
+| `.env*` behavior | PASS | `.envrc`, `.envfoo`, and a non-conventional suffix ignored; correct `--no-index` `.env.example` negative returned 1 |
+| `.env.example` committed negative artifact | FAIL introduced by this work | omitted `--no-index`; tracked-path suppression makes recorded exit 1 non-probative |
+| generated-types plumbing | PASS / generation NOT RUN | exact `supabase@2.115.0` pin is published and in script/READMEs; syntax, missing-ref refusal, generic import, typecheck pass; authenticated run not attempted |
+| connectivity wrapper | PASS / live NOT RUN | missing-env child/wrapper both exit 2; committed `connectivity.txt` unchanged; no live call |
+| redaction control | PASS | malformed URL exits 1, zero raw synthetic values; committed and gated |
+| secrets | PASS | committed scan byte-identical; independent scan over 112 blobs / 1,026,831 bytes found zero matches for the reviewed credential-shape patterns |
+| branch CI | NOT RUN | fresh GitHub queries: 0 PRs, 0 workflow runs |
+| state/excluded scope | PASS | Unit B row/block only; builder HANDOFF +111/-0; LOCK REVIEW; immutable/RED-lane/excluded paths untouched |
+
+`capture.sh` is exactly +135/-10. The dispatch's exclusive shorthand is not
+literal: besides locale and fail-closed changes, it contains the authorized F3
+ignore probes and F4 evidence producers. No unrelated change was found.
+
+The builder's ruling-6 disclosure records workflows 0 and fan-out none; that is
+session testimony, not Git-verifiable evidence. The dispatch supplies a harness
+keyword false-positive note out of band, but no such note is present in the
+committed delta; this is an observation, not a separate finding.
+
+**What I did not do**
+
+No staging or production Supabase query, credential use, authenticated type
+generation, product/evidence remediation, prior-record edit, PR, deploy, merge,
+or push. Disposable generated bytes and the broken control were restored; the
+primary checkout was clean before these two authorized review records were
+written.
+
+**Next step**
+
+Return REVIEW-009 FAIL to the controller. Any correction requires a new scoped
+same-builder fix cycle and a later immutable review. The owner must not merge on
+this verdict. The LOCK remains REVIEW; MERGED is controller-only.
+
+LOCK status line: `Status: REVIEW — fix cycle 1 complete, awaiting re-review`.
+
+---
+
+## 2026-08-19 — feat/supabase-wiring (REVIEW-008 fix cycle 1)
+
+**Controller:** CTRL-003 Supabase Wiring. **Builder:** Claude Code — Fable 5,
+Max effort per ruling 5 (fix loops are Max-class, not Ultracode), fresh
+session, model verified against the dispatch before any work. **Reviewer of
+record:** Codex (Codex Sol / Ultra, fresh session). **Fix base:**
+`b14b925283082193a9cb6ff9a8b00cbf7528e59b` (the REVIEW-008 record commit,
+parent `98c4d6d`), fetched and confirmed as the dispatch-named origin tip
+before any work. **LOCK:** `Status: REVIEW — fix cycle 1 complete, awaiting
+re-review`.
+
+**Disclosure (ruling 6):** workflows run: 0; subagent fan-out: none. Every
+change and verification in this cycle was made directly in this session.
+
+**What this cycle cleared** — all five REVIEW-008 findings, plus the three
+advisory items the controller adjudicated into scope:
+
+1. **F1 — locale-variant stability gate.** `capture.sh` now pins
+   `LC_ALL=C LANG=C` for every producer; npm's locale-dependent tree glyphs
+   (`└──` under UTF-8 locales, `` `-- `` under C) were the disproven
+   variable. The pinned locale is recorded in `environment.txt`, the
+   normalization is stated in the 003a README per learning 7, and the gate
+   reran fresh at this head: five gated artifacts, two runs each,
+   **0 differing, process exit 0** (`003a/stability.txt`). The regenerated
+   `deps.txt` is byte-identical to the reviewed copy — the pin reproduces
+   the committed form in any locale.
+2. **F2 — OPERATIONS.md false-existence lines.** The local-run section no
+   longer says there is no backend/configuration and that Unit B does not
+   exist; it now states minimally what Unit B shipped, under the
+   controller's ruling superseding the v1 exclusion for those lines only.
+   Verified before writing: no screen imports the client, so install/start
+   still need no credentials. `TODO(owner)` rows untouched; the pre-existing
+   staging contradiction (`OPERATIONS.md` credential-ownership and
+   environments sections) left exactly as backlogged by the controller.
+3. **F3 — `.env*` coverage.** `.gitignore` now ignores literal `.env*` with
+   `!.env.example` the sole negation. The ignore-probe evidence extends to
+   `.envrc` and the non-conventional `.envfoo`, plus the negative probe —
+   `.env.example` is not ignored (exit 1) and remains tracked
+   (`003a/gates.txt`).
+4. **F4 — artifactless PASS claims.** Three committed artifacts close the
+   gaps: the fail-loudly section now proves URL-only and key-only, not just
+   both-missing (`003a/gates.txt`); `003a/types-plumbing.txt` proves the
+   generated-types plumbing (npm script reaches the script, `bash -n`,
+   missing-ref refusal before any CLI invocation, exact CLI pin,
+   placeholder-import typecheck); `003a/redaction-control.txt` commits the
+   malformed-URL repro — exit 1, zero raw occurrences of either synthetic
+   value. Claims 3, 4, and new claim 11 reclassified against these
+   artifacts in the 003a README.
+5. **F5 — inventory count.** The prior Unit B HANDOFF block said "six
+   scripts, nine transcripts, and a README"; the true count at the review
+   target `98c4d6d` was **five** `.sh`, nine `.txt`, one README. That block
+   is immutable and was not edited — the correction is recorded here. After
+   this cycle the directory holds **five `.sh`, eleven `.txt`, and the
+   README** (both new transcripts are produced by the existing
+   `capture.sh`, not by new scripts), and the count now lives in the 003a
+   README beside the classification table, verified against a fresh
+   directory listing before this block was written.
+
+**Adjudications (REVIEW-008 advisory section, ruled in scope):**
+
+- `scripts/gen-types.sh` pins the exact CLI version — `supabase@2.115.0`,
+  the current release resolved at fix time (2026-08-19) — recorded in the
+  script and the README's Supabase section, replacing floating `supabase@2`.
+- `connectivity.sh` now exits with the child check's status. Green-path
+  transcript bytes are unchanged, and the committed `connectivity.txt` (the
+  2026-08-19 capture) was **not** regenerated — no staging values were
+  handed or used this cycle; the committed transcript remains the evidence
+  boundary.
+- `capture.sh` fails closed: exit 1 on any secret-scan file match, broken
+  positive control, or broken redaction control — after writing the
+  transcript that shows why.
+
+**What I verified, and how**
+
+| Check | Class | Artifact |
+|---|---|---|
+| 003a stability gate: five gated artifacts, two fresh runs each | PASS — 0 differing, exit 0 | `003a/stability.txt` |
+| Five CI steps at this head (inside both fresh captures) | PASS — all exit 0 | `003a/gates.txt` |
+| Fail-loudly: neither set / URL-only / key-only | PASS — throws in all three | `003a/gates.txt` |
+| Literal `.env*` ignored; `.env.example` negated and tracked | PASS | `003a/gates.txt` |
+| Generated-types plumbing, incl. pinned CLI | PASS (plumbing) / NOT RUN (generation — owner-executed) | `003a/types-plumbing.txt` |
+| Malformed-URL redaction totality | PASS — exit 1, zero raw bytes | `003a/redaction-control.txt` |
+| Secret scan, now fail-closed | PASS — 0 files, all controls matched | `003a/secret-scan.txt` |
+| `npm audit` | FAIL pre-existing — the accepted 22 | `003a/npm-audit.txt` |
+| Staging connectivity | NOT RE-RUN by design — committed transcript stands | `003a/connectivity.txt`, unchanged |
+| CI on this branch | NOT RUN — still no PR | — |
+
+**What I did NOT do**
+
+No staging credentials were handed this cycle and none were used;
+`connectivity.txt` is untouched (verifiable in the diff). No schema,
+migrations, RLS/auth or policy work, no production access, no provider keys,
+no CI changes or secrets, no PR, no merge; commits and push on
+`feat/supabase-wiring` only, as authorized. `app.json` untouched
+(`expo.scheme` frozen, ruling 8); no user-visible name strings;
+`docs/03-decisions/` and `docs/04-reviews/` untouched; no prior HANDOFF or
+LOCK content edited — the LOCK status line was restated and a fix-loop
+closing note appended, per house precedent. The Unit A gate's post-merge
+staleness and the OPERATIONS staging contradiction remain with the
+controller, as recorded at dispatch.
+
+**Next step**
+
+Route the fix-cycle delta (`b14b925..HEAD` on `feat/supabase-wiring`) to the
+reviewer of record for re-review, fresh session. The owner merges only after
+a PASS.
+
+LOCK status line: `Status: REVIEW — fix cycle 1 complete, awaiting re-review`.
+
+---
+
+## 2026-08-19 — feat/supabase-wiring (REVIEW-008 review)
+
+**Controller:** CTRL-003 Supabase Wiring. **Reviewer of record:** Codex Sol,
+ultra effort, fresh session, review only. **Reviewed base:**
+`98f3c6ae00ccca4af732e573cac02cb3f2c926f2`. **Reviewed target:**
+`98c4d6d71d16beea3f521aadf37caabc8edb5339`. **LOCK:** `Status: REVIEW`.
+
+**Dispatch correction:** the v1 dispatch was stopped by the reviewer per
+learning 4 before any review work, file change, verdict, or record. The
+controller corrected the output scope to exactly REVIEW-008 plus this new
+top-of-file HANDOFF block before formal review resumed.
+
+**Disclosure:** review workflows/methods: standards/spec review, Noema
+governance review, and Supabase-specific verification; subagent fan-out: 4
+read-only lanes — standards, specification, security/evidence, and
+dependency/generated types. No subagent edited the repository.
+
+**What happened**
+
+REVIEW-008 verdict is **FAIL**. Three medium findings independently prevent
+PASS, followed by two low evidence/prose findings:
+
+1. The exact 003a stability gate exits 1. Both fresh `deps.txt` copies use
+   npm's valid Unicode `└──` tree glyph where the committed file uses ASCII
+   `` `-- ``. Locale is not recorded or normalized; `LC_ALL=C` reproduces the
+   committed slice, while the review environment's `C.UTF-8` does not.
+2. `OPERATIONS.md` now falsely says Unit B/Supabase wiring does not exist, and
+   the builder HANDOFF neither reports that direct ripple nor requests a
+   controller decision.
+3. `.env` and `.env.*` are ignored, but literal `.env*` is not: `.envrc` and
+   `.envfoo` are not ignored. The named evidence tests only narrower names.
+4. Three PASS claims lack complete committed artifact coverage: each missing
+   env variable, generated-types plumbing, and malformed-URL redaction.
+   Reviewer controls confirm the implementations today; the defect is the
+   evidence record.
+5. The builder HANDOFF says six scripts. The exact 003a tree contains five
+   `.sh`, nine `.txt`, and one README.
+
+Full findings, stable anchors, and claim-by-claim results are in
+`docs/04-reviews/REVIEW-008.md`.
+
+**Fresh verification**
+
+| Check | Class | Result |
+|---|---|---|
+| exact target/range | PASS | local/fetched remote target `98c4d6d`; sole parent and merge-base `98f3c6a`; one non-empty commit; delta whitespace clean |
+| 003a stability | FAIL introduced by this work | `gates.txt` and `secret-scan.txt` matched twice; `deps.txt` differed twice; process exit 1 |
+| five local CI steps | PASS | two fresh captures: install, typecheck, lint, 1/1 Jest test, and format check all encoded exit 0; `003a/gates.txt` |
+| secrets | PASS | exact defanged scan and positive controls reproduced byte-for-byte; independent all-byte and extended-shape scans over 109 blobs / 980,941 bytes found zero credential shapes; `003a/secret-scan.txt` |
+| redaction implementation | PASS with evidence finding | malformed URL and thrown-detail controls returned 1 and retained zero raw URL/host/key bytes; no committed malformed-path control exists |
+| connectivity | PASS from committed artifact; live NOT RUN | `003a/connectivity.txt`: 4 PASS, 0 FAIL, 4/4, exit 0, no credential shape; no staging values used by reviewer |
+| dependency/audit | PASS / FAIL pre-existing | lock resolves `supabase-js` 2.112.3; fresh audit remains accepted 22 (7 moderate, 15 high), with zero advisory delta from new nodes |
+| `.env` hygiene | FAIL introduced by this work | example tracked with exactly two blank values; `.env`/dot-suffix names ignored; `.envrc`/`.envfoo` not ignored |
+| Unit A gate at head | exit 1, attribution PASS | decisive unchanged network/local-bind rerun: 3/11 differ; base rerun proves `push-state.txt` and `git-ls-files.txt` pre-existing; `lint-file-list.txt` is exactly this unit's three clean files; no Unit A evidence repaired |
+| CI on branch | NOT RUN | fresh GitHub query found no PR and no workflow run |
+| state/excluded scope | PASS | Unit B BRANCH-NOTES block only, one PROJECT-STATE row, builder HANDOFF insertion only; LOCK stays REVIEW; no excluded product/governance path |
+| builder ruling-6 disclosure | PASS as recorded | one workflow, fan-out 18, and 4 + 14 breakdown disclosed; workflow testimony is not treated as review evidence |
+
+The first sandboxed Unit A head run is not hidden: it showed the expected three
+differences plus a transient dev-server failure when Expo reported port 8081
+busy. The port was free afterward; the producer regenerated its committed
+HTTP-200 bytes on retry, and the exact unchanged full gate with network/local
+bind then returned only the expected three differences. The decisive result is
+the latter run.
+
+**Adjacent observations**
+
+- `scripts/gen-types.sh` would resolve floating `supabase@2` outside the lock
+  during owner-executed generation, when `SUPABASE_ACCESS_TOKEN` must be
+  present. Current Supabase security guidance prefers an exact version or
+  locked devDependency; controller to adjudicate.
+- `capture.sh`'s secret scan is report-only, and `connectivity.sh` does not
+  propagate the child process status, although both current transcripts are
+  clean and record the child result.
+- `OPERATIONS.md` also contains pre-existing false staging-not-created text at
+  the dispatch base; recorded as adjacent, not charged to Unit B.
+
+**What I did not do**
+
+No live Supabase query, production access, secret use or output, schema,
+migration, auth/RLS/payment change, product/evidence edit, state edit beyond
+this authorized HANDOFF block, PR, deploy, merge, or push. Disposable generated
+bytes were restored and the primary checkout was clean before these two
+authorized records were written.
+
+**Next step**
+
+Return REVIEW-008 FAIL to the controller for a same-builder fix-loop dispatch.
+The owner must not merge on this verdict. The controller, not this review,
+decides the advisory CLI pin and routes any authorized OPERATIONS update.
+
+LOCK status line: `Status: REVIEW`.
+
+---
+
+## 2026-08-19 — feat/supabase-wiring (CTRL-003 Unit B)
+
+**Controller:** CTRL-003 Supabase Wiring. **Builder:** Claude Code — Fable 5,
+Ultracode (xhigh + workflows), fresh session, model verified against the
+dispatch before work. **Reviewer of record:** Codex (Codex Sol / Ultra, fresh
+session). **Branch cut from:** `main` at
+`98f3c6ae00ccca4af732e573cac02cb3f2c926f2`, fetched and confirmed as the
+dispatch-named tip before any work. **LOCK:** `Status: REVIEW`.
+
+**Disclosure (ruling 6):** workflows run: 1 —
+`verify-unit-b-supabase-wiring`, an adversarial verification pass over the
+staged diff before handoff; subagent fan-out: 18 (4 finder lenses:
+scope/governance, code correctness, evidence integrity, secret hygiene; then
+2 independent refuters per deduped finding, 14 in all). It confirmed 2
+findings, both fixed before this handoff: the connectivity script's redaction
+helper could itself throw on a malformed URL value and print the raw value
+(now total, proven by rerunning the exact failing repro), and the evidence
+README cited a backlog item as covering the Unit A gate staleness which it
+does not (reworded; the staleness is handed to the controller below). Three
+contested findings were judged and also addressed (tsconfig disclosure,
+`auth.getSession` reclassified as a local check, `.env.example` content now
+captured in evidence); one was killed by both refuters. Workflow
+self-verification is supplementary; the reviewer of record gates.
+
+**What I set out to do**
+
+Unit B, staging only: `@supabase/supabase-js` with committed lockfile; one
+shared typed client module reading `EXPO_PUBLIC_SUPABASE_URL` and
+`EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` from Expo env config, failing loudly
+when unset; generated-types plumbing (`types:gen` npm script, project ref
+from env at run time, committed placeholder wired into the client generics,
+README section for the owner-executed run); `.env.example` with the two
+variables blank; staging connectivity evidence with URL and key redacted; the
+five existing CI steps stay green. The dispatch equated the handed
+publishable key with the state files' "anon key" wording — not a mismatch.
+
+**What I changed**
+
+- `package.json` / `package-lock.json` — `@supabase/supabase-js@^2.112.3`
+  (resolved 2.112.3), plus two scripts: `types:gen`, `check:supabase`. Zero
+  new audit advisories (still the accepted 22 — `003a/npm-audit.txt`).
+- `src/lib/supabase.ts` — the one shared client, `createClient<Database>`,
+  throws at load if either variable is missing. Session persistence, token
+  refresh, and URL detection deliberately off until the auth unit ships a
+  storage adapter and policy set (RED-lane-adjacent; reason inline).
+- `src/lib/database.types.ts` — committed placeholder matching the CLI's
+  empty-public-schema output shape; overwritten by the first owner
+  `types:gen` run.
+- `scripts/gen-types.sh` — wraps `supabase gen types typescript` with
+  `SUPABASE_PROJECT_REF` required from env at run time; refuses to clobber
+  the committed file on a failed or malformed generation; never echoes env.
+- `scripts/check-supabase-connectivity.ts` — instantiates the real shared
+  module from env, performs three unauthenticated staging round-trips plus
+  one local client check, redacts URL/host/key from every output path
+  including error text, exits 0/1/2.
+- `tsconfig.json` — exactly one line, `"allowImportingTsExtensions": true`:
+  required so the connectivity script can import the real module with the
+  `.ts` specifier Node's native TS execution demands; legal because the
+  inherited Expo base config sets `noEmit`; behaviorally inert for app code.
+- `.env.example` — the two variables, blank, with a warning that
+  `EXPO_PUBLIC_` values are bundle-embedded and secret-class keys never
+  belong there. `.env*` confirmed gitignored, `.env.example` tracked.
+- `README.md` — a "Supabase" section: env setup, the owner-executed
+  `types:gen` command (needs `SUPABASE_ACCESS_TOKEN`, builders do not hold
+  it), and the connectivity check. `OPERATIONS.md` untouched, its
+  `TODO(owner)` rows intact per the dispatch.
+- `docs/05-quality/evidence/003a-supabase-wiring/` — six scripts, nine
+  transcripts, and a README classifying every artifact
+  (gated / run-varying / fixed-head demonstration) with normalization stated,
+  claims table, Unit A gate triage, and redaction notes.
+- State files: the Unit B LOCK flipped `BUILD` → `REVIEW` with a closing
+  note, the Unit B Active-work row, and this block. Nothing else.
+
+**What I verified, and how**
+
+Full claims table with classifications in `003a-supabase-wiring/README.md`.
+
+| Check | Class | Artifact |
+|---|---|---|
+| npm ci, typecheck, lint, test, format:check — all exit 0 at this head | PASS | `003a/gates.txt` |
+| Client instantiates from env; 3 staging round-trips (client REST answered `PGRST205` for a nonexistent probe table — key accepted; raw REST probe; auth health 200) + 1 local client check | PASS | `003a/connectivity.txt` — 4/4, exit 0, redacted |
+| Client throws at load when env is missing | PASS | `003a/gates.txt`, fail-loudly section |
+| Redaction is total, including the malformed-URL failure path | PASS | fixed after workflow finding; repro rerun prints one redacted FATAL line, exit 1 |
+| `.env*` ignored, `.env.example` tracked and exactly two blank variables | PASS | `003a/gates.txt`, .env hygiene section |
+| No credential shape anywhere in the index (4 defanged patterns, each with a runtime positive control) | PASS | `003a/secret-scan.txt` |
+| 003a gated artifacts regenerate byte-for-byte | PASS | `003a/stability.txt` — two fresh runs, 0 differing |
+| Generated types against live schema | NOT RUN | owner-executed; needs `SUPABASE_ACCESS_TOKEN`. Placeholder committed; command documented in README |
+| CI on this branch | NOT RUN | no PR yet; workflow file untouched |
+| Unit A stability gate at this head | exit 1 — disclosed | `003a/unit-a-gate-at-head.txt`: 3 of 11 differ — `push-state.txt` and `git-ls-files.txt` proven pre-existing at the dispatch base (`003a/unit-a-gate-at-base.txt`), `lint-file-list.txt` is this unit's three new lintable files (5 → 8, all clean) |
+| `npm audit` | FAIL pre-existing | `003a/npm-audit.txt` — 22, unchanged by the new dependency |
+
+**What is broken or uncertain — for the controller**
+
+1. **Adjacent finding, reported not acted on: the Unit A stability gate is
+   stale post-merge and no state file records it.** `push-state.txt` is
+   permanently unreproducible (the remote branch it interrogates was deleted
+   after merge) and `git-ls-files.txt` no longer matches any current head;
+   both differences exist at the dispatch base, before this unit. The
+   existing backlog item covers only gate-set expansion, a different task.
+   Recording the staleness and scheduling its reconciliation are controller
+   calls — this unit deliberately repaired nothing in Unit A's reviewed
+   evidence and manufactured no new differences (see the `deps.txt`
+   package-name masking note in the 003a README).
+2. **Adjacent service fact:** the REST OpenAPI root (`/rest/v1/`) answers
+   401 "Secret API key required" to publishable-class keys by gateway
+   design; health must be probed on table routes. Recorded in the 003a
+   README for future units.
+3. `npm run check:supabase` and `types:gen` require Node 24+ (native
+   TypeScript execution) and the Supabase CLI via `npx` respectively;
+   neither runs in CI, by design.
+4. Nothing else new. The 22 audit advisories, device-rendering NOT RUN, and
+   all previously accepted deviations stand unchanged.
+
+**What I did NOT do**
+
+No schema, no migrations, no RLS or auth-policy work, no auth UI, no storage
+adapter, no production access, no provider keys beyond receiving the staging
+pair via local env, no deploys, no CI change, no CI secrets, no PR, no merge.
+`app.json` untouched (`expo.scheme` frozen per ruling 8); no user-visible
+name strings added; `docs/03-decisions/` and `docs/04-reviews/` untouched;
+no prior HANDOFF or LOCK block edited; no `PROJECT-STATE.md` section touched
+beyond the Unit B Active-work row. The staging URL and key appear in no
+tracked file, no evidence byte, and no script default — proven by
+`secret-scan.txt`, not asserted.
+
+**Next step**
+
+Route the diff to the reviewer of record (Codex, fresh session) for
+REVIEW-008. The owner merges only after a PASS. The first CI run on this
+branch arrives with the PR.
+
+LOCK status line: `Status: REVIEW`.
+
+---
+
 ## 2026-08-19 — CTRL-002 close-out (controller state edit)
 
 **Controller:** CTRL-002 App Skeleton, closing. **Builder:** none — direct

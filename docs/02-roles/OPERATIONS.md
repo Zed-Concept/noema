@@ -32,9 +32,14 @@ This part is already decided and binds now.
 ## How to run it locally
 
 The Expo app skeleton lives at the repository root and targets iOS, Android, and
-web. There is no backend, no `.env`, and nothing to configure: Supabase wiring is
-Unit B and does not exist yet, so no credentials are needed to install or start
-it.
+web. The Supabase wiring exists as of Unit B (2026-08-19): `src/lib/supabase.ts`
+is the shared typed client, configured by the two `EXPO_PUBLIC_` variables in
+`.env.example` — copy it to `.env` (gitignored) and fill in the owner-held
+staging values. No screen imports the client yet, so no credentials are needed
+to install or start the placeholder app; the one command that does need the two
+values is `npm run check:supabase`, the staging connectivity check (see the
+repository README's Supabase section; evidence:
+`docs/05-quality/evidence/003a-supabase-wiring/`).
 
 Requires Node and npm. CI pins **Node 24 LTS**; Unit A was built and verified on
 Node 26. No global Expo CLI install — `npx` resolves the version in the lockfile.

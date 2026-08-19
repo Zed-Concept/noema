@@ -86,7 +86,7 @@ What is in flight, who owns it, and what it is blocked on. One row per stream.
 
 | Stream | Owner | Status | Blocked on |
 |---|---|---|---|
-| Unit B — Supabase wiring (supabase-js client, generated types, staging env plumbing) | Claude Code (Fable 5 / Ultracode / fresh session); RoR Codex | Dispatched by CTRL-003 — LOCK registered, BUILD | Owner hands staging URL + anon key when pasting the dispatch |
+| Unit B — Supabase wiring (supabase-js client, generated types, staging env plumbing) | Claude Code (Fable 5; built Ultracode, fix cycles Max per ruling 5); RoR Codex | REVIEW-009 finding cleared — fix cycle 2 complete on `feat/supabase-wiring`, LOCK REVIEW | Re-review by reviewer of record (Codex, fresh session) |
 | Production Supabase project | Owner | Parked by ruling — create in East US (North Virginia) before any launch-facing unit | Free-tier slot or Pro upgrade at that time |
 
 Unit A merged 2026-08-19 at `8d648bb` (PR #2, REVIEW-007 PASS); its full

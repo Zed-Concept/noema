@@ -1,0 +1,9 @@
+# Staging connectivity — output of scripts/check-supabase-connectivity.ts
+# via 'npm run check:supabase'. URL and key are redacted by the script.
+# run date (UTC): 2026-08-18
+PASS  client auth.getSession (local) — no error, session null (local storage read; no network)
+PASS  client REST round-trip — PostgREST answered with code PGRST205 (Could not find the table 'public._connectivity_probe_' in the schema cache)
+PASS  raw REST table route — HTTP 404, code PGRST205
+PASS  auth /auth/v1/health — HTTP 200
+4/4 checks passed
+--- exit code: 0 ---
