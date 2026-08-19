@@ -3,14 +3,13 @@
 The authoritative record of what is true right now. If this file and your
 memory of the project disagree, this file is right and you are stale.
 
-**Last verified:** 2026-08-19, CTRL-003 close-out, verified against main at
-`d1a8642` (the PR #5 merge of Unit B, GitHub-signed, parents `98f3c6a` +
-`506d1c1`)
+**Last verified:** 2026-08-19, CTRL-004 opening, verified against main at
+`5b4fa8a` (the PR #6 merge of the CTRL-003 close-out, GitHub-signed,
+parent `d1a8642`)
 **Verification method:** controller read of main via GitHub API — both
-state files, the PR #5 commit chain (build `98c4d6d`, fix cycles `c221006`
-and `acfd53f`, review records `b14b925`, `8847ca6`, `506d1c1` verified
-two-file each), and the branch inventory. CI green was the owner's stated
-merge condition on PR #5.
+state files verbatim, the PR ledger #3–#6 (all merged, merge SHAs matching
+the LOCK record), and the branch inventory (`main` is the sole live
+branch).
 
 ## Project facts
 
@@ -18,7 +17,8 @@ Things that are stable and rarely change: what this is, who it serves, what it
 runs on, where it is deployed.
 
 - **What it is:** TODO(owner) — the product definition has not been recorded in a
-  dispatch. Do not infer one from the repo name.
+  dispatch. Do not infer one from the repo name. A v1 entity-scope ruling is
+  in flight in CTRL-004; the Unit C dispatch records it once ruled.
 - **Stack:** Expo (React Native) for mobile and web; Tauri desktop later, not in
   v1. Supabase for Postgres, auth, storage, and realtime, accessed via
   `supabase-js` with RLS and generated types — no ORM in v1. Anthropic API for
@@ -88,6 +88,7 @@ explicitly and get it overturned on the record.
 | 7 | Dispatches live in controller conversations, not the repo — so any authorization a reviewer could dispute is restated on the record in the next review dispatch. | 2026-08-18 | this row (controller practice, CTRL-002) |
 | 8 | Naming: no user-visible field may be or contain "noema" until trademark clearance (fallback: Kayan). Internal identifiers — repo, slug, npm package names — are exempt. `expo.scheme` is quasi-outward: frozen pending clearance, a hard gate before any distribution unit. | 2026-08-18 | this row (owner ruling + REVIEW-003) |
 | 9 | The Linear mirror is active (team NOE): controller syncs Linear from the repo after every merge; one-way, repo wins. The earlier deferral ruling is void. | 2026-08-18 | this row (owner ruling, CTRL-002) |
+| 10 | Schema/RLS migration application is owner-executed: builders author migration and policy files in-repo; the owner applies them to staging (same credential class as `types:gen`); builders verify post-apply. Builders still receive the staging URL + publishable key only. | 2026-08-19 | this row (owner ruling, CTRL-004) |
 
 ## Active work
 
@@ -95,6 +96,7 @@ What is in flight, who owns it, and what it is blocked on. One row per stream.
 
 | Stream | Owner | Status | Blocked on |
 |---|---|---|---|
+| Unit C — Schema and RLS v1 (`feat/schema-rls-v1`) | Claude Code | LOCK registered ahead of dispatch; RED on arrival, advisory seat DeepSeek V4 Pro | Owner's v1 entity-scope ruling, then dispatch |
 | Production Supabase project | Owner | Parked by ruling — create in East US (North Virginia) before any launch-facing unit | Free-tier slot or Pro upgrade at that time |
 
 Unit A merged 2026-08-19 at `8d648bb` (PR #2, REVIEW-007 PASS); its full
@@ -103,11 +105,11 @@ Unit B merged 2026-08-19 at `d1a8642` (PR #5, REVIEW-010 PASS after two
 fix cycles); its full record lives in the feat/supabase-wiring LOCK, the
 HANDOFF chain, and REVIEW-008 through REVIEW-010.
 
-**Next controller session:** CTRL-004 Schema and RLS v1 — the successor
-confirms this name against this file before planning anything. RED on
-arrival: the first schema/auth/RLS policy set is RED-lane and triggers an
-advisory reviewer per ADR-001. Named at CTRL-003 close-out; the owner's
-merge of this commit ratifies the name.
+**Active controller session:** CTRL-004 Schema and RLS v1 — name confirmed
+against this file 2026-08-19 at `5b4fa8a`, per the succession rule. The
+RED-on-arrival condition attaches to Unit C: advisory reviewer DeepSeek
+V4 Pro on the RLS/auth policy diff, per ADR-001. Successor named at
+CTRL-004 close-out.
 
 ## RED lane
 
@@ -138,6 +140,8 @@ and the rule derived from it. Keep entries short; move long narratives to
 | 5 | Two LOCK statuses went stale because a state branch cannot flip its own status and no one reconciled post-merge | Every controller state commit begins by reconciling all LOCK statuses against merge reality |
 | 6 | A builder verified against a stale local clone and stopped on a phantom mismatch | Dispatches to reused working copies open with fetch + confirm of the expected origin tip SHA, which the dispatch names; and the owner's shared working copy is synced after every merge (pull main, safe-delete merged locals, prune remote refs) |
 | 7 | Broad reproducibility claims were disproven per-artifact across three reviews | Claims of byte-stability must state their normalization and be proven per-artifact before handoff; gates' exit codes are their contract |
+| 8 | A reviewer dispatch composed another file's mechanics from memory ("only change"; a placement clause contradicting HANDOFF.md), forcing two compliant reviewer stops | Dispatch clauses that specify another file's mechanics (placement, scope counts, formats) are sourced from that file's own rules at dispatch time; enumerated-change clauses say "comprises the authorized items," not "nothing else," when several authorized changes share a file |
+| 9 | A cycle's expected touch-set demanded a file whose regeneration was byte-identical, implying a hunk that could not honestly exist | Expected touch-sets count recordable deltas: a byte-identical regeneration produces no hunk, none is ever manufactured, and the discrepancy is disclosed instead |
 
 **CTRL-003 governance ledger** (defects recorded, none open): the first
 REVIEW-008 dispatch repeated the learning-4 "only change" defect and the
@@ -149,15 +153,9 @@ manufactured). REVIEW-010 additionally observed the builder's "exact
 head" clone was base-plus-overlay testimony, closed by the reviewer's
 actual-head rerun.
 
-**Proposed learnings, pending owner approval (not binding until ruled):**
-- P8: Dispatch clauses that specify another file's mechanics (placement,
-  scope counts, formats) are sourced from that file's own rules at
-  dispatch time, never composed from memory; enumerated-change clauses
-  say "comprises the authorized items," not "nothing else," when several
-  authorized changes share a file.
-- P9: Expected touch-sets count recordable deltas: a byte-identical
-  regeneration produces no hunk, none is ever manufactured, and the
-  discrepancy is disclosed instead.
+P8 and P9 were approved by the owner in CTRL-004 and are learnings 8 and 9
+above; the owner's merge of the CTRL-004 opening state commit ratifies the
+promotion.
 
 ## Known issues
 

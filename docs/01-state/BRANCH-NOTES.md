@@ -31,6 +31,67 @@ feature branch and nothing more.
 
 ---
 
+## LOCK — chore/state-ctrl-004-opening
+
+```
+Project:            Noema
+Branch:             chore/state-ctrl-004-opening
+Controller:         CTRL-004 Schema and RLS v1
+Builder:            Controller (direct state edit via GitHub API; no product
+                    code — controller-only class per AGENTS.md state ownership)
+Model+Effort:       Fable 5 (controller conversation) / Max / same session
+Reviewer of record: none (controller-only state edits)
+Status:             BUILD
+Dispatch:           CTRL-004 opening state commit: reconcile the
+                    ctrl-003-closeout LOCK to MERGED (PR #6, 5b4fa8a) — first
+                    act per learning 5 — register the Unit C LOCK
+                    (feat/schema-rls-v1), promote P8/P9 to learnings 8–9,
+                    record ruling 10 (owner-executed migration application)
+                    and the advisory seat, update Active work, and mark
+                    CTRL-004 active. On a branch; owner merges; the merge
+                    ratifies the rulings recorded here.
+Evidence:           — (documentation-only state edit; the diff is the evidence)
+```
+
+**Known lag.** As with every controller state branch, this block reads `BUILD`
+after the owner merges until the next controller state commit reconciles it —
+learning 5 makes that reconciliation the first act of the next state commit.
+
+---
+
+## LOCK — feat/schema-rls-v1
+
+```
+Project:            Noema
+Branch:             feat/schema-rls-v1
+Controller:         CTRL-004 Schema and RLS v1
+Builder:            Claude Code
+Model+Effort:       Fable 5 / Ultracode (xhigh + workflows) / fresh session
+                    (fix cycles: Fable 5 / Max per ruling 5, fresh session)
+Reviewer of record: Codex (Codex Sol / Ultra / fresh session); advisory
+                    reviewer DeepSeek V4 Pro on the RLS/auth policy diff
+                    (RED-on-arrival trigger per ADR-001)
+Status:             BUILD
+Dispatch:           Unit C — Schema and RLS v1: author initial SQL migrations
+                    and the first RLS policy set for the owner-ruled v1
+                    entities, regenerate database types against the applied
+                    schema, and produce an evidence suite. Migration files
+                    live in-repo; application to staging is owner-executed
+                    (ruling 10). Staging only. Exclusions: no production
+                    access, no provider keys, no auth UI or client feature
+                    code. Entity scope is enumerated in the dispatch text
+                    once the owner rules; the dispatch is not yet issued at
+                    registration.
+Evidence:           pending
+```
+
+Registered by the controller in the CTRL-004 opening state commit, ahead of
+the owner's entity-scope ruling and the builder session. Per the house
+workflow the builder flips `BUILD` → `REVIEW` in its handoff amendment;
+`MERGED` only by the controller, after review.
+
+---
+
 ## LOCK — chore/state-ctrl-003-closeout
 
 ```
@@ -41,7 +102,9 @@ Builder:            Controller (direct state edit via GitHub API; no product
                     code — controller-only class per AGENTS.md state ownership)
 Model+Effort:       Fable 5 (controller conversation) / Max / same session
 Reviewer of record: none (controller-only state edits)
-Status:             BUILD
+Status:             MERGED — merge commit
+                    5b4fa8ab4a8fe3e6ed83a31b1acd189c0ac577ab (PR #6);
+                    lag reconciled per learning 5
 Dispatch:           CTRL-003 close-out: reconcile the feat/supabase-wiring
                     LOCK to MERGED (PR #5, d1a8642) and the ctrl-003-opening
                     LOCK to MERGED (PR #4, 98f3c6a) — first act per learning
