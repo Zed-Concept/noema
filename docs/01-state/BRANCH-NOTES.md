@@ -31,6 +31,33 @@ feature branch and nothing more.
 
 ---
 
+## LOCK — chore/state-ctrl-003-closeout
+
+```
+Project:            Noema
+Branch:             chore/state-ctrl-003-closeout
+Controller:         CTRL-003 Supabase Wiring
+Builder:            Controller (direct state edit via GitHub API; no product
+                    code — controller-only class per AGENTS.md state ownership)
+Model+Effort:       Fable 5 (controller conversation) / Max / same session
+Reviewer of record: none (controller-only state edits)
+Status:             BUILD
+Dispatch:           CTRL-003 close-out: reconcile the feat/supabase-wiring
+                    LOCK to MERGED (PR #5, d1a8642) and the ctrl-003-opening
+                    LOCK to MERGED (PR #4, 98f3c6a) — first act per learning
+                    5 — then Active work, current state, publishable-key
+                    wording, backlog additions, the CTRL-003 governance
+                    ledger, proposed learnings P8/P9, and the successor name
+                    CTRL-004 Schema and RLS v1. On a branch; owner merges.
+Evidence:           — (documentation-only state edit; the diff is the evidence)
+```
+
+**Known lag.** As with every controller state branch, this block reads `BUILD`
+after the owner merges until the next controller state commit reconciles it —
+learning 5 makes that reconciliation the first act of the next state commit.
+
+---
+
 ## LOCK — chore/state-ctrl-003-opening
 
 ```
@@ -41,7 +68,9 @@ Builder:            Controller (direct state edit via GitHub API; no product
                     code — controller-only class per AGENTS.md state ownership)
 Model+Effort:       Fable 5 (controller conversation) / Max / same session
 Reviewer of record: none (controller-only state edits)
-Status:             BUILD
+Status:             MERGED — merge commit
+                    98f3c6ae00ccca4af732e573cac02cb3f2c926f2 (PR #4);
+                    lag reconciled per learning 5
 Dispatch:           CTRL-003 opening state commit: reconcile the
                     ctrl-002-closeout LOCK to MERGED (PR #3, merge commit
                     2698332), register the Unit B LOCK (feat/supabase-wiring),
@@ -66,7 +95,10 @@ Builder:            Claude Code
 Model+Effort:       Fable 5 / Ultracode (xhigh + workflows) / fresh session
                     (fix cycles: Fable 5 / Max per ruling 5, fresh session)
 Reviewer of record: Codex (Codex Sol / Ultra / fresh session)
-Status:             REVIEW — fix cycle 2 complete, awaiting re-review
+Status:             MERGED — merge commit
+                    d1a86425803f36955ada8662b2477429c1030542 (PR #5);
+                    review chain REVIEW-008 (FAIL), REVIEW-009 (FAIL),
+                    REVIEW-010 (PASS), two fix cycles
 Dispatch:           Unit B — Supabase wiring: add supabase-js, a typed client
                     module fed by staging env config, generated-types plumbing
                     (generation script plus committed placeholder output),
