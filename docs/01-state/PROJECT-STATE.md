@@ -3,13 +3,14 @@
 The authoritative record of what is true right now. If this file and your
 memory of the project disagree, this file is right and you are stale.
 
-**Last verified:** 2026-08-19, CTRL-003 opening, verified against main at
-`2698332` (the PR #3 merge of the CTRL-002 close-out, GitHub-signed,
-parents `8d648bb` + `9605807`)
+**Last verified:** 2026-08-19, CTRL-003 close-out, verified against main at
+`d1a8642` (the PR #5 merge of Unit B, GitHub-signed, parents `98f3c6a` +
+`506d1c1`)
 **Verification method:** controller read of main via GitHub API — both
-state files, AGENTS.md (sha256 re-verified `0ff02d20…f013`, 5378 bytes),
-ARCHITECTURE.md, the commit list, and the branch inventory (`main` is the
-only remote branch; no LOCK in BUILD other than controller state lag).
+state files, the PR #5 commit chain (build `98c4d6d`, fix cycles `c221006`
+and `acfd53f`, review records `b14b925`, `8847ca6`, `506d1c1` verified
+two-file each), and the branch inventory. CI green was the owner's stated
+merge condition on PR #5.
 
 ## Project facts
 
@@ -28,7 +29,9 @@ runs on, where it is deployed.
 - **Environments:** staging Supabase exists — project `noema-staging`,
   region Americas / East US (North Virginia), created by the owner
   2026-08-18; credentials owner-held, never in the repo; builders receive
-  the staging URL + anon key only, at Unit B dispatch. **Production is
+  the staging URL + publishable key only, at dispatch (the publishable
+  key is the anon-key successor; the state files' earlier "anon key"
+  wording meant this key — handed for Unit B on 2026-08-19). **Production is
   deliberately deferred** (free-tier slot went to staging): create it in the
   same region before any launch-facing unit — hard requirement. There is no
   deployed web app, no EAS project, and no store presence.
@@ -40,8 +43,14 @@ runs on, where it is deployed.
 
 As of 2026-08-19:
 
-- Repository `Zed-Concept/noema` is **private**; `main` is at `2698332`
-  (PR #3, the CTRL-002 close-out state merge).
+- Repository `Zed-Concept/noema` is **private**; `main` is at `d1a8642`
+  (PR #5, the Unit B merge).
+- Unit B is merged: `@supabase/supabase-js` 2.112.3; one shared typed
+  client reading `EXPO_PUBLIC_SUPABASE_URL` +
+  `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, failing loudly when unset;
+  generated-types plumbing (exact-pinned `supabase@2.115.0`,
+  owner-executed generation); literal `.env*` hygiene; the 003a evidence
+  suite (five scripts, eleven transcripts, claims-table README).
 - **Unit A is merged**: Expo SDK 57 managed app at the repo root — TypeScript
   strict, expo-router, npm with committed lockfile, ESLint + Prettier,
   jest-expo — one placeholder home screen, user-visible name `ZC App (dev)`.
@@ -86,15 +95,19 @@ What is in flight, who owns it, and what it is blocked on. One row per stream.
 
 | Stream | Owner | Status | Blocked on |
 |---|---|---|---|
-| Unit B — Supabase wiring (supabase-js client, generated types, staging env plumbing) | Claude Code (Fable 5; built Ultracode, fix cycles Max per ruling 5); RoR Codex | REVIEW-009 finding cleared — fix cycle 2 complete on `feat/supabase-wiring`, LOCK REVIEW | Re-review by reviewer of record (Codex, fresh session) |
 | Production Supabase project | Owner | Parked by ruling — create in East US (North Virginia) before any launch-facing unit | Free-tier slot or Pro upgrade at that time |
 
 Unit A merged 2026-08-19 at `8d648bb` (PR #2, REVIEW-007 PASS); its full
 record lives in the feat/app-skeleton LOCK and the HANDOFF chain.
+Unit B merged 2026-08-19 at `d1a8642` (PR #5, REVIEW-010 PASS after two
+fix cycles); its full record lives in the feat/supabase-wiring LOCK, the
+HANDOFF chain, and REVIEW-008 through REVIEW-010.
 
-**Active controller session:** CTRL-003 Supabase Wiring — name confirmed
-against this file at opening (2026-08-19). The successor is named at
-CTRL-003 close-out.
+**Next controller session:** CTRL-004 Schema and RLS v1 — the successor
+confirms this name against this file before planning anything. RED on
+arrival: the first schema/auth/RLS policy set is RED-lane and triggers an
+advisory reviewer per ADR-001. Named at CTRL-003 close-out; the owner's
+merge of this commit ratifies the name.
 
 ## RED lane
 
@@ -126,6 +139,26 @@ and the rule derived from it. Keep entries short; move long narratives to
 | 6 | A builder verified against a stale local clone and stopped on a phantom mismatch | Dispatches to reused working copies open with fetch + confirm of the expected origin tip SHA, which the dispatch names; and the owner's shared working copy is synced after every merge (pull main, safe-delete merged locals, prune remote refs) |
 | 7 | Broad reproducibility claims were disproven per-artifact across three reviews | Claims of byte-stability must state their normalization and be proven per-artifact before handoff; gates' exit codes are their contract |
 
+**CTRL-003 governance ledger** (defects recorded, none open): the first
+REVIEW-008 dispatch repeated the learning-4 "only change" defect and the
+corrected version then contradicted HANDOFF.md's top-insert rule — two
+compliant reviewer stops, both corrected before any review work. The
+controller's cycle-2 expected touch-set demanded a seventh file whose
+regeneration was byte-identical (builder disclosure correct, no hunk
+manufactured). REVIEW-010 additionally observed the builder's "exact
+head" clone was base-plus-overlay testimony, closed by the reviewer's
+actual-head rerun.
+
+**Proposed learnings, pending owner approval (not binding until ruled):**
+- P8: Dispatch clauses that specify another file's mechanics (placement,
+  scope counts, formats) are sourced from that file's own rules at
+  dispatch time, never composed from memory; enumerated-change clauses
+  say "comprises the authorized items," not "nothing else," when several
+  authorized changes share a file.
+- P9: Expected touch-sets count recordable deltas: a byte-identical
+  regeneration produces no hunk, none is ever manufactured, and the
+  discrepancy is disclosed instead.
+
 ## Known issues
 
 Defects that are real, understood, and not yet fixed. An issue that is not
@@ -151,6 +184,30 @@ session.
 - Three unused optional navigation deps retained — revisit at the first
   device-build unit; an Expo Go / device attestation remains welcome,
   gating nothing.
+- Unit A stability gate is stale post-merge: `push-state.txt` is
+  permanently non-reproducible (its remote branch was deleted after
+  merge) and `git-ls-files.txt` matches no current head; both proven
+  pre-existing at the Unit B dispatch base (003a at-base artifact).
+  Reconcile inside the gate-machinery chore below.
+- Pre-existing OPERATIONS.md staging contradictions (credential-ownership
+  and environments sections still imply no staging exists) — carried by
+  REVIEW-008, not charged to Unit B.
+- Gate-machinery hardening chore (one future unit; batch with the
+  existing gate-set-expansion item; four distinct REVIEW-010
+  accepted-and-backlogged adjudications): capture.sh process exit stays
+  0 despite nonzero step codes; the redaction control's predicate
+  accepts unrelated exit-1 failures; the fail-loudly probes accept any
+  import rejection; the deps.txt path mask fails red (never falsely
+  green) under npm 11 output redaction on credential-shaped absolute
+  paths.
+- Editor watchers vs `npm ci`: three-of-three ENOTEMPTY failures with a
+  live TS server on the working copy (fix-cycle-2 incident). OPERATIONS
+  caution candidate: quit the editor for builder sessions and gate runs.
+  Owner machine action flagged: clear `~/.npm/_npx` (bogus registry
+  `tsc@2.0.4` plus fallback expo/jest installs from the broken runs).
+- AGENTS.md Roles still reads "Opus, high effort" for the primary
+  builder — predates ruling 4. Refresh is its own reviewed chore; edits
+  change the tracked sha256.
 
 ## Open questions
 
