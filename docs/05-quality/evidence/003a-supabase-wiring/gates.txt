@@ -50,8 +50,21 @@ $ git check-ignore .env .env.local .env.staging .envrc .envfoo
 .envrc
 .envfoo
 --- exit code: 0 (0 = ignored; every probed name must be echoed above) ---
-$ git check-ignore .env.example   # negative probe: must NOT be ignored
---- exit code: 1 (1 = not ignored, as required) ---
+# negative probe (REVIEW-009): .env.example must NOT be ignored. The path is
+# tracked, and default check-ignore never reports tracked paths — it exits 1
+# whatever the patterns say — so only --no-index evaluates the rules
+# themselves. Expected: exit 1, no output. If the !.env.example negation were
+# removed, .env* would match and this form would print the path and exit 0.
+$ git check-ignore --no-index .env.example
+--- exit code: 1 (1 = not ignored, decided by pattern evaluation) ---
+# same probe, verbose, to name the source of that decision: the line printed
+# must be .gitignore's !.env.example negation. In -v mode a negation match
+# counts as a match — exit 0 with the line printed is the expected result, and
+# the discriminating exit code stays with the plain form above. With the
+# negation removed, -v would name the .env* line instead.
+$ git check-ignore --no-index -v .env.example
+.gitignore:26:!.env.example	.env.example
+--- exit code: 0 (0 = a pattern matched; the line above names the deciding negation) ---
 $ git ls-files --error-unmatch .env.example >/dev/null && echo tracked
 tracked
 --- exit code: 0 ---
