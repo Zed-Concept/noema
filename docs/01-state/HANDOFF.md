@@ -8,6 +8,112 @@ Append a new block at the top. Never edit an old one.
 
 ---
 
+## 2026-08-19 — feat/supabase-wiring (REVIEW-010 re-review)
+
+**Controller:** CTRL-003 Supabase Wiring. **Reviewer of record:** Codex Sol,
+ultra effort, fresh session, review only. **Reviewed base:**
+`8847ca6b770d70c0bf6c46dc83244da8ebd23ad7`. **Reviewed target:**
+`acfd53f0b85c7d80c5f721a49a8635a9aa621a5f`. **Verdict:** PASS. **LOCK:**
+`Status: REVIEW — fix cycle 2 complete, awaiting re-review` (left unchanged;
+MERGED is controller-only).
+
+**Disclosure:** review methods: fixed-range Standards/Spec review, Noema
+governance review, and Supabase evidence-boundary verification. Subagent
+fan-out: three read-only lanes — Standards, specification, and
+governance/evidence boundaries. No subagent edited the repository.
+
+**What happened**
+
+REVIEW-010 is **PASS with no new findings**. REVIEW-009's single low,
+verdict-driving finding is cleared. The committed negative probe now evaluates
+patterns with plain `git check-ignore --no-index .env.example`, records the
+discriminating exit 1, and uses the verbose form to name
+`.gitignore:26:!.env.example` as the deciding negation. In an independent
+scratch repo, removing the negation made the plain form print `.env.example`
+and exit 0 and made the verbose form name `.env*`; restoring the negation
+returned plain 1 and verbose 0 naming `!.env.example`.
+
+The expected seven-file touch set correctly resolves to six changed files.
+The omitted `stability.txt` has identical base/head Git blob `b051b85b...`.
+The exact committed `stability.sh` was rerun in a clean plain-path clone pinned
+to the actual target: five gated artifacts × two runs, all ten identical,
+0 differing, encoded and process exit 0. The fresh `stability.txt` was clean
+against the target and had SHA-256
+`758d3f7f83cade576b8c23d1c2490b65f5c9f3d2226165b4f6c43ab515a1f12b`.
+That independently validates the deterministic no-hunk resolution.
+
+`capture.sh` and `gates.txt` each have one delta hunk, confined to the probe.
+Only those two files and the authorized 003a README differ under the evidence
+directory. Every other gated artifact reproduced byte-identically; `deps.txt`,
+`connectivity.txt`, `stability.txt`, `stability.sh`, and all other 003a
+artifacts outside the three authorized paths retain their prior blobs. Counts
+remain five `.sh`, eleven `.txt`, one README. The exact-head secret scan is
+clean: all four positive-controlled patterns report zero matching files, and
+four independent target-index checks also returned no matches.
+
+**Incident assessment**
+
+The committed builder HANDOFF fully discloses the npm `ENOTEMPTY` incident:
+three failing full-tree attempts and exits, suspected watcher cause, transient
+artifact rewrites and restoration, external user-cache residue, both clone
+locations/results, and all four adjacent findings. No broken-run output remains
+in 003a evidence; incident terms occur only in the required disclosure.
+
+One methodology observation is retained, not promoted to a finding: the
+builder's disclosed clone was `8847ca6` plus the three evidence-file overlays,
+not literally the final six-file Git tree/index. Since `capture.sh` reads the
+whole tree and index, that run alone was not sufficient exact-head proof. The
+reviewer's actual-`acfd53f` clone rerun reproduced every gated byte and closes
+that provenance gap.
+
+The controller-amended README sentence is sufficient: it names the `deps.txt`
+`$PWD` mask, npm 11 redaction mechanism, UUID-shaped-path condition, failure
+effect, and plain-path requirement. The repair remains backlogged exactly as
+directed.
+
+**Adjacent findings adjudicated**
+
+1. `capture.sh` can exit 0 despite a nonzero CI-step transcript (the same
+   coarseness includes Prettier): **accepted and backlogged, not
+   verdict-driving**. The exact byte gate detects the changed exit/text.
+2. The redaction control can accept an unrelated exit-1 failure with zero raw
+   values: **accepted and backlogged, not verdict-driving**. The committed
+   expected transcript plus byte comparison distinguishes module-not-found.
+3. The fail-loudly probes accept any import rejection: **accepted and
+   backlogged, not verdict-driving**, for the same transcript-comparison reason.
+4. The `deps.txt` path-mask sensitivity: **accepted and backlogged, not
+   verdict-driving**. It fails red, is fully disclosed, and repair was excluded.
+
+**Other verification**
+
+- Fresh fetch: checked-out branch, local ref, remote-tracking ref, and
+  `FETCH_HEAD` all `acfd53f`; sole parent and merge-base `8847ca6`; one commit.
+- Delta: six authorized paths, whitespace clean; state changes are limited to
+  the Unit B Active-work row, Unit B LOCK restatement/additive closing note,
+  and the new builder HANDOFF top prepend. Prior HANDOFF bytes and all immutable
+  reviews/decisions are preserved; excluded paths are untouched.
+- GitHub branch CI: NOT RUN — fresh queries found zero PRs and zero workflow
+  runs for `feat/supabase-wiring`.
+- Staging connectivity: NOT RUN; unchanged committed evidence stands.
+- Authenticated type generation: NOT RUN; owner-executed by design.
+
+**What I did NOT do**
+
+No staging or production Supabase query, credentials, authenticated type
+generation, product/evidence remediation, prior-record edit, PR, merge,
+deployment, or push. Disposable scratch/clone trees were deleted. The primary
+checkout was clean before the two authorized reviewer records were written.
+
+**Next step**
+
+REVIEW-010 permits the owner/controller flow to proceed. The LOCK remains
+REVIEW in this reviewer commit; the owner merges and the controller alone
+records MERGED afterward.
+
+LOCK status line: `Status: REVIEW — fix cycle 2 complete, awaiting re-review`.
+
+---
+
 ## 2026-08-19 — feat/supabase-wiring (REVIEW-009 fix cycle 2)
 
 **Controller:** CTRL-003 Supabase Wiring. **Builder:** Claude Code — Fable 5,
