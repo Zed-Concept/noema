@@ -1,3 +1,60 @@
+## 2026-08-20 — feat/schema-rls-v1 (REVIEW-014 advisory record, controller-committed)
+
+**Controller:** CTRL-004 Schema and RLS v1. **Advisory reviewer:** DeepSeek
+V4 Pro, OpenCode plan mode (read-only), fresh session, `reasoningEffort:
+high` configured — runtime confirmation unavailable in that tool, so the
+effort is recorded as configured, not verified. **Reviewer of record:**
+Codex Sol, unchanged. **Verdict:** SOUND — advisory, non-gating. **LOCK:**
+unchanged at `Status: REVIEW — fix cycle 3 complete, awaiting re-review`.
+
+**Why this block is controller-written.** The advisory dispatch instructed
+the reviewer to write nothing to the repository and to reply to the
+controller; plan mode enforced that structurally. The controller commits the
+record. This commit was deliberately held until fix cycle 3 (`bac4c05`) was
+pushed, so the builder's push remained fast-forward.
+
+**Scope of this commit — exactly two files:** `docs/04-reviews/REVIEW-014.md`
+(new, immutable) and this HANDOFF top-insert block. No other file; no
+remediation edits; no applied migration, generated type, ADR, prior REVIEW
+record, or `roles-acl.*` touched.
+
+**Subject.** The Unit C authorization surface, frozen since `7ebeb8b` and
+unchanged by three fix cycles: the four applied migrations. The advisory ran
+in parallel with fix cycle 3 by controller ruling, since every fix cycle has
+touched only evidence and prose.
+
+**Substance.** The reviewer verified `check_enable_rls` in PostgreSQL source
+across the 15, 16, and 17 branches: `BYPASSRLS` is tested before the
+owner/FORCE branch, so FORCE does not bind a BYPASSRLS owner. With staging
+`postgres` measured `rolbypassrls=t`, the provisioning insert is admitted by
+BYPASSRLS rather than by the `TO postgres` policy, that policy is inert, and
+FORCE is protective of nothing on Supabase today — the surface is held by
+ENABLE, the grants, and the policies. This resolves 004b claim 6's bounded
+"admitting mechanism NOT ISOLATED" wording, which was honest when written and
+is deliberately left unamended; the two records stand together. No privilege
+path beyond provisioning exists. Eight findings, none above LOW: two
+documentation-accuracy (migration comments superseded by measurement, both
+immutable), two forward-guidance (function EXECUTE defaults; future
+`service_role` grants), one storage-quota abuse item, three informational.
+
+**Controller disposition.** Three standing rulings (S1 function EXECUTE
+revocation and RED-lane class for SECURITY DEFINER non-trigger functions; S2
+advisory re-trigger on any `service_role` grant; S3 ENABLE + FORCE +
+per-operation policies for every future public-schema table) are recorded in
+REVIEW-014 and are promoted to the binding digest at the CTRL-004 close-out,
+where the owner's merge ratifies them. Four backlog items (bucket limits,
+GraphQL and Realtime probes, lowercase-UID storage convention, `select
+version();` on the next owner probe) are carried to the close-out backlog
+alongside the previously parked items (`.prettierignore` for machine-local
+`supabase/.temp`, `capture.sh` runtime, the staging auth-config posture that
+currently requires a confirm-email toggle per live round, and the Phase B
+LOCK "11/11 denial" superseding note).
+
+**Next step.** REVIEW-015: Codex Sol re-reviews fix cycle 3 as reviewer of
+record. Owner merge waits for that PASS.
+
+---
+
 # Session handoff
 
 Written at the end of every session. The next session — possibly a different
