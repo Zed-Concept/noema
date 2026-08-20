@@ -39,7 +39,11 @@ staging values. No screen imports the client yet, so no credentials are needed
 to install or start the placeholder app; the one command that does need the two
 values is `npm run check:supabase`, the staging connectivity check (see the
 repository README's Supabase section; evidence:
-`docs/05-quality/evidence/003a-supabase-wiring/`).
+`docs/05-quality/evidence/003a-supabase-wiring/`). As of Unit C the three v1
+tables on staging enforce FORCE row-level security, so postgres-role
+dashboard tooling (Table Editor, SQL editor, data-only dumps) sees zero rows
+in them by design — data inspection goes through an authenticated client or
+the dashboard's user impersonation.
 
 Requires Node and npm. CI pins **Node 24 LTS**; Unit A was built and verified on
 Node 26. No global Expo CLI install — `npx` resolves the version in the lockfile.

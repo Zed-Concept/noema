@@ -1,0 +1,38 @@
+# Four CI steps at this head. npm ci is deliberately NOT run here: this
+# unit's delta contains no dependency change (proven below), and 002d/003a
+# document the destructive npm-ci ENOTEMPTY transient under a live editor.
+# The install step runs in CI itself when the PR opens.
+
+$ git diff 7ebeb8bf59132961dab73cd5c1ee3692105cf11f --name-only -- package.json package-lock.json   # no dependency delta vs the dispatch base
+<none>
+--- dependency files changed since base: 0 ---
+
+$ npx tsc --noEmit
+--- exit code: 0 ---
+
+$ npx expo lint
+--- exit code: 0 ---
+
+$ npx jest
+PASS src/__tests__/home-screen.test.tsx
+  placeholder home screen
+    ✓ renders
+
+Test Suites: 1 passed, 1 total
+Tests:       1 passed, 1 total
+Snapshots:   0 total
+Time: <duration>
+Ran all test suites.
+--- exit code: 0 ---
+
+$ prettier --check .   # pinned local binary, in a clean checkout-index of the staged tree
+# Normalization: the check runs against exactly the staged tree (git checkout-index
+# into scratch), because prettier walks untracked working-copy files and does not
+# read nested ignore rules — the owner's machine-local supabase/.temp CLI residue
+# (untracked, ignored by supabase/.gitignore) would otherwise be flagged. CI checks
+# out only the tracked tree, so this measures what the CI step measures.
+Checking formatting...
+All matched files use Prettier code style!
+--- exit code: 0 ---
+
+--- enforced: zero dependency delta and all four steps exit 0, or capture.sh exits 1 (fail closed) ---

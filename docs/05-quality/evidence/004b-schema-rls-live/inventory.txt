@@ -1,0 +1,9 @@
+$ git ls-files -s -- src/lib/database.types.ts supabase/
+100644 8c7fc943ffbadaf5a080999c34071a3b7cf3cbcc 0	src/lib/database.types.ts
+100644 ad9264f0b14b294627f8e77383875c994af54865 0	supabase/.gitignore
+100644 a105e6ad7d02b256dcdc92fdc52b7ddfb101549f 0	supabase/config.toml
+100644 dff4d50c904900a735e64b488774b19459c81b7d 0	supabase/migrations/20260820100000_v1_core_schema.sql
+100644 7f5b90136be15472b7e89cadca2b28a62381c35c 0	supabase/migrations/20260820100100_v1_rls_policies.sql
+100644 e0f8da13121e689623ccece681554c258578b473 0	supabase/migrations/20260820100200_v1_profile_provisioning.sql
+100644 de1f91c680cd38d5a5cce506045864b6ceff6386 0	supabase/migrations/20260820100300_v1_storage_captures_audio.sql
+--- tracked files listed: 7 (7 required: the types file, config.toml, .gitignore, four migrations) ---

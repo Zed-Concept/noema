@@ -1,0 +1,34 @@
+# anon-probes — rls-probes.mjs --anon against staging (redacted at source)
+# run date (UTC): 2026-08-20
+# Anon-path probes: no session — the publishable key presented sessionless.
+# Expected: denial everywhere. Exact response shapes below are the recorded
+# contract for the applied Unit C schema (anon holds no table grants; the
+# storage policies are TO authenticated only).
+
+PASS  auth service reachable (context: denials below are policy, not outage)
+      HTTP 200 {"version":"v2.195.0","name":"GoTrue","description":"GoTrue is a user registration and authentication API"}
+PASS  auth settings readable (records the config the authenticated path depends on)
+      HTTP 200 disable_signup=false mailer_autoconfirm=true external.email=true
+
+PASS  anon REST SELECT profiles: denied with insufficient_privilege (42501)
+      HTTP 401 {"code":"42501","details":null,"hint":"Grant the required privileges to the current role with: GRANT SELECT ON public.profiles TO anon;","message":"permission denied for table profiles"}
+PASS  anon REST INSERT profiles: denied with insufficient_privilege (42501)
+      HTTP 401 {"code":"42501","details":null,"hint":"Grant the required privileges to the current role with: GRANT SELECT, INSERT ON public.profiles TO anon;","message":"permission denied for table profiles"}
+PASS  anon REST SELECT captures: denied with insufficient_privilege (42501)
+      HTTP 401 {"code":"42501","details":null,"hint":"Grant the required privileges to the current role with: GRANT SELECT ON public.captures TO anon;","message":"permission denied for table captures"}
+PASS  anon REST INSERT captures: denied with insufficient_privilege (42501)
+      HTTP 401 {"code":"42501","details":null,"hint":"Grant the required privileges to the current role with: GRANT SELECT, INSERT ON public.captures TO anon;","message":"permission denied for table captures"}
+PASS  anon REST SELECT transcripts: denied with insufficient_privilege (42501)
+      HTTP 401 {"code":"42501","details":null,"hint":"Grant the required privileges to the current role with: GRANT SELECT ON public.transcripts TO anon;","message":"permission denied for table transcripts"}
+PASS  anon REST INSERT transcripts: denied with insufficient_privilege (42501)
+      HTTP 401 {"code":"42501","details":null,"hint":"Grant the required privileges to the current role with: GRANT SELECT, INSERT ON public.transcripts TO anon;","message":"permission denied for table transcripts"}
+
+PASS  anon storage download: denied (not-found obfuscation, no bytes served)
+      HTTP 400 {"statusCode":"404","error":"not_found","message":"Object not found","code":"NoSuchKey"}
+PASS  anon storage upload: denied (no INSERT policy admits anon)
+      HTTP 400 {"statusCode":"403","error":"Unauthorized","message":"new row violates row-level security policy","code":"AccessDenied"}
+PASS  anon storage list: sees zero objects (RLS row invisibility) or is refused
+      HTTP 200 []
+redaction totality gate: 0 residual occurrences (4 registered values + JWT sweep)
+--- probes: 11 PASS, 0 FAIL ---
+--- exit code: 0 (0 pass; 1 fail/redaction-trip; 2 unconfigured; 3 auth path NOT RUN) ---
