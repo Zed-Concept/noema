@@ -8,6 +8,117 @@ Append a new block at the top. Never edit an old one.
 
 ---
 
+## 2026-08-20 — feat/schema-rls-v1 (REVIEW-012 fix-cycle-1 re-review)
+
+**Controller:** CTRL-004 Schema and RLS v1. **Reviewer of record:** Codex Sol,
+Ultra effort, fresh session. **Reviewed base:**
+`64c1ce603491fb2cb6e8b7b948a369731a436c7f`. **Target:**
+`fbf81b07be8ab6007b5cff786aa1223d4e942fb2`. **Prior record:** REVIEW-011.
+**Verdict:** **FAIL.** **LOCK:** unchanged at `Status: REVIEW — fix cycle 1
+complete, awaiting re-review`; MERGED remains controller-only.
+
+**Disclosure (ruling 6):** workflows run: 0. Review methods: fixed-range
+Standards/Spec review, Noema governance review, and Supabase/PostgreSQL
+authorization plus evidence-boundary verification. Subagent fan-out: five
+read-only lanes — role/ACL and current-state claims; schema-oracle and
+redaction controls; live-grid arithmetic and response oracles; Standards;
+and Spec. No subagent edited the repository.
+
+**Scope and outcome**
+
+I fetched before reading, confirmed both supplied SHAs, confirmed the base is
+an ancestor of the exact clean target, and reviewed the full eight-commit Unit
+C range: 43 files, +5282/-11. The REVIEW-011-to-target fix delta is the
+dispatched 21 files, +1128/-178. The four applied migrations,
+`src/lib/database.types.ts`, every ADR, and REVIEW-011 are unchanged in the
+fix cycle. The immutable `docs/04-reviews/REVIEW-012.md` records five
+classified findings; two medium findings are verdict-driving:
+
+1. **F1 remains open (medium).** The owner-run grid proves SQL-editor identity,
+   role attributes, effective table-level CRUD, current raw table ACL entries,
+   and live FORCE. It does not prove Table Editor/data-only-dump execution,
+   the applied SECURITY DEFINER function's owner, column ACLs, or absolute
+   PUBLIC/service_role claims. The repository still states those broader
+   conclusions, including tooling behavior it separately classifies NOT RUN.
+2. **F2 remains open (medium).** The exact `duration_ms >= 0` repair and
+   permanent scenario 8 work, but fresh exact-target counterfactuals adding
+   valid defaults to columns claimed to have none still return process 0 and
+   72/72 PASS. The broader exact-schema/sibling-oracle claim remains false.
+3. **New low, non-driving:** the prior F3 direct-stdout bypass is closed, but
+   the blanket delete-on-red prose exceeds the producer: missing/unreadable/
+   undersized-ledger failures return 1 without unlinking the transcript.
+4. **New low, non-driving:** F4's current-state record is repaired, including
+   email confirmation ON and both `ctrl004c` deletion rounds, but “At no
+   moment did more than two disposable users exist” is unsupported while the
+   older `ctrl004b` pair remains in an unresolved cleanup class.
+5. **New low, non-driving:** F5's committed live grid is complete and correct,
+   but its WITH CHECK helper accepts either 401 or 403 with code `42501`, and
+   the HANDOFF labels 11 total anon PASS probes as 11 denials; the exact
+   denial/invisibility subset is 9.
+
+No active authenticated-user RLS bypass, credential leak, or incorrect
+committed live response was found. The controller-classified non-CRUD raw-ACL
+observation and the disposable-clone `supabase/.temp` precedent remain
+documented and unactioned; neither was re-litigated.
+
+**REVIEW-011 finding disposition**
+
+| Prior finding | Status | Reviewer boundary |
+| --- | --- | --- |
+| F1 privileged-role premise | **NOT CLEARED** | Bounded role/table/FORCE measurement passes; broader privileged-role claims do not. |
+| F2 exact `duration_ms` oracle | **NOT CLEARED** | Narrow literal repair passes; broader exact-schema oracle has fresh false greens. |
+| F3 redaction bypass | **CLEARED** | Exact file-byte gate, SHA binding, planted stdout control, and independent red/green controls pass; separate low deletion-prose issue recorded. |
+| F4 email-confirmation state | **CLEARED** | HANDOFF records ON and both `ctrl004c` deletion rounds; fresh live query NOT RUN. |
+| F5 incomplete live grid | **CLEARED** | 11 total anon PASS, 46 auth PASS, exact 16-probe section, and distinct `403/42501` versus `409/23503` are present; separate low oracle/label issue recorded. |
+
+**Verification**
+
+| Check | Class | Evidence/result |
+| --- | --- | --- |
+| Exact refs, ancestry, sequence, and range sizes | PASS | Fresh fetch; exact base/target; eight linear commits; dispatched full/fix-cycle counts. |
+| Applied-migration/type/review immutability | PASS | No fix-cycle delta under the four migrations, generated type file, ADRs, or REVIEW-011. |
+| 004a stability | PASS | Six gated artifacts × two exact-target runs, all byte-identical, process 0. First sandbox parser-fetch attempt: NOT RUN due network denial; approved rerun passed. |
+| 004a exact-schema oracle | FAIL introduced | Added-default neighbors remained 72/72 PASS; REVIEW-012 finding 2. |
+| 004b stability | PASS | Five gated artifacts × two exact-target runs, all byte-identical, process 0. |
+| Prior stdout redaction bypass | PASS | Planted control byte-identical; independent leaky file returned 1 and was deleted; clean file returned 0; transcript hashes match the committed bindings. |
+| Historical run-only secret values | NOT RUN with reason | Original passwords/tokens and ephemeral ledger no longer exist; SHA binding is the historical evidence boundary. |
+| Owner-run role grid | PASS at table-level boundary / broader prose FAIL introduced | `roles-acl.txt` proves the recorded role/table/FORCE values; REVIEW-012 finding 1 limits the claims. |
+| F4 live toggle/users | NOT RUN by reviewer | Owner-confirmed record reviewed; no live auth or user query was authorized or made. |
+| Anon/auth live rerun | NOT RUN by reviewer | Committed artifacts record 11/11 and 46/46; no new users or staging requests were made. |
+| Committed F5 behavior | PASS | Exact 16-probe matrix; FK-valid pair `403/42501`, invalid pair `409/23503` naming the composite FK. |
+| Four non-install gates and secret scans | PASS | Fresh stability reproduced the committed typecheck/lint/Jest/format and positive-controlled scan bytes. |
+| Full/fix-cycle whitespace | PASS | Both `git diff --check` probes returned 0. |
+| `npm ci` | NOT RUN with reason | No dependency delta. |
+| Branch CI | NOT RUN | Fresh GitHub queries found zero PRs and zero workflow runs. |
+| Local database lint/stack | NOT RUN | Outside the reviewer database/Docker boundary. |
+| Production access | NOT RUN — prohibited | No production or outward-facing action occurred. |
+
+Standards: **3 hard mismatches; worst severity medium.** Spec: **2 findings;
+worst severity medium.** Full axis reports and evidence anchors are in
+REVIEW-012.
+
+**What I did not do**
+
+No Supabase query or write; no auth toggle; no user creation/deletion; no
+`db push` or type generation; no migration, product, evidence, OPERATIONS,
+decision, prior-review, LOCK, PROJECT-STATE, or BRANCH-NOTES edit; no PR,
+push, merge, deploy, secret output, or production access. This review writes
+exactly `docs/04-reviews/REVIEW-012.md` and this top-insert HANDOFF block.
+
+**Next step**
+
+Controller routes fix cycle 2 to the same builder/branch. Keep applied
+migrations immutable. The minimum verdict-driving work is to narrow every F1
+claim to the exact measured boundary (or add the missing owner measurements)
+and make the F2 exact-schema oracle reject absent-default/function-argument/FK
+attribute neighbors with permanent controls. Owner merge waits for a later
+PASS review.
+
+LOCK status line: `Status: REVIEW — fix cycle 1 complete, awaiting
+re-review`.
+
+---
+
 ## 2026-08-20 — feat/schema-rls-v1 (CTRL-004 Unit C, fix cycle 1 — REVIEW-011)
 
 **Controller:** CTRL-004 Schema and RLS v1. **Builder:** Claude Code — Fable
