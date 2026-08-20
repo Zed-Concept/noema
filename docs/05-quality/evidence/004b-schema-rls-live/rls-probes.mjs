@@ -6,9 +6,11 @@
  *   --anon  anon-probes.txt: requests with NO session — the publishable key
  *           presented exactly as a sessionless client presents it (apikey +
  *           bearer, the supabase-js default). Expected: denial on every REST
- *           and storage surface (anon holds no table grants; storage shows
- *           zero-row visibility / not-found obfuscation / RLS insert
- *           rejection). The exact response shapes are recorded as the
+ *           and storage surface (anon holds no current table-level
+ *           SELECT/INSERT/UPDATE/DELETE on any v1 table — the measured
+ *           boundary, roles-acl.txt; storage shows zero-row visibility /
+ *           not-found obfuscation / RLS insert rejection). The exact
+ *           response shapes are recorded as the
  *           contract, and the summary names the exact subset: the two
  *           service-context probes (auth health, auth settings) prove
  *           reachability and run-time config, not denial — the
@@ -218,7 +220,11 @@ function show(r, cap = 400) {
 
 // One exact expected status + one exact expected code, per probe (REVIEW-012
 // finding 5 — the prior helper accepted 401 or 403). anon REST denials are
-// permission errors ahead of RLS (anon holds no grants): exactly 401/42501.
+// permission errors ahead of RLS: anon holds no current table-level
+// SELECT/INSERT/UPDATE/DELETE on any v1 table (the measured boundary in
+// roles-acl.txt; its raw ACL does record the non-CRUD platform-default
+// entries MAINTAIN/REFERENCES/TRIGGER/TRUNCATE, and column-level privileges
+// are NOT RUN — REVIEW-013 finding 1). So: exactly 401/42501.
 // Authenticated WITH CHECK denials are RLS violations behind valid grants:
 // exactly 403/42501. Storage denials carry the storage-api code field:
 // exactly 400/NoSuchKey (not-found obfuscation) or 400/AccessDenied (RLS).
@@ -264,8 +270,11 @@ async function anonMode() {
   }
   out('# Anon-path probes: no session — the publishable key presented sessionless.');
   out('# Expected: denial everywhere. Exact response shapes below are the recorded');
-  out('# contract for the applied Unit C schema (anon holds no table grants; the');
-  out('# storage policies are TO authenticated only).');
+  out('# contract for the applied Unit C schema. Measured boundary (roles-acl.txt):');
+  out('# anon holds no current table-level SELECT/INSERT/UPDATE/DELETE on any v1');
+  out('# table; its raw table ACL does record the non-CRUD platform-default entries');
+  out('# MAINTAIN/REFERENCES/TRIGGER/TRUNCATE, and column-level privileges are NOT');
+  out('# RUN. The storage policies are TO authenticated only.');
   out();
   const health = await req('GET', '/auth/v1/health');
   probe(
@@ -340,12 +349,13 @@ function authSummary(r) {
   );
 }
 
-// Fix-cycle-2 namespace (REVIEW-012 fix dispatch): fresh disposable users,
-// distinct from the deleted ctrl004b-*/ctrl004c-* pairs, exactly two,
-// owner-deleted after the run.
+// Fix-cycle-3 namespace (REVIEW-013 fix dispatch): fresh disposable users,
+// distinct from the deleted ctrl004b-*/ctrl004c-*/ctrl004e-* pairs, exactly
+// two, owner-deleted after the run. Every disposable-user claim is scoped to
+// one namespace (REVIEW-012 finding 4).
 const USERS = [
-  { tag: 'user1', email: 'ctrl004d-user1@example.com' },
-  { tag: 'user2', email: 'ctrl004d-user2@example.com' },
+  { tag: 'user1', email: 'ctrl004e-user1@example.com' },
+  { tag: 'user2', email: 'ctrl004e-user2@example.com' },
 ];
 
 async function obtainSession(u) {
@@ -434,7 +444,7 @@ async function authMode() {
   out('## Owner CRUD — profiles (read proven above; update, delete, insert-back)');
   const pu = await req('PATCH', `/rest/v1/profiles?id=eq.${u1.uid}`, {
     bearer: u1.token,
-    json: { display_name: 'ctrl004d user1' },
+    json: { display_name: 'ctrl004e user1' },
     headers: { prefer: 'return=representation' },
   });
   const puRow = Array.isArray(pu.json) ? pu.json[0] : undefined;
@@ -442,7 +452,7 @@ async function authMode() {
     'profiles UPDATE own: allowed, and the updated_at trigger fired (updated_at moved off created_at)',
     pu.status === 200 &&
       Boolean(puRow) &&
-      puRow.display_name === 'ctrl004d user1' &&
+      puRow.display_name === 'ctrl004e user1' &&
       puRow.updated_at !== puRow.created_at,
     show(pu),
   );
@@ -457,7 +467,7 @@ async function authMode() {
   );
   const pi = await req('POST', '/rest/v1/profiles', {
     bearer: u1.token,
-    json: { id: u1.uid, display_name: 'ctrl004d user1' },
+    json: { id: u1.uid, display_name: 'ctrl004e user1' },
     headers: { prefer: 'return=representation' },
   });
   probe(
@@ -541,7 +551,7 @@ async function authMode() {
     json: {
       capture_id: capA,
       user_id: u1.uid,
-      text: 'ctrl004d probe transcript',
+      text: 'ctrl004e probe transcript',
       language: 'en',
       provider: 'probe',
     },
@@ -581,7 +591,7 @@ async function authMode() {
   );
   const tu = await req('PATCH', `/rest/v1/transcripts?id=eq.${tid1}`, {
     bearer: u1.token,
-    json: { text: 'ctrl004d probe transcript (updated)' },
+    json: { text: 'ctrl004e probe transcript (updated)' },
     headers: { prefer: 'return=representation' },
   });
   probe(
@@ -739,7 +749,7 @@ async function authMode() {
     'cross-user write attempts were true no-ops: user1 profile present, display_name unchanged',
     rc1.status === 200 &&
       Boolean(rc1.json && rc1.json[0]) &&
-      rc1.json[0].display_name === 'ctrl004d user1',
+      rc1.json[0].display_name === 'ctrl004e user1',
     show(rc1),
   );
   const rc2 = await req('GET', `/rest/v1/captures?select=id,status&id=eq.${capA}`, {
@@ -764,7 +774,7 @@ async function authMode() {
 
   out();
   out('## Storage — captures-audio, {user_id}/ scoping');
-  const AUDIO = 'ctrl004d probe audio bytes';
+  const AUDIO = 'ctrl004e probe audio bytes';
   const s1 = await req('POST', `/storage/v1/object/captures-audio/${u1.uid}/probe.bin`, {
     bearer: u1.token,
     bodyRaw: AUDIO,

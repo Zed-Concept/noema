@@ -1,6 +1,10 @@
-# Negative control: verify-migrations.mjs must go red on each tampered copy.
-# Each scenario: fresh copy of supabase/migrations into scratch, one mutation,
-# one run. Expected: exit 1 and the named assertion FAILs.
+# Permanent neighbor battery / negative control: verify-migrations.mjs must
+# go red on each tampered copy. Each scenario: fresh copy of
+# supabase/migrations into scratch, one mutation, one run. Expected: exit 1
+# and the named assertion FAILs. This is the complete battery — every
+# neighbor class the 004a claims name is enumerated below and run here.
+
+== group 1: removals and narrowings ==
 
 scenario: FORCE ROW LEVEL SECURITY removed from captures
 expected failing assertion: public.captures: FORCE ROW LEVEL SECURITY
@@ -22,6 +26,8 @@ scenario: provisioning function demoted to SECURITY INVOKER
 expected failing assertion: handle_new_user: returns trigger, plpgsql, SECURITY DEFINER, search_path pinned to ''
 exit code: 1 (1 required); named FAIL line present: yes (yes required)
 
+== group 2: append-class mutations (audit workflow findings) ==
+
 scenario: DISABLE ROW LEVEL SECURITY appended after the enable/force block
 expected failing assertion: public.captures: ENABLE ROW LEVEL SECURITY
 exit code: 1 (1 required); named FAIL line present: yes (yes required)
@@ -30,9 +36,13 @@ scenario: schema-unqualified USING (true) policy appended
 expected failing assertion: every policy names its schema explicitly (public or storage) and the total is exactly 17 — an unqualified or extra policy cannot hide
 exit code: 1 (1 required); named FAIL line present: yes (yes required)
 
+== group 3: exact-value neighbor (REVIEW-011 finding 2) ==
+
 scenario: duration_ms CHECK value shifted to its neighbor (>= -1)
 expected failing assertion: captures.duration_ms integer, nullable, CHECK (duration_ms >= 0)
 exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+== group 4: absence classes (REVIEW-012 finding 2) ==
 
 scenario: DEFAULT 0 added to captures.duration_ms (declared default-free; REVIEW-012 finding 2 reproduction)
 expected failing assertion: public.captures: per-column constraint-type multiset is exactly the declared set — no default, check, unique, or other constraint is added to or missing from any column
@@ -47,7 +57,95 @@ expected failing assertion: captures.user_id uuid NOT NULL FK -> auth.users(id) 
 exit code: 1 (1 required); named FAIL line present: yes (yes required)
 
 scenario: ON CONFLICT DO NOTHING appended to the bucket insert (idempotency neighbor)
-expected failing assertion: bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false) — plain insert, no ON CONFLICT (deliberately non-idempotent), no RETURNING
+expected failing assertion: bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false) — exactly one VALUES row, plain insert, no ON CONFLICT (deliberately non-idempotent), no RETURNING
 exit code: 1 (1 required); named FAIL line present: yes (yes required)
 
---- enforced: every scenario exits 1 with its named FAIL line, or capture.sh exits 1 (fail closed) ---
+== group 5: the remaining fix-cycle-2 absence classes, made permanent
+== (REVIEW-013 finding 3 — these were previously run in scratch only) ==
+
+scenario: captures.user_id FK given ON UPDATE CASCADE (declared NO ACTION)
+expected failing assertion: captures.user_id uuid NOT NULL FK -> auth.users(id) ON DELETE CASCADE
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: captures.user_id FK match type changed to MATCH FULL (declared MATCH SIMPLE)
+expected failing assertion: captures.user_id uuid NOT NULL FK -> auth.users(id) ON DELETE CASCADE
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: captures.user_id FK constraint renamed (Phase B evidence keys off the name)
+expected failing assertion: captures.user_id uuid NOT NULL FK -> auth.users(id) ON DELETE CASCADE
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: profiles grant given WITH GRANT OPTION (re-grantable)
+expected failing assertion: each of the three tables is granted exactly select,insert,update,delete — table-object grants, no per-column privilege list, no WITH GRANT OPTION
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: captures_user_id_idx made UNIQUE (one capture per user)
+expected failing assertion: FK-supporting indexes: captures(user_id), transcripts(capture_id,user_id), transcripts(user_id) — each plain btree, non-unique, unpredicated, no INCLUDE list, expected name
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: captures_user_id_idx made partial (WHERE user_id is not null)
+expected failing assertion: FK-supporting indexes: captures(user_id), transcripts(capture_id,user_id), transcripts(user_id) — each plain btree, non-unique, unpredicated, no INCLUDE list, expected name
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: profiles updated_at trigger given a WHEN clause (conditional maintenance)
+expected failing assertion: BEFORE UPDATE row triggers run set_updated_at on exactly profiles and captures (transcripts has no updated_at) — unconditional: no WHEN clause and no UPDATE OF column list
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: set_updated_at given an extra SET (statement_timeout) beyond the pinned search_path
+expected failing assertion: set_updated_at: returns trigger, plpgsql, SECURITY INVOKER, search_path pinned to ''
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: set_updated_at declared STRICT (null-input behavior changed)
+expected failing assertion: set_updated_at: returns trigger, plpgsql, SECURITY INVOKER, search_path pinned to ''
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: profiles.created_at given a typmod (timestamptz(3) — precision truncated)
+expected failing assertion: profiles.created_at timestamptz NOT NULL DEFAULT now()
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: second CHECK added to profiles.locale
+expected failing assertion: public.profiles: per-column constraint-type multiset is exactly the declared set — no default, check, unique, or other constraint is added to or missing from any column
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: column UNIQUE added to profiles.display_name
+expected failing assertion: public.profiles: per-column constraint-type multiset is exactly the declared set — no default, check, unique, or other constraint is added to or missing from any column
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: table-level CHECK added to profiles
+expected failing assertion: public.profiles: table-level constraints are exactly [none] and no INHERITS/PARTITION BY/OF type/tablespace/IF NOT EXISTS clause exists
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: captures UNIQUE (id, user_id) given NULLS NOT DISTINCT
+expected failing assertion: captures UNIQUE (id, user_id) — the referenced key for the composite FK
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+== group 6: the REVIEW-013 finding 2 classes — parse-valid neighbors the
+== oracle accepted green before this fix cycle ==
+
+scenario: captures.status CHECK inverted to NOT IN (same value list, opposite meaning)
+expected failing assertion: captures.status CHECK (status IN ('recorded','transcribing','ready','failed'))
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: captures SELECT policy subquery given WHERE false (predicate never matches)
+expected failing assertion: public.captures select: one permissive policy TO authenticated, (select auth.uid()) = user_id
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: profiles SELECT narrowed to a column-only grant, SELECT(id)
+expected failing assertion: each of the three tables is granted exactly select,insert,update,delete — table-object grants, no per-column privilege list, no WITH GRANT OPTION
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: second VALUES row appended to the bucket insert, creating a public bucket
+expected failing assertion: bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false) — exactly one VALUES row, plain insert, no ON CONFLICT (deliberately non-idempotent), no RETURNING
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: profiles updated_at trigger narrowed to UPDATE OF display_name
+expected failing assertion: BEFORE UPDATE row triggers run set_updated_at on exactly profiles and captures (transcripts has no updated_at) — unconditional: no WHEN clause and no UPDATE OF column list
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: INCLUDE (id) added to captures_user_id_idx
+expected failing assertion: FK-supporting indexes: captures(user_id), transcripts(capture_id,user_id), transcripts(user_id) — each plain btree, non-unique, unpredicated, no INCLUDE list, expected name
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenarios run: 32
+--- enforced: every scenario exits 1 with its named FAIL line, and the run
+--- count equals the enumerated scenario lines, or capture.sh exits 1 ---

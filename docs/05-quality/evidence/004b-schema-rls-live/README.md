@@ -28,6 +28,18 @@ naming its exact subset (finding 5) — then re-ran the live suite under
 those strict oracles in a fresh `ctrl004d-*` namespace. `roles-acl.txt` is
 unchanged: the measurement is settled and was not re-run.
 
+**Fix cycle 3 (REVIEW-013, 2026-08-20)** narrowed the one privilege
+statement that still outran the grid: the producer and claim 4 said anon
+"holds no grants" / "no table grants", while `roles-acl.txt` section 3
+records four non-CRUD raw-ACL entries for anon on every v1 table and column
+ACLs are NOT RUN (finding 1). Every surface now states the supported
+measured fact — **no current table-level SELECT/INSERT/UPDATE/DELETE** —
+and names the non-CRUD entries and the column-ACL boundary alongside it.
+Because that sentence is printed by `rls-probes.mjs` into the transcript
+preamble, the live suite was re-run to regenerate the transcripts under the
+corrected producer, in a fresh `ctrl004e-*` namespace. `roles-acl.txt` is
+again unchanged and was not re-run.
+
 ## The two verification subjects
 
 1. **The owner-regenerated types file** — committed as-is (this phase's
@@ -94,7 +106,7 @@ and must not be committed.
 
 - Test users (disposable, clearly namespaced, created via the
   publishable-key signup path — exactly the two this fix cycle's dispatch
-  authorizes): `ctrl004d-user1@example.com`, `ctrl004d-user2@example.com`
+  authorizes): `ctrl004e-user1@example.com`, `ctrl004e-user2@example.com`
   (`example.com` is RFC-2606-reserved: never deliverable, no real-person
   namespace). Generated passwords existed only in the probe process's
   memory: never persisted, never printed (redaction-registered and
@@ -103,19 +115,19 @@ and must not be committed.
   in-run); denied attempts `{user2-uid}/intrusion.bin` and
   `no-folder-probe.bin` created nothing.
 - **Disposable-user counts are per-namespace, never global** (REVIEW-012
-  finding 4). This cycle's namespace is `ctrl004d-*` and it contains
+  finding 4). This cycle's namespace is `ctrl004e-*` and it contains
   exactly two users; that is the only user-count statement this directory
-  makes. Earlier namespaces (`ctrl004b-*`, `ctrl004c-*`) have their own
-  records in their own HANDOFF blocks, and nothing here asserts a maximum
-  across namespaces or across time.
-- Residual state after the committed run: the two `ctrl004d-*` auth users,
+  makes. Earlier namespaces (`ctrl004b-*`, `ctrl004c-*`, `ctrl004d-*`) have
+  their own records in their own HANDOFF blocks, and nothing here asserts a
+  maximum across namespaces or across time.
+- Residual state after the committed run: the two `ctrl004e-*` auth users,
   their two provisioned/reinserted `profiles` rows, one `captures` row
   (capture A, status `ready`, user1) and one `transcripts` row (user1).
   Storage holds no test objects. **Cleanup is owner-class** (deleting users
   needs the dashboard or a secret-class key): deleting the two users in
   Auth → Users cascades away all their rows (every FK chains to
   `auth.users` ON DELETE CASCADE). Deletion was requested in-loop at this
-  cycle's close; the fix-cycle-2 HANDOFF block records its confirmation
+  cycle's close; the fix-cycle-3 HANDOFF block records its confirmation
   state. Re-running `--auth` requires a fresh namespace or cleaned-up
   users: a signup for an existing email cannot recover the original
   in-memory password.
@@ -133,10 +145,13 @@ and must not be committed.
    owner-re-enabled after that run (recorded in the REVIEW-011 review
    dispatch; REVIEW-011 finding 4) → owner-disabled for the fix-cycle-1 run
    → owner-re-enabled at that cycle's close → owner-disabled again, on
-   request, for this fix cycle's run (2026-08-20) → re-enable requested
-   in-loop at this cycle's close. **The newest HANDOFF block is the
-   current-state record of this toggle; nothing in this directory claims
-   its present value.**
+   request, for the fix-cycle-2 run (2026-08-20) → re-enabled at that
+   cycle's close → **owner-disabled again for the fix-cycle-3 `ctrl004e-*`
+   run (2026-08-20), measured `mailer_autoconfirm=true` by the builder
+   before the run rather than assumed, and owner-re-enabled at this cycle's
+   close, measured back to `mailer_autoconfirm=false` after.** **The newest
+   HANDOFF block is the current-state record of this toggle; nothing in this
+   directory claims its present value.**
 3. The `roles-acl.sql` measurement was owner-executed in the staging SQL
    editor on 2026-08-20 (ruling 10); its verbatim pasted output is
    `roles-acl.txt`.
@@ -243,7 +258,7 @@ cannot exist.
 | 1 | The owner-regenerated `src/lib/database.types.ts` is committed as-is; the generation run itself (owner-executed, ruling 10) | NOT RUN (generation) — provenance recorded; verification is indirect via claims 2–3, stated as such per dispatch | this README + the phase's first commit |
 | 2 | The repo typechecks with the regenerated types (the shared client compiles against them) | PASS | `gates.txt` (tsc step) |
 | 3 | Probe consistency: live REST row keys equal the types-declared Row columns, all three tables | PASS | `types-shape.txt` + `auth-probes.txt` (the three `row keys ===` probes) |
-| 4 | Anon REST denial: SELECT and INSERT on profiles, captures, transcripts each answer **exactly** HTTP 401 code `42501` (anon holds no grants) — six probes, each oracle pinning that one status and that one code (REVIEW-012 finding 5); exact shapes recorded as the contract | PASS | `anon-probes.txt` |
+| 4 | Anon REST denial: SELECT and INSERT on profiles, captures, transcripts each answer **exactly** HTTP 401 code `42501` — six probes, each oracle pinning that one status and that one code (REVIEW-012 finding 5); exact shapes recorded as the contract. The supported causal statement is the measured one (REVIEW-013 finding 1): anon holds **no current table-level SELECT/INSERT/UPDATE/DELETE** on any v1 table per `roles-acl.txt` section 2 — *not* "no grants". The same grid's section 3 records four non-CRUD raw-ACL entries for anon on every v1 table (`MAINTAIN`, `REFERENCES`, `TRIGGER`, `TRUNCATE`), which this set did not author, and column-level privileges are NOT RUN (claim 21). Nothing measured here is a Data API read/write path for anon | PASS | `anon-probes.txt`, `roles-acl.txt` |
 | 5 | Anon storage denial on `captures-audio`: download → **exactly** 400/`NoSuchKey` (not-found obfuscation), upload → **exactly** 400/`AccessDenied` (RLS rejection), list → **exactly** HTTP 200 with an empty array, including re-checked while an owner object existed | PASS | `anon-probes.txt` + `auth-probes.txt` (the anon-list contrast probe) |
 | 6 | Signup provisioning created each test user's `profiles` row (the `on_auth_user_created` trigger ran), visible only to its owner, `locale` defaulting `'en'`. **Which mechanism admits that definer insert under FORCE is not isolated by this evidence**: the applied function's owner was not measured (claim 20), and either a `BYPASSRLS` definer or the `TO postgres` policy would admit it — the live rows prove the path works, not which link carried it | PASS (provisioning occurred) / admitting mechanism NOT ISOLATED | `auth-probes.txt` + `roles-acl.txt` |
 | 7 | Owner CRUD allowed on own rows across all three tables (profiles: R,U,D,C; captures: C,R,U,D; transcripts: C,R,U,D); `updated_at` triggers fire on profiles and captures | PASS | `auth-probes.txt` |

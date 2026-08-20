@@ -8,6 +8,214 @@ Append a new block at the top. Never edit an old one.
 
 ---
 
+## 2026-08-20 — feat/schema-rls-v1 (CTRL-004 Unit C, fix cycle 3 — REVIEW-013)
+
+**Controller:** CTRL-004 Schema and RLS v1. **Builder:** Claude Code, same
+builder and branch per ruling 5's fix-loop class, fresh session.
+**Reviewer of record:** Codex (Codex Sol / Ultra, fresh session); **advisory
+reviewer** DeepSeek V4 Pro per the LOCK. **Fix-cycle base:**
+`3ef34cd5a55d349f283c79cbe9ce8af7cba7c33b` (the dispatch-named origin tip),
+fetched and confirmed equal to local HEAD and `origin/feat/schema-rls-v1`
+before any work (learning 6); clean tree. **Standing authorization**
+restated in the dispatch (ruling 7): the 2026-08-19 RED-lane owner approval
+covers exactly this unit's schema/RLS scope. The four applied migrations,
+`src/lib/database.types.ts`, every ADR, every `REVIEW-*.md`, and both
+`roles-acl.*` files are untouched. **LOCK:** `Status: REVIEW` throughout;
+status-line suffix and the `Model+Effort` line amended, nothing else.
+**.env:** presence re-checked by name only (`.env` and `.env.example`
+present; no value read by me except the two names `live-probes.sh` extracts
+for the authorized live run, which are never printed).
+
+**⚠ Model seat (ruling 4 / learning 3).** This cycle was dispatched to
+**Opus 5 \[1m]** as an owner-ruled temporary substitution for Fable 5. The
+dispatch asked me to report my UI's exact effort label: this session's
+configuration reads model `opus[1m]`, **effort `max`** — so the LOCK records
+**Opus 5 \[1m] / Max**, which matches ruling 5's tier for review-fix loops.
+No mid-cycle model change occurred; the whole cycle is one seat.
+
+**Disclosure (ruling 6):** workflows run: 0; subagent fan-out: none. Every
+change and verification in this cycle was made directly in this session.
+
+**Owner-executed events on the record (config/credential class, in-loop per
+ruling 10, each confirmed in the loop):**
+
+1. **Email confirmation** — owner-disabled for this cycle's live run,
+   confirmed in-loop 2026-08-20. I did **not** take the toggle state on
+   trust: I measured `/auth/v1/settings` before the run and read
+   `mailer_autoconfirm=true`, and measured it again after the owner's
+   re-enable and read `mailer_autoconfirm=false`. **Email confirmation is
+   ON as of this handoff** (measured, not asserted). One record point worth
+   the controller's attention: the pre-run measurement was taken before I
+   knew a toggle had happened, and the owner confirmed in-loop that they had
+   just disabled it — so the fix-cycle-2 block's "confirmation is ON"
+   sentence was true when written and is not contradicted. No prior block
+   was edited.
+2. **Disposable users** — exactly two, in a fresh namespace:
+   `ctrl004e-user1@example.com` and `ctrl004e-user2@example.com`. **Both
+   owner-deleted at cycle close, confirmed in-loop 2026-08-20**; deletion
+   cascades removed their two `profiles` rows, one `captures` row and one
+   `transcripts` row, and the run left storage empty. Per REVIEW-012
+   finding 4 this claim is scoped to the `ctrl004e-*` namespace and asserts
+   nothing across namespaces or across time. Independent external
+   verification of the deletion is **NOT RUN** — it needs a secret-class
+   key I do not hold.
+
+**What I changed — exactly the three verdict-driving REVIEW-013 findings**
+
+- **F1 (medium) — the residual anon statement narrowed to the measured
+  boundary, in all three places.** `roles-acl.txt` section 2 measures
+  `select=f insert=f update=f delete=f` for anon on all three v1 tables,
+  while section 3 records four non-CRUD raw-ACL entries per table
+  (`MAINTAIN`, `REFERENCES`, `TRIGGER`, `TRUNCATE`) and claim 21 keeps
+  column ACLs NOT RUN. So "anon holds no grants" / "no table grants" is
+  replaced everywhere by **"anon holds no current table-level
+  SELECT/INSERT/UPDATE/DELETE on any v1 table"**, stated together with the
+  four non-CRUD entries and the column-ACL NOT RUN boundary: in
+  `rls-probes.mjs` (module header, the `deniedExact` preamble, and the
+  transcript preamble it prints), and in 004b claim 4, which now cites
+  `roles-acl.txt` alongside `anon-probes.txt`. The phrase no longer occurs
+  anywhere under `docs/05-quality/evidence/` (grep-verified).
+- **F1 — the transcript could not be corrected without a live run, so the
+  run happened.** The disputed sentence is printed by the producer into
+  `anon-probes.txt`, and `live-probes.sh` runs `--anon` and `--auth` as one
+  gated pair, so an anon-only regeneration is not available and hand-editing
+  a transcript is not permitted. I put the choice to the owner rather than
+  deciding it, and the owner ruled for the live round. **One fresh live run
+  in namespace `ctrl004e-*`, exactly two users**, regenerated all three live
+  artifacts under the corrected producer: **anon 11 PASS / 0 FAIL** (9
+  denial/invisibility + 2 service-context), **auth 46 PASS / 0 FAIL**
+  including the exact 16-probe cross-user section, both redaction gates
+  **GREEN**, process 0. Independent `shasum -a 256` this session equals both
+  gate bindings: anon **3756 B** `9ba3c2b5…d643f`, auth **12429 B**
+  `059edefa…f0e34`.
+- **F2 (medium) — the six demonstrated neighbors are closed, and the claim
+  is rewritten to a bounded one.** I first reproduced all six false greens
+  against the exact committed oracle (each returned process 0 and 78/78),
+  then fixed each at its AST cause: CHECK `IN` now pins the operator
+  (libpg_query encodes `IN` and `NOT IN` alike as `AEXPR_IN`, differing only
+  in the operator name `=` vs `<>`); the initplan `(select auth.uid())`
+  subquery is pinned to a bare one-target SELECT, so an added
+  `WHERE`/`LIMIT`/`GROUP BY` is rejected; grants pin `AccessPriv.cols`
+  absent; the bucket INSERT pins `valuesLists.length === 1`; the
+  `updated_at` triggers pin the `UPDATE OF` column list absent; and the
+  FK-supporting indexes pin `indexIncludingParams` absent. Assertion count
+  is unchanged at **78/78 PASS** — these are tightenings of existing
+  assertions, not new ones. **Then I stopped extending, as the ruling
+  directs.** The claim is now an explicit **enumerated-assertion oracle**
+  claim: a new *What the oracle proves — and what it does not* section in
+  the 004a README names the **twelve enumerated classes** it pins and states
+  plainly that **it is not a proof of exhaustive schema equivalence and that
+  further parse-valid neighbors outside the enumerated classes may pass**.
+  The same bounded wording is now carried by the producer's own header,
+  claim 2 (whose class reads "PASS, bounded to the enumerated classes"), and
+  claim 9. The old "the schema is exactly the v1 scope, nothing extra can
+  hide" framing is gone and its removal is stated on the record.
+- **F3 (medium) — the unsupported 18-neighbor claim is replaced by a
+  committed, reproducible full battery whose count cannot drift.**
+  `assertions-negative-control.txt` is now **the complete permanent neighbor
+  battery: 32 scenarios in six labelled groups**, produced by
+  `capture.sh` in the evidence tree — the 12 that were already permanent,
+  the **14** classes fix cycle 2 claimed but ran in scratch only (FK
+  `ON UPDATE`, FK `MATCH FULL`, FK rename, `WITH GRANT OPTION`, unique
+  index, partial index, trigger `WHEN`, extra `SET`, `STRICT`, typmod,
+  second column CHECK, column UNIQUE, table-level CHECK, `NULLS NOT
+  DISTINCT`), and the **6** REVIEW-013 finding 2 classes. All 32 exit 1 with
+  their named FAIL. The count is not written by hand: `capture.sh` derives
+  it from the run counter, prints `scenarios run: 32`, then cross-checks it
+  against the artifact's own `scenario:` lines and fails closed on a
+  mismatch — so the stated total cannot disagree with the enumeration, which
+  is the exact defect REVIEW-013 finding 3 found. **No claim in either
+  directory now rests on a scratch-only neighbor run.**
+- **Finding 4 (low) — deliberately not touched**, per the controller ruling:
+  the stale Phase B LOCK sentence in `BRANCH-NOTES.md` is controller-owned
+  and is to be corrected by a superseding note in the close-out state
+  commit. My `BRANCH-NOTES.md` edit is exactly the LOCK status-line suffix
+  and the `Model+Effort` line.
+
+**Verification (every PASS carries an artifact)**
+
+| Check | Class | Artifact / result |
+| --- | --- | --- |
+| Six REVIEW-013 neighbors reproduced false-green on the exact committed oracle | PASS (defect confirmed before fixing) | each returned process 0, `78 assertions, 78 PASS`, against disposable scratch copies; repo never touched |
+| Same six now rejected, each with its named FAIL | PASS | `004a/assertions-negative-control.txt` group 6 (permanent, one scenario each) |
+| Static baseline after the six fixes | PASS | `004a/sql-assertions.txt` — 78 assertions, 78 PASS, 0 FAIL, 0 parse failures, exit 0 |
+| Full permanent neighbor battery, 32/32 discriminating | PASS | `004a/assertions-negative-control.txt` — every scenario `exit code: 1`, `named FAIL line present: yes` |
+| Battery count matches its own enumeration | PASS | `capture.sh` derives `scenarios run: 32` from the run counter and cross-checks `grep -c '^scenario: '`, failing closed on mismatch |
+| Oracle claim bounded to what it proves | PASS | `004a/README.md` *What the oracle proves — and what it does not* (twelve enumerated classes + explicit non-exhaustiveness statement); carried into the producer header, claim 2, claim 9 |
+| Anon statement narrowed to the measured grid, everywhere | PASS | `004b/rls-probes.mjs` (3 sites), `004b/README.md` claim 4, `004b/anon-probes.txt` preamble; `roles-acl.txt` is the cited measurement, unchanged and not re-run |
+| Fresh live run under the corrected producer, anon | PASS | `004b/anon-probes.txt` — 9 denial/invisibility + 2 service-context = 11 PASS, 0 FAIL, exit 0 |
+| Fresh live run under the corrected producer, authenticated | PASS | `004b/auth-probes.txt` — 46 PASS, 0 FAIL, exact 16-probe cross-user section, exit 0 |
+| Redaction gate green; committed bytes = scanned bytes | PASS | `004b/redaction-gate.txt`; independent `shasum -a 256` this session equals both bindings (anon 3756 B `9ba3c2b5…d643f`, auth 12429 B `059edefa…f0e34`) |
+| Byte-stability, 004a (six gated × 2 runs) | PASS | `004a/stability.txt` — 12/12 comparisons identical, differing 0, exit 0 |
+| Byte-stability, 004b (five gated × 2 runs) | PASS | `004b/stability.txt` — 10/10 comparisons identical, differing 0, exit 0 |
+| Four non-install CI steps at this head | PASS | `004a/gates.txt`, `004b/gates.txt` (both regenerated byte-identical) |
+| Secret scan over the full index incl. the new transcripts | PASS | `004a/secret-scan.txt`, `004b/secret-scan.txt` (both byte-identical) |
+| Delta whitespace | PASS | `git diff --check HEAD` returned 0 with no diagnostics |
+| Staging email-confirmation state, before and after | PASS (measured by me, twice) | `/auth/v1/settings`: `mailer_autoconfirm=true` pre-run, `false` post-re-enable; both transcripts additionally record the state they ran under |
+| `ctrl004e-*` user deletion | PASS from owner record / independent external verification NOT RUN | owner-confirmed in-loop 2026-08-20; verifying it needs a secret-class key I do not hold |
+| Staging role/ACL/RLS posture | PASS (measured, owner-executed, unchanged this cycle) | `004b/roles-acl.txt` — not re-run; the dispatch settles it |
+| Dashboard tooling end-to-end; definer owner; column ACLs | NOT RUN — each recorded with reason | `004b/README.md` claims 19, 20, 21 |
+| `npm ci` | NOT RUN with reason | no dependency delta (probe inside both `gates.txt`) |
+| Branch CI | NOT RUN | no `pull_request` event on this branch |
+| `supabase db lint` / local stack | NOT RUN | Docker/database boundary unchanged |
+| Production access | NOT RUN — prohibited | no production credential, query, write, deploy, or outward-facing action |
+
+**Disclosures**
+
+- **Where the gates ran.** Both capture suites and both stability gates ran
+  in a **disposable clone of the staged tree** (the standing precedent for
+  this working copy): the owner's machine-local `supabase/.temp` residue is
+  walked by 004a's prettier step, which fails it red here but is clean in
+  the clone. I confirmed the interaction rather than assuming it — an
+  in-place run reproduced exactly that one difference in `gates.txt`
+  (`[warn] supabase/.temp/linked-project.json`, exit 1) and nothing else.
+  The clone was built by `git clone` of this repo so the gates' base-SHA
+  probe resolves against real history, was placed at a path deliberately
+  free of UUID-shaped segments (the npm 11 redaction instrument fact from
+  fix cycle 2), and was deleted afterwards. Nothing red was staged or
+  committed.
+- **Byte-identical regenerations produced no hunks** (learning 9), and are
+  disclosed rather than manufactured: `004a/config-provenance.txt`,
+  `004a/inventory.txt`, `004a/gates.txt`, `004a/secret-scan.txt`,
+  `004a/stability.txt`, `004b/types-shape.txt`,
+  `004b/redaction-control.txt`, `004b/gates.txt`, `004b/inventory.txt`,
+  `004b/secret-scan.txt`, `004b/stability.txt`, and both `environment.txt`
+  files. The recordable deltas are the ten files under "What I changed".
+- The live run consumed the two-user authorization exactly once, in a fresh
+  namespace. No probe ran against production; no credential value was
+  printed, committed, or read by me beyond variable-name presence and the
+  two values `live-probes.sh` extracts internally.
+- **Adjacent, reported not acted on:** the 32-scenario battery makes
+  `capture.sh` noticeably slower (32 parser runs per capture, ×2 per
+  stability run). It stays well inside the documented "couple of minutes",
+  and I made no speed change, since the dispatch scopes this cycle to the
+  three findings.
+
+**What I did not do**
+
+No file under `supabase/` was touched; no edit to any `REVIEW-*.md`, ADR,
+prior HANDOFF block, `src/lib/database.types.ts`, `roles-acl.sql`,
+`roles-acl.txt`, or historical LOCK prose; no new dependencies; no
+production access; no migration application or type generation; no auth-config
+change by me (owner-executed, on the record above); no PR, push, merge, or
+deploy. REVIEW-013 finding 4 was left alone by ruling. Parked items left
+parked: the PostgREST denial hints, the 004a capture process-status
+coarseness, the `supabase/.temp` prettier interaction, and the
+gate-machinery backlog chore.
+
+**Next step**
+
+Controller routes this to the reviewer of record for the REVIEW-014
+re-review and obtains the named advisory outcome (DeepSeek V4 Pro). The
+close-out state commit still owes the superseding note that corrects the
+Phase B LOCK's "11/11 denial" label (REVIEW-013 finding 4, controller-owned).
+Owner merge waits for a PASS review.
+
+LOCK status line: `Status: REVIEW — fix cycle 3 complete, awaiting
+re-review`.
+
+---
+
 ## 2026-08-20 — feat/schema-rls-v1 (REVIEW-013 fix-cycle-2 re-review)
 
 **Controller:** CTRL-004 Schema and RLS v1. **Reviewer of record:** Codex Sol,

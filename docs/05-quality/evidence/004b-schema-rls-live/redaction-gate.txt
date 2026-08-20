@@ -9,8 +9,8 @@
 # run date (UTC): 2026-08-20
 
 file: anon-probes.txt
-bytes: 3518
-sha256: f2a3717cd543ca4332b6f07aab131def8fc32b02d48c98068bd7004fd419d9b9
+bytes: 3756
+sha256: 9ba3c2b58ac469d8bd8827bceb6dbf7821fbb7bade3a0f97ede2d2a41d0d643f
 registered values scanned: 10 distinct (raw values never printed)
 jwt-shape sweep: 0 matches
 residual registered-value classes: 0 (occurrences: 0)
@@ -18,8 +18,8 @@ verdict: GREEN (exit 0)
 --- gate exit: 0 (0 green; 1 red — residual match deletes the transcript, ledger-failure returns 1 without deleting) ---
 
 file: auth-probes.txt
-bytes: 12415
-sha256: 3b23ba2e327915f33db6fb2a167af70a0f7d1252232cad25a384668f5ef74ef6
+bytes: 12429
+sha256: 059edefac0eb3edbe2e2dd4d8b495973c8d55251cb1281edae8ebcc5d3ff0e34
 registered values scanned: 10 distinct (raw values never printed)
 jwt-shape sweep: 0 matches
 residual registered-value classes: 0 (occurrences: 0)

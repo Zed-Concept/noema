@@ -70,11 +70,15 @@ Model+Effort:       Fable 5 / Ultracode (xhigh + workflows) / fresh session
                     (fix cycles: Fable 5 / Max per ruling 5, fresh session;
                     fix cycle 2 began under those terms and finished under
                     Opus 5 [1m] per the owner ruling in the Model-transition
-                    note below)
+                    note below; fix cycle 3 ran wholly as Opus 5 [1m] / Max,
+                    fresh session — an owner-ruled temporary substitution for
+                    Fable 5, dispatched as such, with Max the effort label
+                    this session's UI reports and ruling 5's tier for
+                    review-fix loops)
 Reviewer of record: Codex (Codex Sol / Ultra / fresh session); advisory
                     reviewer DeepSeek V4 Pro on the RLS/auth policy diff
                     (RED-on-arrival trigger per ADR-001)
-Status:             REVIEW — fix cycle 2 complete, awaiting re-review
+Status:             REVIEW — fix cycle 3 complete, awaiting re-review
 Dispatch:           Unit C — Schema and RLS v1: author initial SQL migrations
                     and the first RLS policy set for the owner-ruled v1
                     entities, regenerate database types against the applied

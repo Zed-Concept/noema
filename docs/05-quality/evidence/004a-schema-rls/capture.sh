@@ -66,19 +66,22 @@ if [ "$verify_exit" -ne 0 ]; then
   exit 1
 fi
 
-# --- assertions-negative-control.txt — the gate is not vacuous: twelve
-# tampered copies of the migration set (five removal/narrowing mutations, two
-# append-class mutations from the audit workflow's findings, the exact-value
-# neighbor mutation from REVIEW-011 finding 2, and four REVIEW-012 finding 2
-# absence-class mutations — an added default, a function-argument neighbor,
-# an FK-attribute neighbor, and an appended ON CONFLICT clause) must each
-# make verify-migrations.mjs report the named FAIL and exit 1. Mutations
-# happen on scratch copies only; the repo is never touched.
+# --- assertions-negative-control.txt — the permanent neighbor battery. Every
+# neighbor class this directory claims verify-migrations.mjs rejects has a
+# scenario here: no claim rests on a scratch-only run (REVIEW-013 finding 3).
+# Each scenario makes one mutation on a fresh scratch copy and must produce
+# the named FAIL and exit 1. The scenario count is computed from the run
+# counter and cross-checked against the enumerated `scenario:` lines in the
+# written artifact, so the stated count cannot drift from the enumeration.
+# Mutations happen on scratch copies only; the repo is never touched.
 control_violations=0
+control_scenarios=0
 {
-  echo "# Negative control: verify-migrations.mjs must go red on each tampered copy."
-  echo "# Each scenario: fresh copy of supabase/migrations into scratch, one mutation,"
-  echo "# one run. Expected: exit 1 and the named assertion FAILs."
+  echo "# Permanent neighbor battery / negative control: verify-migrations.mjs must"
+  echo "# go red on each tampered copy. Each scenario: fresh copy of"
+  echo "# supabase/migrations into scratch, one mutation, one run. Expected: exit 1"
+  echo "# and the named assertion FAILs. This is the complete battery — every"
+  echo "# neighbor class the 004a claims name is enumerated below and run here."
   run_scenario() {
     label="$1"; expect_fail_on="$2"
     if out="$(SQLPARSE_NODE_MODULES="$scratch/parser" MIGRATIONS_DIR="$scratch/tamper" \
@@ -86,113 +89,243 @@ control_violations=0
     if printf '%s\n' "$out" | grep -qF "FAIL $expect_fail_on"; then hit=yes; else hit=no; fi
     [ "$t_exit" -eq 1 ] || control_violations=$((control_violations + 1))
     [ "$hit" = "yes" ] || control_violations=$((control_violations + 1))
+    control_scenarios=$((control_scenarios + 1))
     echo
     echo "scenario: $label"
     echo "expected failing assertion: $expect_fail_on"
     echo "exit code: $t_exit (1 required); named FAIL line present: $hit (yes required)"
   }
   fresh() { rm -rf "$scratch/tamper"; mkdir -p "$scratch/tamper"; cp supabase/migrations/*.sql "$scratch/tamper/"; }
+  CORE="$scratch/tamper/20260820100000_v1_core_schema.sql"
+  RLS="$scratch/tamper/20260820100100_v1_rls_policies.sql"
+  PROV="$scratch/tamper/20260820100200_v1_profile_provisioning.sql"
+  STOR="$scratch/tamper/20260820100300_v1_storage_captures_audio.sql"
+
+  echo
+  echo "== group 1: removals and narrowings =="
 
   fresh
-  grep -v 'alter table public.captures force row level security;' \
-    "$scratch/tamper/20260820100100_v1_rls_policies.sql" > "$scratch/t" \
-    && mv "$scratch/t" "$scratch/tamper/20260820100100_v1_rls_policies.sql"
+  grep -v 'alter table public.captures force row level security;' "$RLS" > "$scratch/t" \
+    && mv "$scratch/t" "$RLS"
   run_scenario "FORCE ROW LEVEL SECURITY removed from captures" \
     "public.captures: FORCE ROW LEVEL SECURITY"
 
   fresh
-  awk '/create policy transcripts_delete_own/{skip=3} skip>0{skip--; next} {print}' \
-    "$scratch/tamper/20260820100100_v1_rls_policies.sql" > "$scratch/t" \
-    && mv "$scratch/t" "$scratch/tamper/20260820100100_v1_rls_policies.sql"
+  awk '/create policy transcripts_delete_own/{skip=3} skip>0{skip--; next} {print}' "$RLS" \
+    > "$scratch/t" && mv "$scratch/t" "$RLS"
   run_scenario "transcripts DELETE policy deleted" \
     "public.transcripts delete: one permissive policy TO authenticated, (select auth.uid()) = user_id"
 
   fresh
-  sed 's/for insert to authenticated/for insert to anon/' \
-    "$scratch/tamper/20260820100300_v1_storage_captures_audio.sql" > "$scratch/t" \
-    && mv "$scratch/t" "$scratch/tamper/20260820100300_v1_storage_captures_audio.sql"
+  sed 's/for insert to authenticated/for insert to anon/' "$STOR" > "$scratch/t" \
+    && mv "$scratch/t" "$STOR"
   run_scenario "storage INSERT policy widened to anon" \
     "storage.objects insert: one policy TO authenticated, bucket-pinned and {user_id}/-scoped on WITH CHECK"
 
   fresh
   sed 's/references public.captures (id, user_id) on delete cascade/references public.captures (id) on delete cascade/' \
-    "$scratch/tamper/20260820100000_v1_core_schema.sql" > "$scratch/t" \
-    && mv "$scratch/t" "$scratch/tamper/20260820100000_v1_core_schema.sql"
+    "$CORE" > "$scratch/t" && mv "$scratch/t" "$CORE"
   run_scenario "composite FK narrowed to capture_id only (user_id consistency lost)" \
     "user_id-consistency guarantee: composite FK (capture_id, user_id) -> public.captures (id, user_id) ON DELETE CASCADE"
 
   fresh
-  sed "s/security definer/security invoker/" \
-    "$scratch/tamper/20260820100200_v1_profile_provisioning.sql" > "$scratch/t" \
-    && mv "$scratch/t" "$scratch/tamper/20260820100200_v1_profile_provisioning.sql"
+  sed "s/security definer/security invoker/" "$PROV" > "$scratch/t" && mv "$scratch/t" "$PROV"
   run_scenario "provisioning function demoted to SECURITY INVOKER" \
     "handle_new_user: returns trigger, plpgsql, SECURITY DEFINER, search_path pinned to ''"
 
-  # The two append-class scenarios (audit workflow findings): a countermanding
-  # statement or an unqualified extra policy appended after the real ones.
+  echo
+  echo "== group 2: append-class mutations (audit workflow findings) =="
+
   fresh
-  printf '\nalter table public.captures disable row level security;\n' \
-    >> "$scratch/tamper/20260820100100_v1_rls_policies.sql"
+  printf '\nalter table public.captures disable row level security;\n' >> "$RLS"
   run_scenario "DISABLE ROW LEVEL SECURITY appended after the enable/force block" \
     "public.captures: ENABLE ROW LEVEL SECURITY"
 
   fresh
-  printf '\ncreate policy captures_extra on captures for select to authenticated using (true);\n' \
-    >> "$scratch/tamper/20260820100100_v1_rls_policies.sql"
+  printf '\ncreate policy captures_extra on captures for select to authenticated using (true);\n' >> "$RLS"
   run_scenario "schema-unqualified USING (true) policy appended" \
     "every policy names its schema explicitly (public or storage) and the total is exactly 17 — an unqualified or extra policy cannot hide"
 
-  # The exact-value neighbor scenario (REVIEW-011 finding 2): the committed
-  # oracle once accepted any integer here; this mutation is the review's
-  # false-green reproduction, kept as a permanent discriminating control.
+  echo
+  echo "== group 3: exact-value neighbor (REVIEW-011 finding 2) =="
+
   fresh
-  sed 's/check (duration_ms >= 0)/check (duration_ms >= -1)/' \
-    "$scratch/tamper/20260820100000_v1_core_schema.sql" > "$scratch/t" \
-    && mv "$scratch/t" "$scratch/tamper/20260820100000_v1_core_schema.sql"
+  sed 's/check (duration_ms >= 0)/check (duration_ms >= -1)/' "$CORE" > "$scratch/t" \
+    && mv "$scratch/t" "$CORE"
   run_scenario "duration_ms CHECK value shifted to its neighbor (>= -1)" \
     "captures.duration_ms integer, nullable, CHECK (duration_ms >= 0)"
 
-  # The four absence-class scenarios (REVIEW-012 finding 2): the committed
-  # oracle once accepted each of these valid neighbors green. One permanent
-  # scenario per demonstrated class — an added default (the review's exact
-  # DEFAULT 0 reproduction), a function-argument neighbor, an FK-attribute
-  # neighbor — plus the appended-ON CONFLICT neighbor from this cycle's
-  # absence-gap audit. Each class's assertion compares one exact string, so
-  # the discrimination proven here holds for every column/site it covers.
+  echo
+  echo "== group 4: absence classes (REVIEW-012 finding 2) =="
+
   fresh
-  sed 's/  duration_ms integer/  duration_ms integer default 0/' \
-    "$scratch/tamper/20260820100000_v1_core_schema.sql" > "$scratch/t" \
-    && mv "$scratch/t" "$scratch/tamper/20260820100000_v1_core_schema.sql"
+  sed 's/  duration_ms integer/  duration_ms integer default 0/' "$CORE" > "$scratch/t" \
+    && mv "$scratch/t" "$CORE"
   run_scenario "DEFAULT 0 added to captures.duration_ms (declared default-free; REVIEW-012 finding 2 reproduction)" \
     "public.captures: per-column constraint-type multiset is exactly the declared set — no default, check, unique, or other constraint is added to or missing from any column"
 
   fresh
   sed '/create table public.captures (/,/^);/ s/id uuid primary key default gen_random_uuid()/id uuid primary key default gen_random_uuid(null)/' \
-    "$scratch/tamper/20260820100000_v1_core_schema.sql" > "$scratch/t" \
-    && mv "$scratch/t" "$scratch/tamper/20260820100000_v1_core_schema.sql"
+    "$CORE" > "$scratch/t" && mv "$scratch/t" "$CORE"
   run_scenario "captures.id default mutated to gen_random_uuid(null) — same function name, argument added" \
     "captures.id uuid PRIMARY KEY DEFAULT gen_random_uuid()"
 
   fresh
   sed 's/constraint captures_user_id_fkey references auth.users (id)/constraint captures_user_id_fkey references auth.users (email)/' \
-    "$scratch/tamper/20260820100000_v1_core_schema.sql" > "$scratch/t" \
-    && mv "$scratch/t" "$scratch/tamper/20260820100000_v1_core_schema.sql"
+    "$CORE" > "$scratch/t" && mv "$scratch/t" "$CORE"
   run_scenario "captures.user_id FK referenced-attribute list mutated to (email)" \
     "captures.user_id uuid NOT NULL FK -> auth.users(id) ON DELETE CASCADE"
 
   fresh
   sed "s/values ('captures-audio', 'captures-audio', false);/values ('captures-audio', 'captures-audio', false) on conflict (id) do nothing;/" \
-    "$scratch/tamper/20260820100300_v1_storage_captures_audio.sql" > "$scratch/t" \
-    && mv "$scratch/t" "$scratch/tamper/20260820100300_v1_storage_captures_audio.sql"
+    "$STOR" > "$scratch/t" && mv "$scratch/t" "$STOR"
   run_scenario "ON CONFLICT DO NOTHING appended to the bucket insert (idempotency neighbor)" \
-    "bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false) — plain insert, no ON CONFLICT (deliberately non-idempotent), no RETURNING"
+    "bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false) — exactly one VALUES row, plain insert, no ON CONFLICT (deliberately non-idempotent), no RETURNING"
 
   echo
-  echo "--- enforced: every scenario exits 1 with its named FAIL line, or capture.sh exits 1 (fail closed) ---"
+  echo "== group 5: the remaining fix-cycle-2 absence classes, made permanent"
+  echo "== (REVIEW-013 finding 3 — these were previously run in scratch only) =="
+
+  fresh
+  sed 's/constraint captures_user_id_fkey references auth.users (id) on delete cascade/constraint captures_user_id_fkey references auth.users (id) on update cascade on delete cascade/' \
+    "$CORE" > "$scratch/t" && mv "$scratch/t" "$CORE"
+  run_scenario "captures.user_id FK given ON UPDATE CASCADE (declared NO ACTION)" \
+    "captures.user_id uuid NOT NULL FK -> auth.users(id) ON DELETE CASCADE"
+
+  fresh
+  sed 's/constraint captures_user_id_fkey references auth.users (id) on delete cascade/constraint captures_user_id_fkey references auth.users (id) match full on delete cascade/' \
+    "$CORE" > "$scratch/t" && mv "$scratch/t" "$CORE"
+  run_scenario "captures.user_id FK match type changed to MATCH FULL (declared MATCH SIMPLE)" \
+    "captures.user_id uuid NOT NULL FK -> auth.users(id) ON DELETE CASCADE"
+
+  fresh
+  sed 's/constraint captures_user_id_fkey/constraint captures_user_id_fk/' "$CORE" > "$scratch/t" \
+    && mv "$scratch/t" "$CORE"
+  run_scenario "captures.user_id FK constraint renamed (Phase B evidence keys off the name)" \
+    "captures.user_id uuid NOT NULL FK -> auth.users(id) ON DELETE CASCADE"
+
+  fresh
+  sed 's/on table public.profiles to authenticated;/on table public.profiles to authenticated with grant option;/' \
+    "$RLS" > "$scratch/t" && mv "$scratch/t" "$RLS"
+  run_scenario "profiles grant given WITH GRANT OPTION (re-grantable)" \
+    "each of the three tables is granted exactly select,insert,update,delete — table-object grants, no per-column privilege list, no WITH GRANT OPTION"
+
+  fresh
+  sed 's/create index captures_user_id_idx/create unique index captures_user_id_idx/' "$CORE" \
+    > "$scratch/t" && mv "$scratch/t" "$CORE"
+  run_scenario "captures_user_id_idx made UNIQUE (one capture per user)" \
+    "FK-supporting indexes: captures(user_id), transcripts(capture_id,user_id), transcripts(user_id) — each plain btree, non-unique, unpredicated, no INCLUDE list, expected name"
+
+  fresh
+  sed 's/create index captures_user_id_idx on public.captures (user_id);/create index captures_user_id_idx on public.captures (user_id) where user_id is not null;/' \
+    "$CORE" > "$scratch/t" && mv "$scratch/t" "$CORE"
+  run_scenario "captures_user_id_idx made partial (WHERE user_id is not null)" \
+    "FK-supporting indexes: captures(user_id), transcripts(capture_id,user_id), transcripts(user_id) — each plain btree, non-unique, unpredicated, no INCLUDE list, expected name"
+
+  fresh
+  perl -0777 -pi -e 's/create trigger profiles_set_updated_at\n  before update on public\.profiles\n  for each row execute/create trigger profiles_set_updated_at\n  before update on public.profiles\n  for each row when (old.* is distinct from new.*) execute/' \
+    "$CORE"
+  run_scenario "profiles updated_at trigger given a WHEN clause (conditional maintenance)" \
+    "BEFORE UPDATE row triggers run set_updated_at on exactly profiles and captures (transcripts has no updated_at) — unconditional: no WHEN clause and no UPDATE OF column list"
+
+  fresh
+  perl -0777 -pi -e 's/create function public\.set_updated_at\(\)\nreturns trigger\nlanguage plpgsql\nset search_path = \x27\x27/create function public.set_updated_at()\nreturns trigger\nlanguage plpgsql\nset search_path = \x27\x27\nset statement_timeout = \x275s\x27/' \
+    "$CORE"
+  run_scenario "set_updated_at given an extra SET (statement_timeout) beyond the pinned search_path" \
+    "set_updated_at: returns trigger, plpgsql, SECURITY INVOKER, search_path pinned to ''"
+
+  fresh
+  perl -0777 -pi -e 's/create function public\.set_updated_at\(\)\nreturns trigger\nlanguage plpgsql\n/create function public.set_updated_at()\nreturns trigger\nlanguage plpgsql\nstrict\n/' \
+    "$CORE"
+  run_scenario "set_updated_at declared STRICT (null-input behavior changed)" \
+    "set_updated_at: returns trigger, plpgsql, SECURITY INVOKER, search_path pinned to ''"
+
+  fresh
+  perl -0777 -pi -e 's/  created_at timestamptz not null default now\(\),\n  updated_at timestamptz not null default now\(\)\n\);/  created_at timestamptz(3) not null default now(),\n  updated_at timestamptz not null default now()\n);/' \
+    "$CORE"
+  run_scenario "profiles.created_at given a typmod (timestamptz(3) — precision truncated)" \
+    "profiles.created_at timestamptz NOT NULL DEFAULT now()"
+
+  fresh
+  sed "s/constraint profiles_locale_check check (locale in ('en', 'ar'))/constraint profiles_locale_check check (locale in ('en', 'ar')) constraint profiles_locale_check2 check (locale <> '')/" \
+    "$CORE" > "$scratch/t" && mv "$scratch/t" "$CORE"
+  run_scenario "second CHECK added to profiles.locale" \
+    "public.profiles: per-column constraint-type multiset is exactly the declared set — no default, check, unique, or other constraint is added to or missing from any column"
+
+  fresh
+  sed 's/  display_name text,/  display_name text unique,/' "$CORE" > "$scratch/t" \
+    && mv "$scratch/t" "$CORE"
+  run_scenario "column UNIQUE added to profiles.display_name" \
+    "public.profiles: per-column constraint-type multiset is exactly the declared set — no default, check, unique, or other constraint is added to or missing from any column"
+
+  fresh
+  perl -0777 -pi -e 's/  created_at timestamptz not null default now\(\),\n  updated_at timestamptz not null default now\(\)\n\);/  created_at timestamptz not null default now(),\n  updated_at timestamptz not null default now(),\n  constraint profiles_extra_check check (locale is not null)\n);/' \
+    "$CORE"
+  run_scenario "table-level CHECK added to profiles" \
+    "public.profiles: table-level constraints are exactly [none] and no INHERITS/PARTITION BY/OF type/tablespace/IF NOT EXISTS clause exists"
+
+  fresh
+  sed 's/constraint captures_id_user_id_key unique (id, user_id)/constraint captures_id_user_id_key unique nulls not distinct (id, user_id)/' \
+    "$CORE" > "$scratch/t" && mv "$scratch/t" "$CORE"
+  run_scenario "captures UNIQUE (id, user_id) given NULLS NOT DISTINCT" \
+    "captures UNIQUE (id, user_id) — the referenced key for the composite FK"
+
+  echo
+  echo "== group 6: the REVIEW-013 finding 2 classes — parse-valid neighbors the"
+  echo "== oracle accepted green before this fix cycle =="
+
+  fresh
+  sed "s/check (status in ('recorded', 'transcribing', 'ready', 'failed'))/check (status not in ('recorded', 'transcribing', 'ready', 'failed'))/" \
+    "$CORE" > "$scratch/t" && mv "$scratch/t" "$CORE"
+  run_scenario "captures.status CHECK inverted to NOT IN (same value list, opposite meaning)" \
+    "captures.status CHECK (status IN ('recorded','transcribing','ready','failed'))"
+
+  fresh
+  perl -0777 -pi -e 's/create policy captures_select_own on public\.captures\n  for select to authenticated\n  using \(\(select auth\.uid\(\)\) = user_id\);/create policy captures_select_own on public.captures\n  for select to authenticated\n  using ((select auth.uid() where false) = user_id);/' \
+    "$RLS"
+  run_scenario "captures SELECT policy subquery given WHERE false (predicate never matches)" \
+    "public.captures select: one permissive policy TO authenticated, (select auth.uid()) = user_id"
+
+  fresh
+  sed 's/grant select, insert, update, delete on table public.profiles to authenticated;/grant select(id), insert, update, delete on table public.profiles to authenticated;/' \
+    "$RLS" > "$scratch/t" && mv "$scratch/t" "$RLS"
+  run_scenario "profiles SELECT narrowed to a column-only grant, SELECT(id)" \
+    "each of the three tables is granted exactly select,insert,update,delete — table-object grants, no per-column privilege list, no WITH GRANT OPTION"
+
+  fresh
+  sed "s/values ('captures-audio', 'captures-audio', false);/values ('captures-audio', 'captures-audio', false), ('neighbor-public', 'neighbor-public', true);/" \
+    "$STOR" > "$scratch/t" && mv "$scratch/t" "$STOR"
+  run_scenario "second VALUES row appended to the bucket insert, creating a public bucket" \
+    "bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false) — exactly one VALUES row, plain insert, no ON CONFLICT (deliberately non-idempotent), no RETURNING"
+
+  fresh
+  sed 's/  before update on public.profiles/  before update of display_name on public.profiles/' "$CORE" \
+    > "$scratch/t" && mv "$scratch/t" "$CORE"
+  run_scenario "profiles updated_at trigger narrowed to UPDATE OF display_name" \
+    "BEFORE UPDATE row triggers run set_updated_at on exactly profiles and captures (transcripts has no updated_at) — unconditional: no WHEN clause and no UPDATE OF column list"
+
+  fresh
+  sed 's/create index captures_user_id_idx on public.captures (user_id);/create index captures_user_id_idx on public.captures (user_id) include (id);/' \
+    "$CORE" > "$scratch/t" && mv "$scratch/t" "$CORE"
+  run_scenario "INCLUDE (id) added to captures_user_id_idx" \
+    "FK-supporting indexes: captures(user_id), transcripts(capture_id,user_id), transcripts(user_id) — each plain btree, non-unique, unpredicated, no INCLUDE list, expected name"
+
+  echo
+  echo "scenarios run: $control_scenarios"
+  echo "--- enforced: every scenario exits 1 with its named FAIL line, and the run"
+  echo "--- count equals the enumerated scenario lines, or capture.sh exits 1 ---"
 } > "$outdir/assertions-negative-control.txt"
 rm -rf "$scratch/tamper"
+# The count is cross-checked against the artifact's own enumeration, so the
+# stated total cannot drift from the scenarios actually written (REVIEW-013
+# finding 3: a claimed battery size that no artifact enumerates).
+enumerated="$(grep -c '^scenario: ' "$outdir/assertions-negative-control.txt")"
+if [ "$enumerated" -ne "$control_scenarios" ]; then
+  echo "FAIL CLOSED: battery count mismatch — ran $control_scenarios, artifact enumerates $enumerated" >&2
+  control_violations=$((control_violations + 1))
+fi
 if [ "$control_violations" -ne 0 ]; then
-  echo "FAIL CLOSED: negative control failed to discriminate ($control_violations violation(s)) — see $outdir/assertions-negative-control.txt" >&2
+  echo "FAIL CLOSED: neighbor battery failed to discriminate ($control_violations violation(s)) — see $outdir/assertions-negative-control.txt" >&2
   exit 1
 fi
 

@@ -2,8 +2,11 @@
 # run date (UTC): 2026-08-20
 # Anon-path probes: no session — the publishable key presented sessionless.
 # Expected: denial everywhere. Exact response shapes below are the recorded
-# contract for the applied Unit C schema (anon holds no table grants; the
-# storage policies are TO authenticated only).
+# contract for the applied Unit C schema. Measured boundary (roles-acl.txt):
+# anon holds no current table-level SELECT/INSERT/UPDATE/DELETE on any v1
+# table; its raw table ACL does record the non-CRUD platform-default entries
+# MAINTAIN/REFERENCES/TRIGGER/TRUNCATE, and column-level privileges are NOT
+# RUN. The storage policies are TO authenticated only.
 
 PASS  auth service reachable (service-context: proves denials below are policy, not outage)
       HTTP 200 {"version":"v2.195.0","name":"GoTrue","description":"GoTrue is a user registration and authentication API"}

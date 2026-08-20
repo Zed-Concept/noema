@@ -4,14 +4,31 @@
 // matrix, provisioning surface, and storage policies against the AST —
 // stronger than text grep, still fully static (no database).
 //
-// Absence is pinned as well as presence (REVIEW-012 finding 2): every
-// column's constraint-type multiset is compared exactly (a DEFAULT added to
-// a column declared default-free cannot hide), zero-argument function
-// defaults reject argument/star forms, every FK pins its referenced
-// attribute list, match type, and both actions, types reject typmod/array
-// neighbors, and triggers/functions/grants/indexes/the bucket INSERT pin
-// their optional clauses absent (WHEN, args, STRICT, volatility, extra SET,
-// WITH GRANT OPTION, UNIQUE/WHERE, ON CONFLICT/RETURNING).
+// WHAT THIS IS (REVIEW-013 finding 2 — read before quoting any result).
+// This is an ENUMERATED-ASSERTION oracle, not a proof of exhaustive schema
+// equivalence. Each assertion below pins one enumerated property of the
+// AST. A parse-valid neighbor of the migration set is rejected exactly when
+// it changes a property some assertion names, and is accepted when it does
+// not. A green run therefore means "every enumerated property holds", not
+// "no other schema could produce this output". Further parse-valid
+// neighbors outside the enumerated classes may pass. The enumerated classes
+// and the known limits are listed in README.md under "What the oracle
+// proves"; the permanent battery that proves each enumerated class actually
+// discriminates is assertions-negative-control.txt.
+//
+// Absence is pinned as well as presence within those classes (REVIEW-012
+// finding 2, extended by REVIEW-013 finding 2): every column's
+// constraint-type multiset is compared exactly (a DEFAULT added to a column
+// declared default-free cannot hide), CHECK IN-lists pin the operator as
+// well as the values (NOT IN is rejected), zero-argument function defaults
+// reject argument/star forms, every FK pins its referenced attribute list,
+// match type, and both actions, types reject typmod/array neighbors, the
+// initplan `(select auth.uid())` subquery is pinned to a bare one-target
+// SELECT (an added WHERE/LIMIT/GROUP BY is rejected), grants pin per-column
+// privilege lists absent, the bucket INSERT pins its VALUES row count, and
+// triggers/functions/indexes pin their optional clauses absent (WHEN,
+// UPDATE OF, args, STRICT, volatility, extra SET, WITH GRANT OPTION,
+// UNIQUE/WHERE/INCLUDE, ON CONFLICT/RETURNING).
 //
 // Environment (set by capture.sh):
 //   SQLPARSE_NODE_MODULES — directory whose node_modules holds the pinned
@@ -93,11 +110,27 @@ function isAuthUidCall(node) {
   return names.length === 2 && names[0] === 'auth' && names[1] === 'uid';
 }
 // (select auth.uid()) — or, with cast: (select auth.uid()::text)
+// The subselect is pinned to a bare one-target SELECT: libpg_query emits only
+// `targetList` plus the two always-present scalar defaults for that shape, so
+// any added clause — WHERE, FROM, GROUP BY, HAVING, ORDER BY, LIMIT/OFFSET,
+// DISTINCT, WITH, locking, set operation — shows up as an extra key or a
+// non-default scalar and is rejected. `(select auth.uid() where false)` is a
+// valid neighbor that inverts the predicate's meaning while keeping the same
+// function call, and was accepted before this pin (REVIEW-013 finding 2).
+const BARE_SELECT_KEYS = ['targetList', 'limitOption', 'op'];
+function isBareSelect(sel) {
+  return (
+    !!sel &&
+    Object.keys(sel).every((k) => BARE_SELECT_KEYS.includes(k)) &&
+    sel.op === 'SETOP_NONE' &&
+    sel.limitOption === 'LIMIT_OPTION_DEFAULT'
+  );
+}
 function isSelectAuthUid(node, cast) {
   const sl = node?.SubLink;
   if (!sl || sl.subLinkType !== 'EXPR_SUBLINK') return false;
   const sel = sl.subselect?.SelectStmt;
-  if (!sel || sel.fromClause || (sel.targetList ?? []).length !== 1) return false;
+  if (!isBareSelect(sel) || (sel.targetList ?? []).length !== 1) return false;
   const val = sel.targetList[0].ResTarget.val;
   if (cast === 'text') {
     const tc = val?.TypeCast;
@@ -262,8 +295,14 @@ assert(
   const c = col('public.profiles', 'locale');
   const check = c ? cons(c, 'CONSTR_CHECK')[0] : undefined;
   const inList = check?.raw_expr?.A_Expr;
+  // libpg_query encodes IN and NOT IN alike as AEXPR_IN and distinguishes
+  // them only by the operator name ('=' vs '<>'), so the operator is pinned
+  // alongside the value list — a NOT IN neighbor inverts the constraint while
+  // keeping every value, and was accepted before (REVIEW-013 finding 2).
   const values =
-    inList?.kind === 'AEXPR_IN' && isColRef(inList.lexpr, 'locale')
+    inList?.kind === 'AEXPR_IN' &&
+    inList.name.map(sval).join('') === '=' &&
+    isColRef(inList.lexpr, 'locale')
       ? (inList.rexpr?.List?.items ?? []).map((i) => i.A_Const?.sval?.sval)
       : [];
   assert(
@@ -315,8 +354,11 @@ assert(
   const c = col('public.captures', 'status');
   const check = c ? cons(c, 'CONSTR_CHECK')[0] : undefined;
   const inList = check?.raw_expr?.A_Expr;
+  // IN pinned as the operator, not just the value list — see profiles.locale.
   const values =
-    inList?.kind === 'AEXPR_IN' && isColRef(inList.lexpr, 'status')
+    inList?.kind === 'AEXPR_IN' &&
+    inList.name.map(sval).join('') === '=' &&
+    isColRef(inList.lexpr, 'status')
       ? (inList.rexpr?.List?.items ?? []).map((i) => i.A_Const?.sval?.sval)
       : [];
   assert(
@@ -516,10 +558,14 @@ console.log('-- indexes and updated_at triggers --');
     name: n.idxname,
     table: rel(n.relation),
     cols: (n.indexParams ?? []).map((p) => p.IndexElem?.name).join(','),
-    plain: n.accessMethod === 'btree' && !n.unique && !n.whereClause,
+    // `indexIncludingParams` is the INCLUDE list: an added INCLUDE(id)
+    // changes the stored index without touching its key columns, and was
+    // accepted before this pin (REVIEW-013 finding 2).
+    plain:
+      n.accessMethod === 'btree' && !n.unique && !n.whereClause && !n.indexIncludingParams,
   }));
   assert(
-    'FK-supporting indexes: captures(user_id), transcripts(capture_id,user_id), transcripts(user_id) — each plain btree, non-unique, unpredicated, expected name',
+    'FK-supporting indexes: captures(user_id), transcripts(capture_id,user_id), transcripts(user_id) — each plain btree, non-unique, unpredicated, no INCLUDE list, expected name',
     idx.length === 3 &&
       idx.every((i) => i.plain) &&
       idx.some(
@@ -568,7 +614,7 @@ console.log('-- indexes and updated_at triggers --');
     (t) => t.funcname.map((f) => f.String.sval).join('.') === 'public.set_updated_at',
   );
   assert(
-    'BEFORE UPDATE row triggers run set_updated_at on exactly profiles and captures (transcripts has no updated_at)',
+    'BEFORE UPDATE row triggers run set_updated_at on exactly profiles and captures (transcripts has no updated_at) — unconditional: no WHEN clause and no UPDATE OF column list',
     triggers.length === 2 &&
       triggers.every(
         (t) =>
@@ -576,6 +622,10 @@ console.log('-- indexes and updated_at triggers --');
           t.events === 16 &&
           t.row === true &&
           !t.whenClause &&
+          // `columns` is the UPDATE OF list: BEFORE UPDATE OF display_name
+          // narrows the trigger to one column, leaving updated_at stale on
+          // every other update, and was accepted before (REVIEW-013 finding 2).
+          !t.columns &&
           !t.args &&
           !t.isconstraint,
       ) &&
@@ -594,7 +644,7 @@ console.log('-- grants (staging post-dates the auto-expose default change) --');
     .sort()
     .join(',');
   assert(
-    'each of the three tables is granted exactly select,insert,update,delete — table-object grants, no WITH GRANT OPTION',
+    'each of the three tables is granted exactly select,insert,update,delete — table-object grants, no per-column privilege list, no WITH GRANT OPTION',
     grants.length === 3 &&
       tablesGranted === 'public.captures,public.profiles,public.transcripts' &&
       grants.every(
@@ -602,6 +652,10 @@ console.log('-- grants (staging post-dates the auto-expose default change) --');
           g.is_grant === true &&
           g.objtype === 'OBJECT_TABLE' &&
           !g.grant_option &&
+          // `AccessPriv.cols` is the column list: GRANT SELECT(id) narrows a
+          // table-object privilege to one column while keeping the privilege
+          // name, and was accepted before (REVIEW-013 finding 2).
+          (g.privileges ?? []).every((p) => !p.AccessPriv.cols) &&
           (g.privileges ?? []).map((p) => p.AccessPriv.priv_name).join(',') ===
             'select,insert,update,delete',
       ),
@@ -733,13 +787,19 @@ console.log('-- storage: private bucket + owner-only object policies --');
 {
   const ins = byType('InsertStmt')[0];
   const colsNamed = (ins?.cols ?? []).map((c) => c.ResTarget.name).join(',');
-  const vals = ins?.selectStmt?.SelectStmt?.valuesLists?.[0]?.List?.items ?? [];
+  // Only valuesLists[0] was inspected before, so a second appended row —
+  // ('neighbor-public', …, true) — created an out-of-scope public bucket while
+  // the expected private row still matched (REVIEW-013 finding 2). Row
+  // cardinality is now pinned.
+  const valuesLists = ins?.selectStmt?.SelectStmt?.valuesLists ?? [];
+  const vals = valuesLists[0]?.List?.items ?? [];
   const isFalse = (v) => !!v?.A_Const?.boolval && v.A_Const.boolval.boolval !== true;
   assert(
-    "bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false) — plain insert, no ON CONFLICT (deliberately non-idempotent), no RETURNING",
+    "bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false) — exactly one VALUES row, plain insert, no ON CONFLICT (deliberately non-idempotent), no RETURNING",
     !!ins &&
       !ins.onConflictClause &&
       !ins.returningList &&
+      valuesLists.length === 1 &&
       colsNamed === 'id,name,public' &&
       vals[0]?.A_Const?.sval?.sval === 'captures-audio' &&
       vals[1]?.A_Const?.sval?.sval === 'captures-audio' &&
