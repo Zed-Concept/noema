@@ -8,6 +8,164 @@ Append a new block at the top. Never edit an old one.
 
 ---
 
+## 2026-08-20 — feat/schema-rls-v1 (CTRL-004 Unit C, Phase B)
+
+**Controller:** CTRL-004 Schema and RLS v1. **Builder:** Claude Code — Fable
+5, Max effort per ruling 5 (evidence/measurement class), fresh session,
+model verified against the dispatch before any work. **Reviewer of record:**
+Codex (Codex Sol / Ultra, fresh session); **advisory reviewer** DeepSeek V4
+Pro on the RLS/auth policy diff (RED-on-arrival trigger per ADR-001).
+**Phase B base:** `7ebeb8bf59132961dab73cd5c1ee3692105cf11f`, fetched and
+confirmed as the dispatch-named origin tip before any work; the working copy
+carried exactly the one dispatch-declared tracked modification (the
+owner-regenerated `src/lib/database.types.ts`). **RED-lane authorization**
+restated in the dispatch (ruling 7): owner approval 2026-08-19 on the
+CTRL-004 v1 entity scope, ratified by the PR #7 merge registering the LOCK.
+The four Phase A migrations were owner-applied to `noema-staging` on
+2026-08-20 (ruling 10) and are APPLIED-and-RED: nothing under `supabase/`
+changed this phase, and `004a-schema-rls/` is byte-untouched — both
+verifiable in the delta. **LOCK:** `Status: REVIEW` — flipped in this
+amendment; MERGED stays controller-only.
+
+**Disclosure (ruling 6):** workflows run: 0; subagent fan-out: none. Every
+change and verification in this phase was made directly in this session
+(Max class per ruling 5; workflows are the Ultracode build-unit tier).
+
+**What I set out to do**
+
+Phase B, post-apply: commit the owner-regenerated types file as-is as the
+phase's first commit; produce the live post-apply evidence against staging
+(anon denial, signup provisioning, owner CRUD, cross-user denial, storage
+path scoping, plus repo gates); record the FORCE-RLS operational posture in
+OPERATIONS.md (one authorized sentence); and flip the LOCK to REVIEW.
+
+**Session events on the record** (owner-executed, config/credential class,
+zero repo bytes — disclosed because the evidence depends on them):
+
+1. The dispatch stated the staging URL + publishable key were already
+   present in the local env. They were not findable in any legitimate
+   location (no repo `.env`; not in shell env, launchctl, rc files, or
+   `~/.env` — presence checked by variable name only, values never
+   printed). On request the owner filled the repo `.env` (gitignored, the
+   OPERATIONS.md pattern) mid-session. No value was printed or committed —
+   proven by the committed secret scan and the in-probe redaction totality
+   gate, not asserted.
+2. The first live settings read found staging requiring email confirmation
+   (`mailer_autoconfirm=false`) — exactly the dispatch's NOT RUN
+   contingency for the authenticated path. On request the owner disabled
+   email confirmation on staging (dashboard config, 2026-08-20) before the
+   committed authenticated run; both committed transcripts record the state
+   they ran under (`mailer_autoconfirm=true`). Config-level owner action —
+   no policy, migration, or repo change. Re-enabling is an owner/controller
+   call ahead of the future auth unit.
+3. Two disposable, clearly namespaced test users were created via the
+   publishable-key signup path (the dispatch's authorized cap of two):
+   `ctrl004b-user1@example.com`, `ctrl004b-user2@example.com`. Generated
+   passwords existed only in the probe process's memory. Residual staging
+   state and the owner-class cleanup (delete the two users; FK cascades do
+   the rest) are documented in the 004b README.
+
+**What I changed**
+
+- `src/lib/database.types.ts` — the owner-executed `types:gen` output
+  against the applied staging schema, committed **as-is** as the phase's
+  first commit (ruling 10 provenance in the commit message; builders cannot
+  regenerate it — verification is indirect: typecheck + probe consistency,
+  stated as such in the evidence).
+- `docs/05-quality/evidence/004b-schema-rls-live/` (new) — five producers
+  (`capture.sh`, `stability.sh`, `live-probes.sh`, `rls-probes.mjs`,
+  `types-shape.mjs`), eight transcripts, and the claims-table README. The
+  live core: `anon-probes.txt` (11/11 expected denials — REST 401 `42501`
+  on SELECT+INSERT × three tables; storage not-found obfuscation / RLS
+  upload rejection / zero-object list) and `auth-probes.txt` (40/40 —
+  signup provisioning for both users, owner CRUD across all three tables
+  with `updated_at` triggers observed firing, cross-user denial across all
+  three tables with true-no-op re-reads, the composite-FK consistency
+  guarantee failing live as 409 `23503` naming
+  `transcripts_capture_id_user_id_fkey`, and storage `{user_id}/` scoping
+  including the no-folder fail-closed case). Exact response shapes are
+  recorded as the contract. Redaction at source with an in-process totality
+  gate; run-varying/gated classification per artifact (learning 7).
+- `docs/02-roles/OPERATIONS.md` — the one authorized sentence recording the
+  FORCE-RLS posture (postgres-role dashboard tooling sees zero rows in the
+  three tables; inspection via authenticated client or dashboard user
+  impersonation), placed in the local-run Supabase paragraph per the file's
+  own structure (learning 8).
+- State files: this block, the LOCK flip `BUILD` → `REVIEW` (with its
+  closing note and the Evidence line updated from `pending` to the real
+  paths), and the Unit C Active-work row. Nothing else.
+
+**What I verified, and how**
+
+Full claims table with classifications in `004b-schema-rls-live/README.md`.
+
+| Check | Class | Artifact |
+| --- | --- | --- |
+| Anon REST denial: SELECT+INSERT × profiles/captures/transcripts → HTTP 401 `42501`, shapes recorded | PASS | `004b/anon-probes.txt` |
+| Anon storage denial: download obfuscated, upload RLS-rejected, list zero (also while an owner object existed) | PASS | `004b/anon-probes.txt` + `auth-probes.txt` |
+| Signup provisioning created each user's profiles row, owner-visible only | PASS | `004b/auth-probes.txt` |
+| Owner CRUD on own rows, all three tables; `updated_at` triggers fire | PASS | `004b/auth-probes.txt` |
+| Cross-user denial, all three tables: invisible reads, no-op writes (re-read unchanged), WITH CHECK 403 `42501` | PASS | `004b/auth-probes.txt` |
+| Live `user_id`-consistency: cross-capture transcript insert → 409 `23503`, constraint named | PASS | `004b/auth-probes.txt` |
+| Storage `{user_id}/` scoping incl. no-folder fail-closed and cross-user delete denial | PASS | `004b/auth-probes.txt` |
+| Types verification (indirect by design): repo typecheck + live row keys === declared Row columns × 3 | PASS | `004b/gates.txt` + `types-shape.txt` + `auth-probes.txt` |
+| Types generation run itself | NOT RUN — owner-executed (ruling 10); transcripts controller-held | — |
+| Four non-install CI steps at the final head | PASS (all exit 0) / install NOT RUN with reason | `004b/gates.txt` |
+| No credential shape in the index (six patterns + positive controls) | PASS | `004b/secret-scan.txt` |
+| Redaction totality over live transcripts | PASS — in-process gate, line in each transcript | `004b/anon-probes.txt`, `auth-probes.txt` |
+| Gated artifacts byte-stable (4 × 2 runs) | PASS | `004b/stability.txt` |
+| CI on this branch | NOT RUN — no PR yet | — |
+| `supabase db lint` / local stack | NOT RUN — Docker; unchanged Phase A posture | — |
+
+**What is broken or uncertain — for the controller**
+
+1. The owner's `db push` / `types:gen` transcripts stay controller-held
+   (ruling 10): repo evidence corroborates them indirectly (every live
+   probe behaves exactly as the authored migrations dictate) but cannot
+   contain them.
+2. Staging now has email confirmation disabled (owner action, recorded
+   above) and hosts the two namespaced test users pending owner cleanup —
+   both harmless, both on the record. The future auth unit needs a real
+   decision on confirmation policy.
+3. Adjacent observation, not acted on: PostgREST's 42501 denial bodies
+   include hint text suggesting `GRANT ... TO anon` statements — the
+   recorded contract shape; nothing to fix, noted so nobody "fixes" it.
+4. Adjacent finding, reported not acted on: `prettier --check .` in a
+   working copy flags the owner's untracked `supabase/.temp` CLI residue
+   (created by the 2026-08-20 link/push; prettier walks untracked files and
+   does not read the nested `supabase/.gitignore`). CI clean checkouts are
+   unaffected. The 004b gates therefore measure the format step against a
+   clean `git checkout-index` of the staged tree (normalization stated in
+   transcript and README); whether to add `supabase/.temp/` to
+   `.prettierignore` is a controller call — that file is outside this
+   dispatch's authorized touch-set.
+5. Nothing else new. All backlog items, the 22 accepted advisories, and the
+   Unit A gate staleness stand unchanged; no dependency was added.
+
+**What I did NOT do**
+
+No edit under `supabase/` (applied migrations are RED — the delta contains
+none); no schema, policy, or auth-config change through any repo byte; no
+production access; no provider keys; no new dependencies; no 004a byte
+touched; `docs/03-decisions/` and `docs/04-reviews/` untouched; no prior
+HANDOFF or LOCK content edited (the Unit C LOCK got its status flip, an
+Evidence-line update, and an appended closing note per house precedent). The
+test users were created via the authorized publishable-key signup path
+only — no admin API, no service-role or secret-class key, no access token
+was ever held or used. `.env` stays untracked (gitignored, proven in Unit
+B's evidence and re-proven by the secret scan here).
+
+**Next step**
+
+Route the Phase B delta (`7ebeb8b..HEAD` on `feat/schema-rls-v1`) to the
+reviewer of record (Codex Sol / Ultra, fresh session) and the advisory
+reviewer (DeepSeek V4 Pro, RLS/auth diff) per the LOCK. The owner merges
+only after a PASS; the controller alone records MERGED.
+
+LOCK status line: `Status: REVIEW`.
+
+---
+
 ## 2026-08-20 — feat/schema-rls-v1 (CTRL-004 Unit C, Phase A)
 
 **Controller:** CTRL-004 Schema and RLS v1. **Builder:** Claude Code — Fable

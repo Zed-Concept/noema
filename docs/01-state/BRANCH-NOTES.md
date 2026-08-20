@@ -71,7 +71,7 @@ Model+Effort:       Fable 5 / Ultracode (xhigh + workflows) / fresh session
 Reviewer of record: Codex (Codex Sol / Ultra / fresh session); advisory
                     reviewer DeepSeek V4 Pro on the RLS/auth policy diff
                     (RED-on-arrival trigger per ADR-001)
-Status:             BUILD
+Status:             REVIEW
 Dispatch:           Unit C — Schema and RLS v1: author initial SQL migrations
                     and the first RLS policy set for the owner-ruled v1
                     entities, regenerate database types against the applied
@@ -82,13 +82,52 @@ Dispatch:           Unit C — Schema and RLS v1: author initial SQL migrations
                     code. Entity scope is enumerated in the dispatch text
                     once the owner rules; the dispatch is not yet issued at
                     registration.
-Evidence:           pending
+Evidence:           docs/05-quality/evidence/004a-schema-rls/ (Phase A,
+                    static), docs/05-quality/evidence/004b-schema-rls-live/
+                    (Phase B, post-apply live) — was "pending" until the
+                    Phase B amendment
 ```
 
 Registered by the controller in the CTRL-004 opening state commit, ahead of
 the owner's entity-scope ruling and the builder session. Per the house
 workflow the builder flips `BUILD` → `REVIEW` in its handoff amendment;
 `MERGED` only by the controller, after review.
+
+**Phase A closing note (2026-08-20).** Static build complete: the four
+migrations (three ruled entities, RLS ENABLE+FORCE with the owner-only
+policy matrix, SECURITY DEFINER provisioning, private `captures-audio`
+bucket with `{user_id}/`-scoped policies), pinned-CLI `supabase/`
+scaffolding, and the 004a evidence suite (real-PG17 AST parse + 72
+assertions, seven-scenario negative control, provenance, gates, secret
+scan, stability 6×2). No database was touched; LOCK stayed `BUILD` by
+dispatch design — Phase A ended with a HANDOFF requesting the
+owner-executed apply (ruling 10).
+
+**Phase B closing note (2026-08-20).** Post-apply build complete, staging
+only. The owner applied the four migrations to `noema-staging` and ran
+`types:gen` (ruling 10, 2026-08-20); this phase committed the regenerated
+`src/lib/database.types.ts` as-is (first commit, provenance in message),
+then proved the applied schema live with owner-handed URL + publishable key
+via local env only: anon denial across REST and storage (11/11, HTTP 401
+`42501` on every table; storage obfuscation/RLS-rejection/zero-list),
+signup provisioning for two disposable namespaced test users, owner CRUD
+across all three tables with `updated_at` triggers observed, cross-user
+denial with true-no-op re-reads and WITH CHECK 403 `42501`, the composite-FK
+consistency guarantee live (409 `23503` naming
+`transcripts_capture_id_user_id_fkey`), and storage `{user_id}/` scoping
+including no-folder fail-closed (40/40). Types verification is indirect by
+design (typecheck + probe row-shape consistency — ruling 10). Evidence in
+`docs/05-quality/evidence/004b-schema-rls-live/` (five producers, eight
+transcripts, claims README; redaction at source with an in-process totality
+gate; gated set byte-stable 4×2). One authorized OPERATIONS.md sentence
+records the FORCE-RLS inspection posture. Two owner-executed config events
+are on the record in the HANDOFF (mid-session `.env` hand-off; staging
+email confirmation disabled before the authenticated run, state recorded in
+the transcripts). Nothing under `supabase/` changed; 004a is byte-untouched.
+Status moved `BUILD` → `REVIEW` in this amendment (the Evidence line above
+updated from `pending` in the same amendment); `MERGED` only by the
+controller, after review — reviewer of record plus the advisory RLS/auth
+seat per the LOCK.
 
 ---
 
