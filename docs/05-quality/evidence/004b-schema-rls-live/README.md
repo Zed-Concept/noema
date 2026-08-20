@@ -28,14 +28,35 @@ The owner-held staging URL + publishable key were handed via the repo-root
 `.env` (gitignored — the OPERATIONS.md pattern; filled by the owner
 mid-session). `live-probes.sh` extracts exactly the two named variables
 (never sourcing the file); no value is committed, echoed, or printed.
-`rls-probes.mjs` redacts at source — URL, host, project ref, key, generated
-passwords, and every issued access/refresh token are registered and replaced
-before anything is buffered; auth-endpoint responses are printed only as
-reduced summaries; a generic JWT-shape sweep runs over every line; and a
-final totality gate suppresses the transcript and exits 1 if any registered
-value or JWT shape survives. A committed transcript can therefore only exist
-if its run's totality gate reported zero residual — the gate line is in each
-transcript.
+
+Redaction is enforced in two layers (the outer one rebuilt in fix cycle 1,
+REVIEW-011 finding 3):
+
+1. **At source** — `rls-probes.mjs` registers URL, host, project ref, key,
+   generated passwords, and every issued access/refresh token, replacing
+   each before anything is buffered; auth-endpoint responses are printed
+   only as reduced summaries; a generic JWT-shape sweep runs over every
+   line; and an in-process gate suppresses the buffered transcript and
+   exits 1 if any registered value or JWT shape survives it. This layer
+   covers only what flows through the buffer.
+2. **Post-write, pre-commit — the totality guarantee.** The transcript file
+   commits the child's _entire_ stdout/stderr, a stream a stray direct
+   write could reach without passing through the buffer (the finding 3
+   defect class). So every registered value is also mirrored into a
+   0600 scratch ledger (`REDACTION_LEDGER`, outside the repo, deleted on
+   exit; `rls-probes.mjs` refuses to run without it), and after each
+   transcript file is complete — header, child output, exit trailer, the
+   exact bytes a commit would record — `redaction-gate.mjs` scans those
+   file bytes against the full ledger plus the JWT shape. A red gate
+   deletes the transcript and fails the run; `redaction-gate.txt` records
+   each file's sha256, binding the committed bytes to the scanned bytes.
+   `redaction-control.txt` is the planted positive control: a synthetic
+   key leaked straight to child stdout provably turns the gate red and the
+   transcript is deleted.
+
+A committed transcript can therefore only exist if the exact bytes being
+committed scanned clean — verifiable by comparing `sha256sum` of each
+committed transcript against the value recorded in `redaction-gate.txt`.
 
 ## Test identifiers (documented per dispatch) and residual staging state
 
@@ -82,8 +103,11 @@ lockfile (`npm ci` has run); it fetches nothing.
 
 | Artifact | Producer | Class | Notes / normalization |
 | --- | --- | --- | --- |
-| `anon-probes.txt` | `live-probes.sh` → `rls-probes.mjs --anon` | run-varying, captured once (003a connectivity precedent: the committed transcript is the evidence boundary) | varying fields: run-date line, GoTrue version string, response timestamps. Redaction placeholders (`<staging-url>`, `<staging-host>`, `<publishable-key>`, …) per the section above. The exact denial shapes are the recorded contract |
-| `auth-probes.txt` | `live-probes.sh` → `rls-probes.mjs --auth` | run-varying, captured once | varying fields additionally: user/row/object UUIDs, timestamps. Response bodies over 400 chars truncated with an explicit `…(truncated)` marker; auth-endpoint responses reduced by design (never raw). Re-run precondition: owner cleanup above |
+| `anon-probes.txt` | `live-probes.sh` → `rls-probes.mjs --anon` | run-varying, captured once (003a connectivity precedent: the committed transcript is the evidence boundary) | varying fields: run-date line, GoTrue version string, response timestamps. Redaction placeholders (`<staging-url>`, `<staging-host>`, `<publishable-key>`, …) per the section above. The exact denial shapes are the recorded contract. File bytes gated post-write by `redaction-gate.mjs` |
+| `auth-probes.txt` | `live-probes.sh` → `rls-probes.mjs --auth` | run-varying, captured once | varying fields additionally: user/row/object UUIDs, timestamps. Response bodies over 400 chars truncated with an explicit `…(truncated)` marker; auth-endpoint responses reduced by design (never raw). Re-run precondition: owner cleanup above. File bytes gated post-write by `redaction-gate.mjs` |
+| `redaction-gate.txt` | `live-probes.sh` → `redaction-gate.mjs` | run-varying, captured once (produced with the live transcripts it scans) | per transcript: byte count, sha256 (binds committed bytes to scanned bytes), distinct registered values scanned, JWT-sweep and residual counts, verdict, gate exit. Raw values never printed |
+| `redaction-control.txt` | `capture.sh` → `live-probes.sh --control` | gated | the finding 3 positive control: the real `run_mode` + gate pipeline with synthetic values only (`https://127.0.0.1:9`, instant refusal — no network, no DNS) and the leak hook enabled; proves child exit 1, raw synthetic key present pre-gate, gate RED, transcript deleted. Deterministic lines only (bytes/sha256 of the scratch file omitted); the synthetic key prefix appears only defanged |
+| `roles-acl.sql` | authored probe, owner-executed (ruling 10) | producer (not an output) | single read-only SELECT over `pg_catalog`/`information_schema` — role attributes, effective table privileges, raw ACL entries, PUBLIC grants, RLS flags for the three v1 tables. Run in the staging SQL editor by the owner; output committed verbatim as `roles-acl.txt` |
 | `types-shape.txt` | `capture.sh` → `types-shape.mjs` | gated | deterministic extraction (sorted tables, sorted columns) from the one committed types file; fail-closed on structure drift |
 | `gates.txt` | `capture.sh` | gated | the four non-install CI steps at this head plus the no-dependency-delta probe (pinned to the Phase B base SHA, package files only). jest `Time:` masked, per-suite duration suffixes stripped, `env:` lines dropped (Expo CLI prints them only when a local `.env` exists — machine state, not repo state). The format check runs the pinned local prettier against a clean `git checkout-index` of the staged tree: prettier walks untracked working-copy files and does not read nested ignore rules, so the owner's machine-local `supabase/.temp` CLI residue (untracked, ignored by `supabase/.gitignore`) would otherwise be flagged — CI checks out only the tracked tree, and this measures exactly that. Fail-closed on any nonzero step |
 | `inventory.txt` | `capture.sh` | gated | the seven tracked files every claim here is about (the types file + the six `supabase/` files), with index blob SHAs; reads the index (fixed-point discipline) |
@@ -92,10 +116,12 @@ lockfile (`npm ci` has run); it fetches nothing.
 | `stability.txt` | `stability.sh` | not gated | a gate cannot contain a run of itself (002d precedent); exit status is its contract — 0 all-match, 1 otherwise |
 
 `capture.sh` **fails closed**: exit 1 after writing the transcript that
-shows why, on a types-shape extraction failure, any nonzero CI-step exit, a
+shows why, on a types-shape extraction failure, a redaction positive
+control that fails to prove the red path, any nonzero CI-step exit, a
 nonzero dependency delta, a wrong inventory, a secret-scan match, or a
-broken positive control. `rls-probes.mjs` fails closed on its redaction
-totality gate. A green artifact set from a red run cannot exist.
+broken positive control. `rls-probes.mjs` fails closed on its in-process
+gate and refuses to run unledgered; `redaction-gate.mjs` deletes any
+transcript it reddens. A green artifact set from a red run cannot exist.
 
 ## Claims
 
@@ -115,7 +141,7 @@ totality gate. A green artifact set from a red run cannot exist.
 | 12 | CI itself on this branch | NOT RUN — no `pull_request` event yet | — |
 | 13 | No credential shape exists anywhere in the index (six patterns, each with a matching positive control) | PASS | `secret-scan.txt` |
 | 14 | Redaction totality over both live transcripts: zero residual registered values, zero surviving JWT shapes | PASS — in-process gate; a committed transcript exists only if its run passed it | the `redaction totality gate` line in each transcript |
-| 15 | The four gated artifacts regenerate byte-for-byte (two fresh capture runs, locale pinned) | PASS | `stability.txt` |
+| 15 | The five gated artifacts regenerate byte-for-byte (two fresh capture runs, locale pinned) | PASS | `stability.txt` |
 | 16 | `supabase db lint` / local-stack validation of the migration set | NOT RUN — requires Docker and a local database; unchanged Phase A posture | — |
 | 17 | The owner's `db push` / `types:gen` transcripts | NOT RUN here — owner-executed (ruling 10), held by the controller; corroborated indirectly by every live claim above (the applied schema demonstrably exists and behaves exactly as authored) | — |
 
@@ -126,8 +152,9 @@ discipline) head, with dependencies already materialized per the committed
 lockfile:
 
 - `bash docs/05-quality/evidence/004b-schema-rls-live/capture.sh` —
-  regenerates the four gated artifacts and `environment.txt` (runs the four
-  CI steps; a couple of minutes). Exit 1 = fail closed.
+  regenerates the five gated artifacts and `environment.txt` (runs the four
+  CI steps and the redaction positive control; a couple of minutes). Exit
+  1 = fail closed.
 - `bash docs/05-quality/evidence/004b-schema-rls-live/stability.sh` — the
   byte-stability proof: two fresh captures into scratch, compared against
   the committed copies. Exit 0/1 is the contract.
@@ -135,4 +162,8 @@ lockfile:
   needs the two owner-held env values (exported, or in the repo-root
   `.env`). `--anon` is stateless and re-runnable at will; the `--auth` run
   requires the owner-class cleanup documented above and consumes the
-  two-user authorization, so it is once-per-cleanup by design.
+  two-user authorization, so it is once-per-cleanup by design. Both
+  transcripts and `redaction-gate.txt` are rewritten together.
+- `roles-acl.sql` is owner-executed in the staging SQL editor (ruling 10);
+  its pasted output is the committed `roles-acl.txt` and is not
+  reproducible by any builder-runnable script here.

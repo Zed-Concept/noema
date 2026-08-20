@@ -15,19 +15,34 @@
  *           (identifiers documented in README.md; the generated passwords
  *           exist only in this process's memory), then proves signup
  *           provisioning, owner CRUD on own rows across all three tables,
- *           cross-user denial across all three tables, storage {user_id}/
- *           scoping, and REST-row/type-declaration consistency.
+ *           the full per-table per-operation cross-user grid (SELECT/
+ *           UPDATE/DELETE/INSERT × all three tables, including the
+ *           transcripts WITH CHECK isolation probe, distinct from the
+ *           composite-FK case), storage {user_id}/ scoping, and
+ *           REST-row/type-declaration consistency.
  *
  * Requires EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY
- * in the environment (owner-held staging values; never committed).
+ * in the environment (owner-held staging values; never committed), and
+ * REDACTION_LEDGER (set by live-probes.sh): every registered secret is also
+ * appended to that 0600 scratch ledger so redaction-gate.mjs can scan the
+ * exact written transcript bytes after this process exits. Refusing to run
+ * without the ledger keeps the post-write gate structurally unavoidable.
  *
- * Redaction at source (003a pattern, extended): URL, host, project ref, key,
- * generated passwords, and every issued access/refresh token are registered
- * and replaced before anything is printed; auth-endpoint responses are
- * additionally printed as reduced summaries, never as raw bodies; a generic
- * JWT-shape sweep runs over every line; and a final totality gate over the
- * whole buffered transcript suppresses the output and exits 1 if any
- * registered value or JWT shape survives.
+ * Redaction is layered (REVIEW-011 finding 3 rebuilt the outer layer):
+ * — at source (003a pattern, extended): URL, host, project ref, key,
+ *   generated passwords, and every issued access/refresh token are
+ *   registered and replaced before anything is buffered; auth-endpoint
+ *   responses are additionally printed as reduced summaries, never as raw
+ *   bodies; a generic JWT-shape sweep runs over every line; and an
+ *   in-process gate over the buffered transcript suppresses the output and
+ *   exits 1 if any registered value or JWT shape survives it. This layer
+ *   covers only what flows through out().
+ * — post-write (the totality guarantee): live-probes.sh commits this
+ *   process's ENTIRE stdout/stderr to the transcript file, so
+ *   redaction-gate.mjs then scans that file's exact final bytes against the
+ *   ledger + JWT shape, deleting the file and failing the run on any
+ *   residual. See redaction-gate.mjs and redaction-control.txt (the planted
+ *   direct-stdout-leak positive control).
  *
  * Exit: 0 = every probe in the mode passed; 1 = a probe failed or the
  * redaction totality gate tripped; 2 = environment not configured;
@@ -37,14 +52,14 @@
  * separately.
  */
 import { randomBytes } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { appendFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { extractTypesShape, repoRoot } from './types-shape.mjs';
 
 const MODE = process.argv[2];
 if (MODE !== '--anon' && MODE !== '--auth') {
-  console.log('usage: node rls-probes.mjs --anon | --auth');
+  console.log('usage: node rls-probes.mjs --anon | --auth   (run via live-probes.sh)');
   process.exit(2);
 }
 const RAW_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -55,12 +70,25 @@ if (!RAW_URL || !KEY) {
   );
   process.exit(2);
 }
+const LEDGER = process.env.REDACTION_LEDGER;
+if (!LEDGER) {
+  console.log(
+    'NOT CONFIGURED: REDACTION_LEDGER must point at the run ledger (live-probes.sh sets it) — ' +
+      'without it the post-write file-byte gate cannot scan, so this refuses to run (fail closed)',
+  );
+  process.exit(2);
+}
 const BASE = RAW_URL.replace(/\/+$/, '');
 
 // --- redaction at source ----------------------------------------------------
 const secrets = new Map();
 function registerSecret(raw, placeholder) {
-  if (raw && typeof raw === 'string' && raw.length >= 8) secrets.set(raw, placeholder);
+  if (raw && typeof raw === 'string' && raw.length >= 8) {
+    secrets.set(raw, placeholder);
+    // Mirror every registered value into the run ledger (0600, scratch,
+    // deleted by live-probes.sh) so the post-write gate scans the same set.
+    appendFileSync(LEDGER, `${raw}\n`);
+  }
 }
 registerSecret(RAW_URL, '<staging-url>');
 registerSecret(BASE, '<staging-url>');
@@ -195,6 +223,15 @@ async function readAuthSettings() {
 
 // --- anon mode -----------------------------------------------------------------
 async function anonMode() {
+  // REVIEW-011 finding 3 positive control: with the env flag set AND a
+  // synthetic key (the marker guard makes this hook incapable of leaking a
+  // real credential), write the raw key straight to stdout — bypassing
+  // out()/redact() and the in-process gate — reproducing the exact leakage
+  // class the review demonstrated. The post-write file-byte gate must go
+  // red on it; redaction-control.txt is the committed proof that it does.
+  if (process.env.REDACTION_CONTROL_LEAK === '1' && KEY.includes('SYNTHETIC')) {
+    console.log(`control-leak: ${KEY}`);
+  }
   out('# Anon-path probes: no session — the publishable key presented sessionless.');
   out('# Expected: denial everywhere. Exact response shapes below are the recorded');
   out('# contract for the applied Unit C schema (anon holds no table grants; the');
@@ -267,9 +304,11 @@ function authSummary(r) {
   );
 }
 
+// Fix-cycle-1 namespace (REVIEW-011 fix dispatch): fresh disposable users,
+// distinct from the superseded ctrl004b-* pair, owner-deleted after the run.
 const USERS = [
-  { tag: 'user1', email: 'ctrl004b-user1@example.com' },
-  { tag: 'user2', email: 'ctrl004b-user2@example.com' },
+  { tag: 'user1', email: 'ctrl004c-user1@example.com' },
+  { tag: 'user2', email: 'ctrl004c-user2@example.com' },
 ];
 
 async function obtainSession(u) {
@@ -358,7 +397,7 @@ async function authMode() {
   out('## Owner CRUD — profiles (read proven above; update, delete, insert-back)');
   const pu = await req('PATCH', `/rest/v1/profiles?id=eq.${u1.uid}`, {
     bearer: u1.token,
-    json: { display_name: 'ctrl004b user1' },
+    json: { display_name: 'ctrl004c user1' },
     headers: { prefer: 'return=representation' },
   });
   const puRow = Array.isArray(pu.json) ? pu.json[0] : undefined;
@@ -366,7 +405,7 @@ async function authMode() {
     'profiles UPDATE own: allowed, and the updated_at trigger fired (updated_at moved off created_at)',
     pu.status === 200 &&
       Boolean(puRow) &&
-      puRow.display_name === 'ctrl004b user1' &&
+      puRow.display_name === 'ctrl004c user1' &&
       puRow.updated_at !== puRow.created_at,
     show(pu),
   );
@@ -381,7 +420,7 @@ async function authMode() {
   );
   const pi = await req('POST', '/rest/v1/profiles', {
     bearer: u1.token,
-    json: { id: u1.uid, display_name: 'ctrl004b user1' },
+    json: { id: u1.uid, display_name: 'ctrl004c user1' },
     headers: { prefer: 'return=representation' },
   });
   probe(
@@ -465,7 +504,7 @@ async function authMode() {
     json: {
       capture_id: capA,
       user_id: u1.uid,
-      text: 'ctrl004b probe transcript',
+      text: 'ctrl004c probe transcript',
       language: 'en',
       provider: 'probe',
     },
@@ -505,7 +544,7 @@ async function authMode() {
   );
   const tu = await req('PATCH', `/rest/v1/transcripts?id=eq.${tid1}`, {
     bearer: u1.token,
-    json: { text: 'ctrl004b probe transcript (updated)' },
+    json: { text: 'ctrl004c probe transcript (updated)' },
     headers: { prefer: 'return=representation' },
   });
   probe(
@@ -526,7 +565,10 @@ async function authMode() {
   );
 
   out();
-  out('## Cross-user denial — user2 against user1 rows');
+  out('## Cross-user denial — user2 (attacker session) against user1 (victim) rows.');
+  out('## The full per-table, per-operation grid: SELECT/UPDATE/DELETE on every');
+  out('## table against victim rows, INSERT impersonation on every table, plus the');
+  out('## transcripts WITH CHECK isolation probe (distinct from the composite-FK case).');
   const xs1 = await req('GET', `/rest/v1/profiles?select=*&id=eq.${u1.uid}`, {
     bearer: u2.token,
   });
@@ -551,24 +593,62 @@ async function authMode() {
     xs3.status === 200 && Array.isArray(xs3.json) && xs3.json.length === 0,
     show(xs3),
   );
-  const xu = await req('PATCH', `/rest/v1/captures?id=eq.${capA}`, {
+  const xup = await req('PATCH', `/rest/v1/profiles?id=eq.${u1.uid}`, {
+    bearer: u2.token,
+    json: { display_name: 'hijacked' },
+    headers: { prefer: 'return=representation' },
+  });
+  probe(
+    'cross-user UPDATE profiles: no-op (zero rows affected)',
+    xup.status === 200 && Array.isArray(xup.json) && xup.json.length === 0,
+    show(xup),
+  );
+  const xuc = await req('PATCH', `/rest/v1/captures?id=eq.${capA}`, {
     bearer: u2.token,
     json: { status: 'failed' },
     headers: { prefer: 'return=representation' },
   });
   probe(
     'cross-user UPDATE captures: no-op (zero rows affected)',
-    xu.status === 200 && Array.isArray(xu.json) && xu.json.length === 0,
-    show(xu),
+    xuc.status === 200 && Array.isArray(xuc.json) && xuc.json.length === 0,
+    show(xuc),
   );
-  const xd = await req('DELETE', `/rest/v1/transcripts?id=eq.${tid1}`, {
+  const xut = await req('PATCH', `/rest/v1/transcripts?id=eq.${tid1}`, {
+    bearer: u2.token,
+    json: { text: 'hijacked' },
+    headers: { prefer: 'return=representation' },
+  });
+  probe(
+    'cross-user UPDATE transcripts: no-op (zero rows affected)',
+    xut.status === 200 && Array.isArray(xut.json) && xut.json.length === 0,
+    show(xut),
+  );
+  const xdp = await req('DELETE', `/rest/v1/profiles?id=eq.${u1.uid}`, {
+    bearer: u2.token,
+    headers: { prefer: 'return=representation' },
+  });
+  probe(
+    'cross-user DELETE profiles: no-op (zero rows affected)',
+    xdp.status === 200 && Array.isArray(xdp.json) && xdp.json.length === 0,
+    show(xdp),
+  );
+  const xdc = await req('DELETE', `/rest/v1/captures?id=eq.${capA}`, {
+    bearer: u2.token,
+    headers: { prefer: 'return=representation' },
+  });
+  probe(
+    'cross-user DELETE captures: no-op (zero rows affected)',
+    xdc.status === 200 && Array.isArray(xdc.json) && xdc.json.length === 0,
+    show(xdc),
+  );
+  const xdt = await req('DELETE', `/rest/v1/transcripts?id=eq.${tid1}`, {
     bearer: u2.token,
     headers: { prefer: 'return=representation' },
   });
   probe(
     'cross-user DELETE transcripts: no-op (zero rows affected)',
-    xd.status === 200 && Array.isArray(xd.json) && xd.json.length === 0,
-    show(xd),
+    xdt.status === 200 && Array.isArray(xdt.json) && xdt.json.length === 0,
+    show(xdt),
   );
   const xi1 = await req('POST', '/rest/v1/captures', {
     bearer: u2.token,
@@ -596,30 +676,58 @@ async function authMode() {
     headers: { prefer: 'return=representation' },
   });
   probe(
-    'cross-user INSERT transcripts onto user1 capture (own user_id): composite FK rejects (23503) — the live user_id-consistency guarantee',
+    'cross-user INSERT transcripts onto user1 capture (own user_id — WITH CHECK satisfied): composite FK rejects (23503) — the live user_id-consistency guarantee',
     xi3.status === 409 && Boolean(xi3.json) && xi3.json.code === '23503',
     show(xi3),
   );
-  const rc1 = await req('GET', `/rest/v1/captures?select=id,status&id=eq.${capA}`, {
+  // The isolation probe (REVIEW-011 finding 5): the victim's own
+  // (capture_id, user_id) pair EXISTS in captures, so the composite FK
+  // cannot be the rejector here — only the transcripts INSERT policy's
+  // WITH CHECK ((select auth.uid()) = user_id) can deny it. A 42501,
+  // distinct from the 23503 above, proves the WITH CHECK denial live.
+  const xi4 = await req('POST', '/rest/v1/transcripts', {
+    bearer: u2.token,
+    json: { capture_id: capA, user_id: u1.uid, text: 'hijack attempt (forged owner)' },
+    headers: { prefer: 'return=representation' },
+  });
+  probe(
+    "cross-user INSERT transcripts with the victim's own valid (capture_id, user_id) pair: denied by RLS WITH CHECK (42501), distinct from the FK case",
+    privilegeDenied(xi4),
+    show(xi4),
+  );
+  const rc1 = await req('GET', `/rest/v1/profiles?select=id,display_name&id=eq.${u1.uid}`, {
     bearer: u1.token,
   });
   probe(
-    "cross-user write attempts were true no-ops: capture A still status 'ready'",
-    rc1.status === 200 && Boolean(rc1.json && rc1.json[0]) && rc1.json[0].status === 'ready',
+    'cross-user write attempts were true no-ops: user1 profile present, display_name unchanged',
+    rc1.status === 200 &&
+      Boolean(rc1.json && rc1.json[0]) &&
+      rc1.json[0].display_name === 'ctrl004c user1',
     show(rc1),
   );
-  const rc2 = await req('GET', `/rest/v1/transcripts?select=id&id=eq.${tid1}`, {
+  const rc2 = await req('GET', `/rest/v1/captures?select=id,status&id=eq.${capA}`, {
     bearer: u1.token,
   });
   probe(
-    'cross-user delete attempt was a true no-op: transcript 1 still present',
-    rc2.status === 200 && Array.isArray(rc2.json) && rc2.json.length === 1,
+    "cross-user write attempts were true no-ops: capture A present, still status 'ready'",
+    rc2.status === 200 && Boolean(rc2.json && rc2.json[0]) && rc2.json[0].status === 'ready',
     show(rc2),
+  );
+  const rc3 = await req('GET', `/rest/v1/transcripts?select=id,text&id=eq.${tid1}`, {
+    bearer: u1.token,
+  });
+  probe(
+    'cross-user write attempts were true no-ops: transcript 1 present, text unchanged',
+    rc3.status === 200 &&
+      Array.isArray(rc3.json) &&
+      rc3.json.length === 1 &&
+      String(rc3.json[0].text).endsWith('(updated)'),
+    show(rc3),
   );
 
   out();
   out('## Storage — captures-audio, {user_id}/ scoping');
-  const AUDIO = 'ctrl004b probe audio bytes';
+  const AUDIO = 'ctrl004c probe audio bytes';
   const s1 = await req('POST', `/storage/v1/object/captures-audio/${u1.uid}/probe.bin`, {
     bearer: u1.token,
     bodyRaw: AUDIO,

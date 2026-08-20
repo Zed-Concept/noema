@@ -301,11 +301,19 @@ assert(
   const c = col('public.captures', 'duration_ms');
   const check = c ? cons(c, 'CONSTR_CHECK')[0] : undefined;
   const ae = check?.raw_expr?.A_Expr;
+  // Exact-value comparison (REVIEW-011 finding 2). libpg_query emits integer
+  // constants protobuf-style — the inner value field is omitted when it is 0
+  // (`{ival: {}}`), while -1/1/… carry `{ival: {ival: n}}` (the grammar folds
+  // unary minus into the constant) and a float 0.0 carries fval, not ival. So
+  // "literally 0" is: an ival node present, whose value resolves to 0.
+  const rhs = ae?.rexpr?.A_Const;
   const geZero =
     !!ae &&
     ae.name.map(sval).join('') === '>=' &&
     isColRef(ae.lexpr, 'duration_ms') &&
-    ae.rexpr?.A_Const?.ival !== undefined;
+    !!rhs &&
+    'ival' in rhs &&
+    (rhs.ival.ival ?? 0) === 0;
   assert(
     'captures.duration_ms integer, nullable, CHECK (duration_ms >= 0)',
     !!c && typeOf(c) === 'int4' && !notNull(c) && geZero,

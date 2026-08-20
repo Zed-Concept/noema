@@ -1,0 +1,21 @@
+# Redaction file-byte gate — positive control (REVIEW-011 finding 3).
+# A synthetic publishable-shaped key (runtime-assembled; defanged here as
+# sb_[p]ublishable_REDACTIONCONTROLSYNTHETIC00) is leaked by rls-probes.mjs
+# straight to stdout — bypassing out()/redact() and the in-process buffer
+# gate — through the real run_mode pipeline into a scratch transcript
+# (header + complete child stdout/stderr + exit trailer), which
+# redaction-gate.mjs then scans on exact file bytes. Synthetic env only:
+# the URL is https://127.0.0.1:9 (instant refusal — no network, no DNS),
+# so every probe fails and nothing real is contacted or registered.
+
+child exit code: 1 (1 required: probes red under synthetic env; the in-process gate stays green — the leak bypassed its buffer, which is the defect class under test)
+raw synthetic key lines in the pre-gate transcript bytes: 1 (>= 1 required — the leak really reached the committed stream)
+gate report (bytes/sha256 lines omitted — scratch content varies run to run):
+file: <scratch control transcript>
+registered values scanned: 3 distinct (raw values never printed)
+jwt-shape sweep: 0 matches
+residual registered-value classes: 1 (occurrences: 1)
+verdict: RED — residual secret bytes in the exact transcript file — transcript deleted (exit 1)
+post-gate scratch transcript still exists: no (no required — a red gate deletes fail-closed)
+
+--- enforced: child exit 1, leak present pre-gate, gate RED (exit 1), transcript deleted — or this control exits 1 ---

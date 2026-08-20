@@ -30,4 +30,8 @@ scenario: schema-unqualified USING (true) policy appended
 expected failing assertion: every policy names its schema explicitly (public or storage) and the total is exactly 17 — an unqualified or extra policy cannot hide
 exit code: 1 (1 required); named FAIL line present: yes (yes required)
 
+scenario: duration_ms CHECK value shifted to its neighbor (>= -1)
+expected failing assertion: captures.duration_ms integer, nullable, CHECK (duration_ms >= 0)
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
 --- enforced: every scenario exits 1 with its named FAIL line, or capture.sh exits 1 (fail closed) ---

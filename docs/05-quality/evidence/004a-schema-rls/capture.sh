@@ -66,9 +66,10 @@ if [ "$verify_exit" -ne 0 ]; then
   exit 1
 fi
 
-# --- assertions-negative-control.txt — the gate is not vacuous: seven tampered
+# --- assertions-negative-control.txt — the gate is not vacuous: eight tampered
 # copies of the migration set (five removal/narrowing mutations, two
-# append-class mutations from the audit workflow's findings), must each make
+# append-class mutations from the audit workflow's findings, and the exact-value
+# neighbor mutation from REVIEW-011 finding 2), must each make
 # verify-migrations.mjs report the named FAIL and exit 1. Mutations happen on
 # scratch copies only; the repo is never touched.
 control_violations=0
@@ -138,6 +139,16 @@ control_violations=0
     >> "$scratch/tamper/20260820100100_v1_rls_policies.sql"
   run_scenario "schema-unqualified USING (true) policy appended" \
     "every policy names its schema explicitly (public or storage) and the total is exactly 17 — an unqualified or extra policy cannot hide"
+
+  # The exact-value neighbor scenario (REVIEW-011 finding 2): the committed
+  # oracle once accepted any integer here; this mutation is the review's
+  # false-green reproduction, kept as a permanent discriminating control.
+  fresh
+  sed 's/check (duration_ms >= 0)/check (duration_ms >= -1)/' \
+    "$scratch/tamper/20260820100000_v1_core_schema.sql" > "$scratch/t" \
+    && mv "$scratch/t" "$scratch/tamper/20260820100000_v1_core_schema.sql"
+  run_scenario "duration_ms CHECK value shifted to its neighbor (>= -1)" \
+    "captures.duration_ms integer, nullable, CHECK (duration_ms >= 0)"
 
   echo
   echo "--- enforced: every scenario exits 1 with its named FAIL line, or capture.sh exits 1 (fail closed) ---"

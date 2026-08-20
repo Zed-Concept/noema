@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
 # Regenerates this directory's OFFLINE artifacts. Gated (byte-stable at the
 # committed head, normalization stated in README.md): types-shape.txt,
-# gates.txt, secret-scan.txt, inventory.txt. Run-varying (fields named in
-# README.md): environment.txt. The two live transcripts (anon-probes.txt,
-# auth-probes.txt) are NOT touched here — live-probes.sh produced them once
-# against staging and the committed copies are the evidence boundary (003a
-# connectivity precedent).
+# redaction-control.txt, gates.txt, secret-scan.txt, inventory.txt.
+# Run-varying (fields named in README.md): environment.txt. The three live
+# artifacts (anon-probes.txt, auth-probes.txt, redaction-gate.txt) are NOT
+# touched here — live-probes.sh produced them once against staging and the
+# committed copies are the evidence boundary (003a connectivity precedent).
 #
 # Fail closed (house rule): this script exits 1 — after writing the
-# transcript that shows why — on a types-shape extraction failure, any
-# nonzero CI-step exit, a wrong inventory, a secret-scan match against the
-# index, or a broken positive control. A green artifact set from a red run
-# cannot exist.
+# transcript that shows why — on a types-shape extraction failure, a
+# redaction positive control that fails to go red, any nonzero CI-step
+# exit, a wrong inventory, a secret-scan match against the index, or a
+# broken positive control. A green artifact set from a red run cannot
+# exist.
 #
 # inventory.txt and secret-scan.txt read the index, so they follow the 003a
 # fixed-point discipline: `git add -A`, run, and repeat until the output
@@ -45,6 +46,18 @@ if node "$evdir/types-shape.mjs" > "$outdir/types-shape.txt" 2>&1; then shape_ex
 echo "--- exit code: $shape_exit (0 = extraction succeeded) ---" >> "$outdir/types-shape.txt"
 if [ "$shape_exit" -ne 0 ]; then
   echo "FAIL CLOSED: types-shape extraction failed (exit $shape_exit) — see $outdir/types-shape.txt" >&2
+  exit 1
+fi
+
+# --- redaction-control.txt — REVIEW-011 finding 3 positive control: the
+# post-write file-byte gate (redaction-gate.mjs) goes red on a planted
+# direct-child-stdout leak of a synthetic key and deletes the transcript.
+# Runs the real live-probes.sh pipeline against synthetic values only
+# (https://127.0.0.1:9 — instant refusal; no network, no DNS, nothing real
+# contacted). Deterministic by construction, so it is gated.
+if bash "$evdir/live-probes.sh" --control "$outdir" >/dev/null 2>&1; then rc_exit=0; else rc_exit=$?; fi
+if [ "$rc_exit" -ne 0 ]; then
+  echo "FAIL CLOSED: redaction positive control did not prove the red path (exit $rc_exit) — see $outdir/redaction-control.txt" >&2
   exit 1
 fi
 
@@ -158,4 +171,4 @@ if [ "$scan_violations" -ne 0 ]; then
   exit 1
 fi
 
-echo "wrote types-shape.txt, gates.txt, inventory.txt, secret-scan.txt, environment.txt to $outdir"
+echo "wrote types-shape.txt, redaction-control.txt, gates.txt, inventory.txt, secret-scan.txt, environment.txt to $outdir"
