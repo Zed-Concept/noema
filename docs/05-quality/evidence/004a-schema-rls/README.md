@@ -47,13 +47,16 @@ authored 2026-08-20 (their timestamps record the authoring date):
   `service_role` receives nothing in v1 — the first server-side unit that
   needs it adds it deliberately. The grants are harmless if the project
   ever runs under legacy auto-expose behavior; RLS still gates every row.
-- **The provisioning insert policy (`TO postgres`).** FORCE RLS
-  policy-checks even the table owner, and on hosted Supabase `postgres` has
-  no BYPASSRLS — without this policy the SECURITY DEFINER provisioning
-  insert (which executes as `postgres`, and at signup time under a null
-  `auth.uid()`) would be denied and signup would fail. It is INSERT-only,
-  on `profiles` only, and `postgres` is not a Data API role, so nothing
-  client-reachable widens.
+- **The provisioning insert policy (`TO postgres`).** Authored under the
+  Phase A premise that hosted `postgres` lacks BYPASSRLS. The fix-cycle-1
+  measurement (`../004b-schema-rls-live/roles-acl.txt`, REVIEW-011
+  finding 1) shows staging `postgres` carries `rolbypassrls=t`, so the
+  SECURITY DEFINER provisioning insert (which executes as `postgres`, at
+  signup time under a null `auth.uid()`) bypasses row security and this
+  policy is currently **inert**. It is retained as defense-in-depth:
+  INSERT-only, on `profiles` only, load-bearing only if the role is ever
+  demoted — and `postgres` is not a Data API role, so nothing
+  client-reachable widens either way.
 - **`auth.uid()` is initplan-wrapped** (`(select auth.uid())`) in every
   policy predicate so it evaluates once per statement, not per row; every
   keyed column is indexed (PK or the FK-supporting indexes).
@@ -68,15 +71,19 @@ authored 2026-08-20 (their timestamps record the authoring date):
   `[db] major_version = 17` is the generated default; the owner confirms it
   matches staging at link time (`supabase link` warns on mismatch).
 
-**Operational caveat (workflow-surfaced, disclosed, no code change):**
-FORCE RLS plus hosted `postgres` lacking BYPASSRLS means postgres-role
-tooling is policy-checked too — the dashboard Table Editor and SQL editor
-sessions see zero rows in these three tables, and `supabase db dump
---data-only` does not export them. Signup provisioning is unaffected (the
-insert-only policy above), platform backups/PITR run privileged and are
-unaffected, and FK cascades from `auth.users` deletions are exempt from row
-security by design. Inspect these tables through an authenticated client
-(or dashboard user impersonation); FORCE is the dispatch-mandated posture.
+**Operational caveat (premise corrected by measurement — REVIEW-011
+finding 1, fix cycle 1):** Phase A assumed hosted `postgres` lacks
+BYPASSRLS, so FORCE would blind postgres-role tooling. The owner-run
+staging measurement (`../004b-schema-rls-live/roles-acl.txt`) shows
+otherwise: `postgres` — the role the dashboard SQL editor measurably
+executes as — carries `rolbypassrls=t`, so the Table Editor, SQL editor
+sessions, and data-only dumps see all rows in these three tables despite
+FORCE (`relforcerowsecurity=t` measured on all three). FORCE still
+policy-checks every non-BYPASSRLS role, signup provisioning is unaffected,
+and FK cascades from `auth.users` deletions are exempt from row security by
+design. The applied migration comments that carry the original premise are
+APPLIED-and-immutable; the correction lives here, in OPERATIONS.md, and in
+the fix-cycle HANDOFF — never in an edit to an applied migration.
 
 ## Artifacts and classification
 

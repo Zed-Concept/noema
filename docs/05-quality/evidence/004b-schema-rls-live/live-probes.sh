@@ -161,12 +161,11 @@ echo "wrote $outdir/auth-probes.txt"
   echo "# A red gate deletes the transcript and fails the run (REVIEW-011 finding 3"
   echo "# rebuild; the planted-leak positive control is redaction-control.txt)."
   echo "# run date (UTC): $(date -u +%Y-%m-%d)"
-  echo
   for f in anon-probes.txt auth-probes.txt; do
+    echo
     if gate_out="$(node "$evdir/redaction-gate.mjs" "$outdir/$f" 2>&1)"; then g=0; else g=$?; fi
     printf '%s\n' "$gate_out"
     echo "--- gate exit: $g (0 green; 1 red — transcript deleted) ---"
-    echo
     bump "$g"
   done
 } > "$outdir/redaction-gate.txt"

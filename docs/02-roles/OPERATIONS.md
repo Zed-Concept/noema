@@ -40,10 +40,13 @@ to install or start the placeholder app; the one command that does need the two
 values is `npm run check:supabase`, the staging connectivity check (see the
 repository README's Supabase section; evidence:
 `docs/05-quality/evidence/003a-supabase-wiring/`). As of Unit C the three v1
-tables on staging enforce FORCE row-level security, so postgres-role
-dashboard tooling (Table Editor, SQL editor, data-only dumps) sees zero rows
-in them by design — data inspection goes through an authenticated client or
-the dashboard's user impersonation.
+tables on staging enforce FORCE row-level security, but the measured staging
+`postgres` role carries `BYPASSRLS` (owner-run probe,
+`docs/05-quality/evidence/004b-schema-rls-live/roles-acl.txt`), so
+postgres-role dashboard tooling (Table Editor, SQL editor, data-only dumps)
+still sees all rows in them — FORCE binds only non-`BYPASSRLS` roles, and
+the `TO postgres` provisioning policy is inert defense-in-depth that matters
+only if that role is ever demoted.
 
 Requires Node and npm. CI pins **Node 24 LTS**; Unit A was built and verified on
 Node 26. No global Expo CLI install — `npx` resolves the version in the lockfile.

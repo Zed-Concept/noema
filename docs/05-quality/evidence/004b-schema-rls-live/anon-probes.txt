@@ -1,4 +1,4 @@
-# anon-probes — rls-probes.mjs --anon against staging (redacted at source)
+# anon-probes — rls-probes.mjs --anon (redacted at source; file bytes gated post-write)
 # run date (UTC): 2026-08-20
 # Anon-path probes: no session — the publishable key presented sessionless.
 # Expected: denial everywhere. Exact response shapes below are the recorded
