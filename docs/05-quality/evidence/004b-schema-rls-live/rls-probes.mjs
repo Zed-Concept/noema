@@ -9,7 +9,10 @@
  *           and storage surface (anon holds no table grants; storage shows
  *           zero-row visibility / not-found obfuscation / RLS insert
  *           rejection). The exact response shapes are recorded as the
- *           contract.
+ *           contract, and the summary names the exact subset: the two
+ *           service-context probes (auth health, auth settings) prove
+ *           reachability and run-time config, not denial — the
+ *           denial/invisibility count is printed separately.
  *   --auth  auth-probes.txt: creates up to two disposable, clearly
  *           namespaced test users via the publishable-key signup path
  *           (identifiers documented in README.md; the generated passwords
@@ -20,6 +23,11 @@
  *           transcripts WITH CHECK isolation probe, distinct from the
  *           composite-FK case), storage {user_id}/ scoping, and
  *           REST-row/type-declaration consistency.
+ *
+ * Every response oracle pins a single exact expected HTTP status — plus the
+ * single exact error code where the response carries one (REVIEW-012
+ * finding 5: the earlier helper accepted 401 or 403, so a neighboring
+ * status could earn a PASS label that named the other).
  *
  * Requires EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY
  * in the environment (owner-held staging values; never committed), and
@@ -123,9 +131,18 @@ function out(s = '') {
 }
 let passCount = 0;
 let failCount = 0;
-function probe(name, pass, detail) {
+// Context probes (kind 'context') prove reachability/run-time config, not
+// denial; the anon summary counts them separately (REVIEW-012 finding 5:
+// 11 total PASS was labeled 11 denials — the denial/invisibility subset is 9).
+let contextPass = 0;
+let contextFail = 0;
+function probe(name, pass, detail, kind) {
   if (pass) passCount += 1;
   else failCount += 1;
+  if (kind === 'context') {
+    if (pass) contextPass += 1;
+    else contextFail += 1;
+  }
   out(`${pass ? 'PASS' : 'FAIL'}  ${name}`);
   out(`      ${detail}`);
 }
@@ -144,6 +161,13 @@ function finish(code) {
   console.log(
     `redaction totality gate: 0 residual occurrences (${secrets.size} registered values + JWT sweep)`,
   );
+  if (MODE === '--anon') {
+    console.log(
+      `--- anon subset: ${passCount - contextPass} denial/invisibility PASS + ` +
+        `${contextPass} service-context PASS (auth health reachability, auth settings record) ` +
+        `= ${passCount} PASS total ---`,
+    );
+  }
   console.log(`--- probes: ${passCount} PASS, ${failCount} FAIL ---`);
   process.exit(code);
 }
@@ -192,8 +216,14 @@ function show(r, cap = 400) {
   return `HTTP ${r.status} ${s}`;
 }
 
-function privilegeDenied(r) {
-  return (r.status === 401 || r.status === 403) && r.json && r.json.code === '42501';
+// One exact expected status + one exact expected code, per probe (REVIEW-012
+// finding 5 — the prior helper accepted 401 or 403). anon REST denials are
+// permission errors ahead of RLS (anon holds no grants): exactly 401/42501.
+// Authenticated WITH CHECK denials are RLS violations behind valid grants:
+// exactly 403/42501. Storage denials carry the storage-api code field:
+// exactly 400/NoSuchKey (not-found obfuscation) or 400/AccessDenied (RLS).
+function deniedExact(r, status, code) {
+  return r.status === status && !!r.json && r.json.code === code;
 }
 
 function sameSet(a, b) {
@@ -239,22 +269,24 @@ async function anonMode() {
   out();
   const health = await req('GET', '/auth/v1/health');
   probe(
-    'auth service reachable (context: denials below are policy, not outage)',
+    'auth service reachable (service-context: proves denials below are policy, not outage)',
     health.status === 200,
     show(health),
+    'context',
   );
   const auth = await readAuthSettings();
   probe(
-    'auth settings readable (records the config the authenticated path depends on)',
+    'auth settings readable (service-context: records the config the authenticated path depends on)',
     auth.settings.status === 200,
     auth.line,
+    'context',
   );
   out();
   for (const t of TABLES) {
     const sel = await req('GET', `/rest/v1/${t}?select=*`);
     probe(
-      `anon REST SELECT ${t}: denied with insufficient_privilege (42501)`,
-      privilegeDenied(sel),
+      `anon REST SELECT ${t}: denied, exactly HTTP 401 code 42501 (insufficient_privilege)`,
+      deniedExact(sel, 401, '42501'),
       show(sel),
     );
     const ins = await req('POST', `/rest/v1/${t}`, {
@@ -262,28 +294,32 @@ async function anonMode() {
       headers: { prefer: 'return=representation' },
     });
     probe(
-      `anon REST INSERT ${t}: denied with insufficient_privilege (42501)`,
-      privilegeDenied(ins),
+      `anon REST INSERT ${t}: denied, exactly HTTP 401 code 42501 (insufficient_privilege)`,
+      deniedExact(ins, 401, '42501'),
       show(ins),
     );
   }
   out();
   const dl = await req('GET', `/storage/v1/object/captures-audio/${ZERO_UUID}/anon-probe.bin`);
   probe(
-    'anon storage download: denied (not-found obfuscation, no bytes served)',
-    dl.status >= 400,
+    'anon storage download: denied, exactly HTTP 400 code NoSuchKey (not-found obfuscation, no bytes served)',
+    deniedExact(dl, 400, 'NoSuchKey'),
     show(dl),
   );
   const ul = await req('POST', `/storage/v1/object/captures-audio/${ZERO_UUID}/anon-upload.bin`, {
     bodyRaw: 'anon probe bytes',
   });
-  probe('anon storage upload: denied (no INSERT policy admits anon)', ul.status >= 400, show(ul));
+  probe(
+    'anon storage upload: denied, exactly HTTP 400 code AccessDenied (no INSERT policy admits anon)',
+    deniedExact(ul, 400, 'AccessDenied'),
+    show(ul),
+  );
   const ls = await req('POST', '/storage/v1/object/list/captures-audio', {
     json: { prefix: '', limit: 10 },
   });
   probe(
-    'anon storage list: sees zero objects (RLS row invisibility) or is refused',
-    (ls.status === 200 && Array.isArray(ls.json) && ls.json.length === 0) || ls.status >= 400,
+    'anon storage list: sees zero objects, exactly HTTP 200 empty array (RLS row invisibility)',
+    ls.status === 200 && Array.isArray(ls.json) && ls.json.length === 0,
     show(ls),
   );
   finish(failCount ? 1 : 0);
@@ -304,11 +340,12 @@ function authSummary(r) {
   );
 }
 
-// Fix-cycle-1 namespace (REVIEW-011 fix dispatch): fresh disposable users,
-// distinct from the superseded ctrl004b-* pair, owner-deleted after the run.
+// Fix-cycle-2 namespace (REVIEW-012 fix dispatch): fresh disposable users,
+// distinct from the deleted ctrl004b-*/ctrl004c-* pairs, exactly two,
+// owner-deleted after the run.
 const USERS = [
-  { tag: 'user1', email: 'ctrl004c-user1@example.com' },
-  { tag: 'user2', email: 'ctrl004c-user2@example.com' },
+  { tag: 'user1', email: 'ctrl004d-user1@example.com' },
+  { tag: 'user2', email: 'ctrl004d-user2@example.com' },
 ];
 
 async function obtainSession(u) {
@@ -320,8 +357,8 @@ async function obtainSession(u) {
   if (sj.refresh_token) registerSecret(sj.refresh_token, `<refresh-token-${u.tag}>`);
   const uid = (sj.user ? sj.user.id : undefined) ?? sj.id ?? null;
   probe(
-    `signup ${u.tag} (${u.email}): accepted via the publishable-key signup path`,
-    su.status >= 200 && su.status < 300 && Boolean(uid),
+    `signup ${u.tag} (${u.email}): accepted via the publishable-key signup path (exactly HTTP 200)`,
+    su.status === 200 && Boolean(uid),
     authSummary(su),
   );
   let token = sj.access_token ?? null;
@@ -397,7 +434,7 @@ async function authMode() {
   out('## Owner CRUD — profiles (read proven above; update, delete, insert-back)');
   const pu = await req('PATCH', `/rest/v1/profiles?id=eq.${u1.uid}`, {
     bearer: u1.token,
-    json: { display_name: 'ctrl004c user1' },
+    json: { display_name: 'ctrl004d user1' },
     headers: { prefer: 'return=representation' },
   });
   const puRow = Array.isArray(pu.json) ? pu.json[0] : undefined;
@@ -405,7 +442,7 @@ async function authMode() {
     'profiles UPDATE own: allowed, and the updated_at trigger fired (updated_at moved off created_at)',
     pu.status === 200 &&
       Boolean(puRow) &&
-      puRow.display_name === 'ctrl004c user1' &&
+      puRow.display_name === 'ctrl004d user1' &&
       puRow.updated_at !== puRow.created_at,
     show(pu),
   );
@@ -420,7 +457,7 @@ async function authMode() {
   );
   const pi = await req('POST', '/rest/v1/profiles', {
     bearer: u1.token,
-    json: { id: u1.uid, display_name: 'ctrl004c user1' },
+    json: { id: u1.uid, display_name: 'ctrl004d user1' },
     headers: { prefer: 'return=representation' },
   });
   probe(
@@ -504,7 +541,7 @@ async function authMode() {
     json: {
       capture_id: capA,
       user_id: u1.uid,
-      text: 'ctrl004c probe transcript',
+      text: 'ctrl004d probe transcript',
       language: 'en',
       provider: 'probe',
     },
@@ -544,7 +581,7 @@ async function authMode() {
   );
   const tu = await req('PATCH', `/rest/v1/transcripts?id=eq.${tid1}`, {
     bearer: u1.token,
-    json: { text: 'ctrl004c probe transcript (updated)' },
+    json: { text: 'ctrl004d probe transcript (updated)' },
     headers: { prefer: 'return=representation' },
   });
   probe(
@@ -656,8 +693,8 @@ async function authMode() {
     headers: { prefer: 'return=representation' },
   });
   probe(
-    'cross-user INSERT captures (user_id = user1): denied by WITH CHECK (42501)',
-    privilegeDenied(xi1),
+    'cross-user INSERT captures (user_id = user1): denied by WITH CHECK, exactly HTTP 403 code 42501',
+    deniedExact(xi1, 403, '42501'),
     show(xi1),
   );
   const xi2 = await req('POST', '/rest/v1/profiles', {
@@ -666,8 +703,8 @@ async function authMode() {
     headers: { prefer: 'return=representation' },
   });
   probe(
-    'cross-user INSERT profiles (id = user1): denied by WITH CHECK (42501)',
-    privilegeDenied(xi2),
+    'cross-user INSERT profiles (id = user1): denied by WITH CHECK, exactly HTTP 403 code 42501',
+    deniedExact(xi2, 403, '42501'),
     show(xi2),
   );
   const xi3 = await req('POST', '/rest/v1/transcripts', {
@@ -676,8 +713,8 @@ async function authMode() {
     headers: { prefer: 'return=representation' },
   });
   probe(
-    'cross-user INSERT transcripts onto user1 capture (own user_id — WITH CHECK satisfied): composite FK rejects (23503) — the live user_id-consistency guarantee',
-    xi3.status === 409 && Boolean(xi3.json) && xi3.json.code === '23503',
+    'cross-user INSERT transcripts onto user1 capture (own user_id — WITH CHECK satisfied): composite FK rejects, exactly HTTP 409 code 23503 — the live user_id-consistency guarantee',
+    deniedExact(xi3, 409, '23503'),
     show(xi3),
   );
   // The isolation probe (REVIEW-011 finding 5): the victim's own
@@ -691,8 +728,8 @@ async function authMode() {
     headers: { prefer: 'return=representation' },
   });
   probe(
-    "cross-user INSERT transcripts with the victim's own valid (capture_id, user_id) pair: denied by RLS WITH CHECK (42501), distinct from the FK case",
-    privilegeDenied(xi4),
+    "cross-user INSERT transcripts with the victim's own valid (capture_id, user_id) pair: denied by RLS WITH CHECK, exactly HTTP 403 code 42501, distinct from the FK case",
+    deniedExact(xi4, 403, '42501'),
     show(xi4),
   );
   const rc1 = await req('GET', `/rest/v1/profiles?select=id,display_name&id=eq.${u1.uid}`, {
@@ -702,7 +739,7 @@ async function authMode() {
     'cross-user write attempts were true no-ops: user1 profile present, display_name unchanged',
     rc1.status === 200 &&
       Boolean(rc1.json && rc1.json[0]) &&
-      rc1.json[0].display_name === 'ctrl004c user1',
+      rc1.json[0].display_name === 'ctrl004d user1',
     show(rc1),
   );
   const rc2 = await req('GET', `/rest/v1/captures?select=id,status&id=eq.${capA}`, {
@@ -727,7 +764,7 @@ async function authMode() {
 
   out();
   out('## Storage — captures-audio, {user_id}/ scoping');
-  const AUDIO = 'ctrl004c probe audio bytes';
+  const AUDIO = 'ctrl004d probe audio bytes';
   const s1 = await req('POST', `/storage/v1/object/captures-audio/${u1.uid}/probe.bin`, {
     bearer: u1.token,
     bodyRaw: AUDIO,
@@ -757,22 +794,26 @@ async function authMode() {
     bearer: u1.token,
     bodyRaw: 'intrusion attempt',
   });
-  probe("user1 upload under user2's prefix: denied", s4.status >= 400, show(s4));
+  probe(
+    "user1 upload under user2's prefix: denied, exactly HTTP 400 code AccessDenied",
+    deniedExact(s4, 400, 'AccessDenied'),
+    show(s4),
+  );
   const s5 = await req('POST', '/storage/v1/object/captures-audio/no-folder-probe.bin', {
     bearer: u1.token,
     bodyRaw: 'no folder segment',
   });
   probe(
-    'upload with no {user_id}/ folder segment: denied (fails closed, foldername[1] is null)',
-    s5.status >= 400,
+    'upload with no {user_id}/ folder segment: denied, exactly HTTP 400 code AccessDenied (fails closed, foldername[1] is null)',
+    deniedExact(s5, 400, 'AccessDenied'),
     show(s5),
   );
   const s6 = await req('GET', `/storage/v1/object/captures-audio/${u1.uid}/probe.bin`, {
     bearer: u2.token,
   });
   probe(
-    "user2 download user1's object: denied (not-found obfuscation)",
-    s6.status >= 400,
+    "user2 download user1's object: denied, exactly HTTP 400 code NoSuchKey (not-found obfuscation)",
+    deniedExact(s6, 400, 'NoSuchKey'),
     show(s6),
   );
   const s7 = await req('POST', '/storage/v1/object/list/captures-audio', {
@@ -787,7 +828,11 @@ async function authMode() {
   const s8 = await req('DELETE', `/storage/v1/object/captures-audio/${u1.uid}/probe.bin`, {
     bearer: u2.token,
   });
-  probe("user2 delete user1's object: denied", s8.status >= 400, show(s8));
+  probe(
+    "user2 delete user1's object: denied, exactly HTTP 400 code AccessDenied",
+    deniedExact(s8, 400, 'AccessDenied'),
+    show(s8),
+  );
   const s9 = await req('POST', '/storage/v1/object/list/captures-audio', {
     json: { prefix: '', limit: 10 },
   });

@@ -13,10 +13,15 @@
 # through that buffer. So after each transcript file is complete (header +
 # child output + exit trailer — the exact bytes a commit would record),
 # redaction-gate.mjs scans those file bytes against every value the child
-# registered in the run ledger, plus the JWT shape. A red gate deletes the
-# transcript and fails this script; redaction-gate.txt records each file's
-# sha256 so the committed bytes are provably the scanned bytes. The ledger
-# lives in a 0700 scratch directory outside the repo and is removed on exit.
+# registered in the run ledger, plus the JWT shape. Gate exit 1 fails this
+# script on every red path; the transcript file is deleted exactly on the
+# residual-match path (secret bytes found in the scanned file), while the
+# fail-closed paths — ledger missing, unreadable, or implausibly small;
+# transcript unreadable — return 1 without deleting, because nothing was
+# scanned (REVIEW-012 finding 3: the exit status, not deletion, is the
+# fail-closed contract). redaction-gate.txt records each file's sha256 so
+# the committed bytes are provably the scanned bytes. The ledger lives in a
+# 0700 scratch directory outside the repo and is removed on exit.
 #
 # Requires EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
 # either already exported (the Unit B pattern), or present in the repo-root
@@ -119,7 +124,7 @@ if [ "${1:-}" = "--control" ]; then
     printf '%s\n' "$gate_out" |
       grep -E '^(file|registered values scanned|jwt-shape sweep|residual registered-value classes|verdict):' |
       sed 's/^file: .*/file: <scratch control transcript>/'
-    echo "post-gate scratch transcript still exists: $still (no required — a red gate deletes fail-closed)"
+    echo "post-gate scratch transcript still exists: $still (no required — the residual-match red path deletes the file)"
     echo
     echo "--- enforced: child exit 1, leak present pre-gate, gate RED (exit 1), transcript deleted — or this control exits 1 ---"
   } > "$outdir/redaction-control.txt"
@@ -158,14 +163,17 @@ echo "wrote $outdir/auth-probes.txt"
   echo "# redaction-gate — exact-file-byte scan of each live transcript (post-write,"
   echo "# pre-commit) against every value registered in this run's ledger, plus the"
   echo "# JWT shape. The sha256 lines bind the committed bytes to the scanned bytes."
-  echo "# A red gate deletes the transcript and fails the run (REVIEW-011 finding 3"
-  echo "# rebuild; the planted-leak positive control is redaction-control.txt)."
+  echo "# Exit 1 fails the run on every red path; the transcript is deleted exactly"
+  echo "# on the residual-match path, while ledger-failure paths (missing, unreadable,"
+  echo "# implausibly small) return 1 without deleting — nothing was scanned"
+  echo "# (REVIEW-011 finding 3 rebuild, exactness per REVIEW-012 finding 3; the"
+  echo "# planted-leak positive control is redaction-control.txt)."
   echo "# run date (UTC): $(date -u +%Y-%m-%d)"
   for f in anon-probes.txt auth-probes.txt; do
     echo
     if gate_out="$(node "$evdir/redaction-gate.mjs" "$outdir/$f" 2>&1)"; then g=0; else g=$?; fi
     printf '%s\n' "$gate_out"
-    echo "--- gate exit: $g (0 green; 1 red — transcript deleted) ---"
+    echo "--- gate exit: $g (0 green; 1 red — residual match deletes the transcript, ledger-failure returns 1 without deleting) ---"
     bump "$g"
   done
 } > "$outdir/redaction-gate.txt"

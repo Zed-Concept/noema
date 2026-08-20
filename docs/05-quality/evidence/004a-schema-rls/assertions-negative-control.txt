@@ -34,4 +34,20 @@ scenario: duration_ms CHECK value shifted to its neighbor (>= -1)
 expected failing assertion: captures.duration_ms integer, nullable, CHECK (duration_ms >= 0)
 exit code: 1 (1 required); named FAIL line present: yes (yes required)
 
+scenario: DEFAULT 0 added to captures.duration_ms (declared default-free; REVIEW-012 finding 2 reproduction)
+expected failing assertion: public.captures: per-column constraint-type multiset is exactly the declared set — no default, check, unique, or other constraint is added to or missing from any column
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: captures.id default mutated to gen_random_uuid(null) — same function name, argument added
+expected failing assertion: captures.id uuid PRIMARY KEY DEFAULT gen_random_uuid()
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: captures.user_id FK referenced-attribute list mutated to (email)
+expected failing assertion: captures.user_id uuid NOT NULL FK -> auth.users(id) ON DELETE CASCADE
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: ON CONFLICT DO NOTHING appended to the bucket insert (idempotency neighbor)
+expected failing assertion: bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false) — plain insert, no ON CONFLICT (deliberately non-idempotent), no RETURNING
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
 --- enforced: every scenario exits 1 with its named FAIL line, or capture.sh exits 1 (fail closed) ---

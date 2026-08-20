@@ -8,6 +8,195 @@ Append a new block at the top. Never edit an old one.
 
 ---
 
+## 2026-08-20 — feat/schema-rls-v1 (CTRL-004 Unit C, fix cycle 2 — REVIEW-012)
+
+**Controller:** CTRL-004 Schema and RLS v1. **Builder:** Claude Code, same
+builder and branch per ruling 5's fix-loop class, fresh session.
+**Reviewer of record:** Codex (Codex Sol / Ultra, fresh session); **advisory
+reviewer** DeepSeek V4 Pro per the LOCK. **Fix-cycle base:**
+`4b01eb17b3297887c3bde0015bed1e99be44f99e` (the dispatch-named origin tip),
+fetched and confirmed before any work (learning 6); clean tree.
+**Standing authorization** restated in the dispatch (ruling 7): the
+2026-08-19 RED-lane owner approval covers exactly this unit's schema/RLS
+scope. The four applied migrations, `src/lib/database.types.ts`, every ADR,
+and every `REVIEW-*.md` are untouched; `roles-acl.txt` and `roles-acl.sql`
+are untouched (the measurement is settled and was not re-run, per the
+dispatch). **LOCK:** `Status: REVIEW` throughout; status-line suffix amended
+plus a model-transition note, below. **.env:** presence re-checked by name
+only (both `EXPO_PUBLIC_SUPABASE_*` names present, no value read).
+
+**⚠ Model seat — mid-cycle transition, owner-ruled (learning 3).** This
+session began under the dispatched **Fable 5 / Max**, verified before any
+work. Mid-cycle the session model was switched to **Opus 5 [1m]**. I stopped
+on the mismatch before writing anything further and put it to the owner,
+because ruling 4 says in-flight units finish under their issued terms. **The
+owner ruled in-loop, 2026-08-20, that fix cycle 2 continues under Opus 5
+[1m]** and that the transition be recorded here and in the LOCK. Following
+the `chore/agents-md-formatting` precedent, both readings are on the record
+rather than one being quietly chosen: the session environment reported Fable
+5 at start, the `/model` command reported `claude-opus-5[1m]` at the switch,
+and no session can resolve from the inside which model produced which token.
+Work before the switch: the F2 oracle extension and its mutation battery, the
+F5 producer-oracle tightening, and the F3 producer prose. Work after: all
+README/OPERATIONS prose narrowing, the artifact regenerations, the live run,
+both stability gates, and this block.
+
+**Disclosure (ruling 6):** workflows run: 0; subagent fan-out: none. Every
+change and verification in this cycle was made directly in this session.
+
+**Owner-executed events on the record (config/credential class, in-loop per
+ruling 10, each confirmed in the loop):**
+
+1. **Email confirmation** — owner-disabled before this cycle's live run,
+   confirmed in-loop; **owner-re-enabled after it, confirmed in-loop
+   2026-08-20. Email confirmation is ON as of this handoff.** The committed
+   transcripts prove only their own run-time state and record it
+   (`mailer_autoconfirm=true` inside both).
+2. **Disposable users** — exactly two, in a fresh namespace:
+   `ctrl004d-user1@example.com` and `ctrl004d-user2@example.com`. **Both
+   owner-deleted at cycle close, confirmed in-loop 2026-08-20**; deletion
+   cascades removed all their rows, and the run left storage empty.
+
+**F4 — superseding record on disposable-user counts (REVIEW-012 finding 4).**
+The fix-cycle-1 block's sentence *"At no moment did more than two disposable
+users exist"* is **withdrawn**. It was an absolute claim across namespaces and
+time that no artifact supports, and it was internally ambiguous besides: the
+`ctrl004b-*` pair had no recorded deletion at the moment it was written, so
+that pair and the then-live `ctrl004c-*` pair coexisted until the owner's
+mid-cycle deletion of `ctrl004b`. The accurate record: **the `ctrl004b` pair
+coexisted with `ctrl004c` until its mid-cycle owner deletion.** From now on
+**every disposable-user claim is scoped to one namespace** — this cycle's is
+`ctrl004d-*`, which contained exactly two users, both now deleted. No prior
+block was edited; this supersedes.
+
+**What I changed — exactly the five REVIEW-012 findings**
+
+- **F1 (medium) — every claim narrowed to the measured grid.** A
+  measurement-boundary paragraph now states once what `roles-acl.sql` reads
+  (role attributes, **table-level** `has_table_privilege`, the raw `relacl`
+  expansion, the information_schema PUBLIC count, RLS flags, and the SQL
+  editor's own `current_user`) and what it does not (`pg_proc.proowner`, any
+  column ACL, any tool session but the SQL editor). Consequently:
+  Table Editor and data-only-dump behavior is stated **only** as an
+  explicitly-labeled unmeasured inference from the measured `BYPASSRLS`
+  attribute, never as fact, in OPERATIONS.md and both READMEs; the
+  definer-owner link is **unproven in both directions** — new 004b claim 20
+  records the function owner as NOT RUN, and claim 6 now says the live rows
+  prove provisioning works, not which mechanism admits it; `service_role`
+  "receives nothing" is bounded to **zero table-level CRUD** with its four
+  measured non-CRUD ACL entries named; the absolute PUBLIC claim is replaced
+  by "**no current table-level PUBLIC ACL entry**" off the raw `relacl`
+  expansion, with the information_schema count recorded as non-probative on
+  its own (that view omits PUBLIC-provided access); and new claim 21 records
+  column-level privileges as NOT RUN, so every privilege statement in the
+  directory is explicitly table-level. The 004a "receives nothing in v1"
+  phrase is now an **authored-grant** statement, separated from the measured
+  effective posture.
+- **F2 (medium) — the oracle now pins absence, not just presence.**
+  `verify-migrations.mjs` compares each column's **exact constraint-type
+  multiset** and each table's exact table-level constraint set (with
+  `INHERITS`/`PARTITION BY`/`OF`/tablespace/`IF NOT EXISTS` pinned absent);
+  function-call defaults reject argument, star, DISTINCT, ORDER BY, FILTER
+  and OVER neighbors; every FK pins constraint name, referenced table **and
+  attribute list**, match type and both actions; types reject typmod and
+  array neighbors; and the widening-capable optional clauses are pinned
+  absent (trigger `WHEN`/args/`CONSTRAINT`, function `STRICT`/volatility/
+  extra `SET`/parameters/`SETOF`, `WITH GRANT OPTION`, index `UNIQUE`/
+  predicate/access method, `ON CONFLICT`/`RETURNING`). 72 → **78
+  assertions, 78 PASS**. **Absence-gap audit:** I ran the five neighbors
+  REVIEW-012 demonstrated plus thirteen more I derived from the same class
+  of defect — function-argument, FK referenced-attribute, FK `ON UPDATE`,
+  FK `MATCH FULL`, FK rename, `ON CONFLICT`, `WITH GRANT OPTION`, unique
+  index, partial index, trigger `WHEN`, extra `SET`, `STRICT`, typmod,
+  second `CHECK`, column `UNIQUE`, table-level `CHECK`, and `NULLS NOT
+  DISTINCT`. **All eighteen now go red with a named FAIL**; each was green
+  or unasserted before. Four permanent negative-control scenarios — one per
+  demonstrated class — join the set: **8 → 12 scenarios, 12/12
+  discriminating.**
+- **F3 (low) — the prose now matches the producer.** `live-probes.sh` and
+  the 004b README state exactly what happens: **exit 1 on every red path**
+  (that is the fail-closed contract), with the transcript **unlinked only on
+  the residual-match path**; the ledger-failure paths — missing, unreadable,
+  implausibly small, or unreadable transcript — return 1 **without**
+  unlinking, because nothing was scanned and deleting would destroy evidence
+  about an unchecked run. The guarantee is restated as: a transcript is
+  trustworthy exactly when a GREEN sha256 line binds its bytes.
+- **F5 (low) — one exact status and one exact code per probe.** The
+  401-or-403 helper is gone; `deniedExact(r, status, code)` pins a single
+  pair at every site — anon REST `401/42501`, WITH CHECK `403/42501`, the
+  composite FK `409/23503`, storage `400/NoSuchKey` and `400/AccessDenied`,
+  anon list exactly `200` with an empty array, signup exactly `200`. The
+  anon summary now prints its exact subset in-transcript: **9
+  denial/invisibility PASS + 2 service-context PASS = 11 total**, and the two
+  context probes are named for what they prove (auth-health reachability, so
+  denials are policy not outage; and the auth-settings run-state record).
+  One fresh live run under those strict oracles regenerated both transcripts.
+
+**Verification (every PASS carries an artifact)**
+
+| Check | Class | Artifact |
+| --- | --- | --- |
+| Exact-schema oracle rejects all five REVIEW-012 default neighbors | PASS | `004a/assertions-negative-control.txt` scenario 9 (permanent) + the audit battery below |
+| Absence-gap audit: 18 neighbor mutations, all red with named FAIL | PASS | `004a/assertions-negative-control.txt` scenarios 9–12 are the permanent subset; full battery run this session against disposable scratch copies, repo never touched |
+| 78/78 static assertions on the real migration set | PASS | `004a/sql-assertions.txt` |
+| Negative control discriminates 12/12 | PASS | `004a/assertions-negative-control.txt` |
+| Byte-stability, 004a (six gated × 2) | PASS | `004a/stability.txt` (regenerated byte-identical — no hunk, learning 9) |
+| Byte-stability, 004b (five gated × 2) | PASS | `004b/stability.txt` (regenerated byte-identical — no hunk, learning 9); first attempt FAILED on `redaction-control.txt`, correctly — the F3 producer edit changed the control's own output line; regenerated through `capture.sh`, never hand-edited, then green |
+| Anon denial under strict oracles | PASS | `004b/anon-probes.txt` — 9 denial/invisibility + 2 service-context = 11 PASS, 0 FAIL |
+| Full cross-user grid under strict oracles | PASS | `004b/auth-probes.txt` — 46 PASS, 0 FAIL, exact 16-probe cross-user section; `403/42501` and `409/23503` still distinct |
+| Redaction gate green, committed bytes = scanned bytes | PASS | `004b/redaction-gate.txt`; independent `shasum -a 256` this session equals both recorded values (anon 3518 B `f2a3717c…d9b9`, auth 12415 B `3b23ba2e…4ef6`) |
+| Redaction red path (planted direct-stdout leak) | PASS | `004b/redaction-control.txt` (regenerated; still proves child exit 1, leak present pre-gate, gate RED, transcript deleted) |
+| Four non-install CI steps at this head | PASS | `004a/gates.txt`, `004b/gates.txt` (both regenerated byte-identical inside the stability runs) |
+| Secret scan over the full index incl. new transcripts | PASS | `004a/secret-scan.txt`, `004b/secret-scan.txt` (byte-identical) |
+| Range whitespace | PASS | `git diff --check` clean across the range |
+| Staging role/ACL/RLS posture | PASS (measured, owner-executed, unchanged this cycle) | `004b/roles-acl.txt` — not regenerated; the dispatch settles it |
+| Dashboard tooling end-to-end; definer-owner; column ACLs | NOT RUN — each recorded with reason | `004b/README.md` claims 19, 20, 21 |
+| `npm ci` | NOT RUN with reason | no dependency delta (probe inside both `gates.txt`) |
+| Branch CI | NOT RUN | no `pull_request` event on this branch |
+| `supabase db lint` / local stack | NOT RUN | Docker/database boundary unchanged |
+| Production access | NOT RUN — prohibited | — |
+
+**What I did not do**
+
+No file under `supabase/` was touched; no edit to any `REVIEW-*.md`, ADR,
+prior HANDOFF block, `src/lib/database.types.ts`, `roles-acl.sql`, or
+`roles-acl.txt`; no new dependencies; no production access; no auth-config
+change by me (owner-executed, on the record above). Parked items left
+parked: the PostgREST denial hints, the 004a capture process-status
+coarseness, and the gate-machinery backlog chore.
+
+**Disclosures**
+
+- Byte-identical regenerations produced no hunks (learning 9):
+  `004a/config-provenance.txt`, `004a/inventory.txt`, `004a/gates.txt`,
+  `004a/secret-scan.txt`, `004a/stability.txt`, `004b/types-shape.txt`,
+  `004b/gates.txt`, `004b/inventory.txt`, `004b/secret-scan.txt`,
+  `004b/stability.txt`, and both `environment.txt` files. The recordable
+  deltas are the files listed under "What I changed"; the byte-identical
+  remainder is disclosed, never manufactured.
+- The 004a regeneration ran in a disposable clone of the staged tree
+  (REVIEW-009-loop precedent), because this working copy carries the parked
+  machine-local `supabase/.temp` residue that 004a's `gates.txt` prettier
+  step walks — 004b normalizes it away via `checkout-index`, 004a predates
+  that. In the clone the step is clean and exits 0. Nothing red was staged
+  or committed, and the clone was built by `git clone` of this repo so the
+  gates' base-SHA probe resolves against real history.
+- The one live run consumed the two-user authorization exactly once, in a
+  fresh namespace. No probe ran against production; no credential value was
+  printed, committed, or read by me beyond variable-name presence.
+
+**Next step**
+
+Controller routes the re-review (fresh review record per workflow step 5;
+advisory seat per the LOCK). Owner merge waits for a PASS review. The model
+transition above needs the controller's acknowledgement in the LOCK record
+it maintains.
+
+LOCK status line: `Status: REVIEW — fix cycle 2 complete, awaiting
+re-review`.
+
+---
+
 ## 2026-08-20 — feat/schema-rls-v1 (REVIEW-012 fix-cycle-1 re-review)
 
 **Controller:** CTRL-004 Schema and RLS v1. **Reviewer of record:** Codex Sol,

@@ -7,54 +7,54 @@
 
 auth settings: HTTP 200 disable_signup=false mailer_autoconfirm=true external.email=true
 
-PASS  signup user1 (ctrl004c-user1@example.com): accepted via the publishable-key signup path
-      HTTP 200 user_id=497acf48-86b4-4231-8ec4-dc31783abeea session=yes confirmation_sent_at=<none> identities=1
-PASS  signup user2 (ctrl004c-user2@example.com): accepted via the publishable-key signup path
-      HTTP 200 user_id=8a325af7-9d61-4d52-a8af-7d9cd5cf03ab session=yes confirmation_sent_at=<none> identities=1
+PASS  signup user1 (ctrl004d-user1@example.com): accepted via the publishable-key signup path (exactly HTTP 200)
+      HTTP 200 user_id=a149c5db-86f7-43d0-b930-c5e2e5f8e3c0 session=yes confirmation_sent_at=<none> identities=1
+PASS  signup user2 (ctrl004d-user2@example.com): accepted via the publishable-key signup path (exactly HTTP 200)
+      HTTP 200 user_id=b85302f7-04bd-4984-8cdd-9e3cf0c3cbf2 session=yes confirmation_sent_at=<none> identities=1
 
 ## Signup provisioning + owner visibility (profiles)
 PASS  user1 sees exactly the one provisioned own profiles row (trigger ran; SELECT-own admits; user2 row invisible)
-      HTTP 200 [{"id":"497acf48-86b4-4231-8ec4-dc31783abeea","display_name":null,"locale":"en","created_at":"2026-08-20T07:17:47.640454+00:00","updated_at":"2026-08-20T07:17:47.640454+00:00"}]
+      HTTP 200 [{"id":"a149c5db-86f7-43d0-b930-c5e2e5f8e3c0","display_name":null,"locale":"en","created_at":"2026-08-20T09:46:17.41093+00:00","updated_at":"2026-08-20T09:46:17.41093+00:00"}]
 PASS  user2 sees exactly the one provisioned own profiles row
-      HTTP 200 [{"id":"8a325af7-9d61-4d52-a8af-7d9cd5cf03ab","display_name":null,"locale":"en","created_at":"2026-08-20T07:17:48.178058+00:00","updated_at":"2026-08-20T07:17:48.178058+00:00"}]
+      HTTP 200 [{"id":"b85302f7-04bd-4984-8cdd-9e3cf0c3cbf2","display_name":null,"locale":"en","created_at":"2026-08-20T09:46:17.854237+00:00","updated_at":"2026-08-20T09:46:17.854237+00:00"}]
 PASS  profiles REST row keys === types-declared Row columns (probe consistency)
       row keys: created_at, display_name, id, locale, updated_at
 
 ## Owner CRUD — profiles (read proven above; update, delete, insert-back)
 PASS  profiles UPDATE own: allowed, and the updated_at trigger fired (updated_at moved off created_at)
-      HTTP 200 [{"id":"497acf48-86b4-4231-8ec4-dc31783abeea","display_name":"ctrl004c user1","locale":"en","created_at":"2026-08-20T07:17:47.640454+00:00","updated_at":"2026-08-20T07:17:49.081764+00:00"}]
+      HTTP 200 [{"id":"a149c5db-86f7-43d0-b930-c5e2e5f8e3c0","display_name":"ctrl004d user1","locale":"en","created_at":"2026-08-20T09:46:17.41093+00:00","updated_at":"2026-08-20T09:46:18.748618+00:00"}]
 PASS  profiles DELETE own: allowed (exactly one row returned)
-      HTTP 200 [{"id":"497acf48-86b4-4231-8ec4-dc31783abeea","display_name":"ctrl004c user1","locale":"en","created_at":"2026-08-20T07:17:47.640454+00:00","updated_at":"2026-08-20T07:17:49.081764+00:00"}]
+      HTTP 200 [{"id":"a149c5db-86f7-43d0-b930-c5e2e5f8e3c0","display_name":"ctrl004d user1","locale":"en","created_at":"2026-08-20T09:46:17.41093+00:00","updated_at":"2026-08-20T09:46:18.748618+00:00"}]
 PASS  profiles INSERT own: allowed, locale defaults to 'en'
-      HTTP 201 [{"id":"497acf48-86b4-4231-8ec4-dc31783abeea","display_name":"ctrl004c user1","locale":"en","created_at":"2026-08-20T07:17:49.64435+00:00","updated_at":"2026-08-20T07:17:49.64435+00:00"}]
+      HTTP 201 [{"id":"a149c5db-86f7-43d0-b930-c5e2e5f8e3c0","display_name":"ctrl004d user1","locale":"en","created_at":"2026-08-20T09:46:19.262724+00:00","updated_at":"2026-08-20T09:46:19.262724+00:00"}]
 
 ## Owner CRUD — captures
 PASS  captures INSERT own: allowed, status defaults to 'recorded'
-      HTTP 201 [{"id":"7b008f7d-b191-4b70-af65-1192b5d5203c","user_id":"497acf48-86b4-4231-8ec4-dc31783abeea","status":"recorded","audio_path":"497acf48-86b4-4231-8ec4-dc31783abeea/probe.bin","duration_ms":1234,"captured_at":"2026-08-20T07:17:49.949479+00:00","created_at":"2026-08-20T07:17:49.949479+00:00","updated_at":"2026-08-20T07:17:49.949479+00:00"}]
+      HTTP 201 [{"id":"cbf84111-229e-4e0d-8007-76d676f081e5","user_id":"a149c5db-86f7-43d0-b930-c5e2e5f8e3c0","status":"recorded","audio_path":"a149c5db-86f7-43d0-b930-c5e2e5f8e3c0/probe.bin","duration_ms":1234,"captured_at":"2026-08-20T09:46:19.519146+00:00","created_at":"2026-08-20T09:46:19.519146+00:00","updated_at":"2026-08-20T09:46:19.519146+00:00"}]
 PASS  captures INSERT own (second row, for the delete probe): allowed
-      HTTP 201 [{"id":"53574383-b706-40de-8aac-54bffa2c8cb5","user_id":"497acf48-86b4-4231-8ec4-dc31783abeea","status":"recorded","audio_path":null,"duration_ms":null,"captured_at":"2026-08-20T07:17:50.201505+00:00","created_at":"2026-08-20T07:17:50.201505+00:00","updated_at":"2026-08-20T07:17:50.201505+00:00"}]
+      HTTP 201 [{"id":"976b514b-a8a0-4eb6-b996-dd98f7466a9b","user_id":"a149c5db-86f7-43d0-b930-c5e2e5f8e3c0","status":"recorded","audio_path":null,"duration_ms":null,"captured_at":"2026-08-20T09:46:19.782004+00:00","created_at":"2026-08-20T09:46:19.782004+00:00","updated_at":"2026-08-20T09:46:19.782004+00:00"}]
 PASS  captures SELECT own: exactly the two own rows, every user_id = own uid
-      HTTP 200 [{"id":"7b008f7d-b191-4b70-af65-1192b5d5203c","user_id":"497acf48-86b4-4231-8ec4-dc31783abeea","status":"recorded","audio_path":"497acf48-86b4-4231-8ec4-dc31783abeea/probe.bin","duration_ms":1234,"captured_at":"2026-08-20T07:17:49.949479+00:00","created_at":"2026-08-20T07:17:49.949479+00:00","updated_at":"2026-08-20T07:17:49.949479+00:00"},{"id":"53574383-b706-40de-8aac-54bffa2c8cb5","user_id":"49…(truncated)
+      HTTP 200 [{"id":"cbf84111-229e-4e0d-8007-76d676f081e5","user_id":"a149c5db-86f7-43d0-b930-c5e2e5f8e3c0","status":"recorded","audio_path":"a149c5db-86f7-43d0-b930-c5e2e5f8e3c0/probe.bin","duration_ms":1234,"captured_at":"2026-08-20T09:46:19.519146+00:00","created_at":"2026-08-20T09:46:19.519146+00:00","updated_at":"2026-08-20T09:46:19.519146+00:00"},{"id":"976b514b-a8a0-4eb6-b996-dd98f7466a9b","user_id":"a1…(truncated)
 PASS  captures REST row keys === types-declared Row columns (probe consistency)
       row keys: audio_path, captured_at, created_at, duration_ms, id, status, updated_at, user_id
 PASS  captures UPDATE own: allowed (status recorded -> 'ready'), updated_at trigger fired
-      HTTP 200 [{"id":"7b008f7d-b191-4b70-af65-1192b5d5203c","user_id":"497acf48-86b4-4231-8ec4-dc31783abeea","status":"ready","audio_path":"497acf48-86b4-4231-8ec4-dc31783abeea/probe.bin","duration_ms":1234,"captured_at":"2026-08-20T07:17:49.949479+00:00","created_at":"2026-08-20T07:17:49.949479+00:00","updated_at":"2026-08-20T07:17:50.849614+00:00"}]
+      HTTP 200 [{"id":"cbf84111-229e-4e0d-8007-76d676f081e5","user_id":"a149c5db-86f7-43d0-b930-c5e2e5f8e3c0","status":"ready","audio_path":"a149c5db-86f7-43d0-b930-c5e2e5f8e3c0/probe.bin","duration_ms":1234,"captured_at":"2026-08-20T09:46:19.519146+00:00","created_at":"2026-08-20T09:46:19.519146+00:00","updated_at":"2026-08-20T09:46:20.338303+00:00"}]
 PASS  captures DELETE own: allowed (exactly one row returned)
-      HTTP 200 [{"id":"53574383-b706-40de-8aac-54bffa2c8cb5","user_id":"497acf48-86b4-4231-8ec4-dc31783abeea","status":"recorded","audio_path":null,"duration_ms":null,"captured_at":"2026-08-20T07:17:50.201505+00:00","created_at":"2026-08-20T07:17:50.201505+00:00","updated_at":"2026-08-20T07:17:50.201505+00:00"}]
+      HTTP 200 [{"id":"976b514b-a8a0-4eb6-b996-dd98f7466a9b","user_id":"a149c5db-86f7-43d0-b930-c5e2e5f8e3c0","status":"recorded","audio_path":null,"duration_ms":null,"captured_at":"2026-08-20T09:46:19.782004+00:00","created_at":"2026-08-20T09:46:19.782004+00:00","updated_at":"2026-08-20T09:46:19.782004+00:00"}]
 
 ## Owner CRUD — transcripts (composite-FK child of capture A)
 PASS  transcripts INSERT own (consistent composite FK): allowed
-      HTTP 201 [{"id":"5327b168-276c-4a4a-9a8f-e197d20152b4","capture_id":"7b008f7d-b191-4b70-af65-1192b5d5203c","user_id":"497acf48-86b4-4231-8ec4-dc31783abeea","text":"ctrl004c probe transcript","language":"en","provider":"probe","created_at":"2026-08-20T07:17:51.373519+00:00"}]
+      HTTP 201 [{"id":"96a6194a-7e09-42f1-ab48-95389a5a0f32","capture_id":"cbf84111-229e-4e0d-8007-76d676f081e5","user_id":"a149c5db-86f7-43d0-b930-c5e2e5f8e3c0","text":"ctrl004d probe transcript","language":"en","provider":"probe","created_at":"2026-08-20T09:46:20.839157+00:00"}]
 PASS  transcripts INSERT own (second row, for the delete probe): allowed
-      HTTP 201 [{"id":"f3443cc8-a4db-4081-bc04-084e3fea7d82","capture_id":"7b008f7d-b191-4b70-af65-1192b5d5203c","user_id":"497acf48-86b4-4231-8ec4-dc31783abeea","text":"disposable second transcript","language":null,"provider":null,"created_at":"2026-08-20T07:17:51.696018+00:00"}]
+      HTTP 201 [{"id":"db7194e9-0d7e-4154-9eef-b93a73c5696d","capture_id":"cbf84111-229e-4e0d-8007-76d676f081e5","user_id":"a149c5db-86f7-43d0-b930-c5e2e5f8e3c0","text":"disposable second transcript","language":null,"provider":null,"created_at":"2026-08-20T09:46:21.106968+00:00"}]
 PASS  transcripts SELECT own: exactly the two own rows
-      HTTP 200 [{"id":"5327b168-276c-4a4a-9a8f-e197d20152b4","capture_id":"7b008f7d-b191-4b70-af65-1192b5d5203c","user_id":"497acf48-86b4-4231-8ec4-dc31783abeea","text":"ctrl004c probe transcript","language":"en","provider":"probe","created_at":"2026-08-20T07:17:51.373519+00:00"},{"id":"f3443cc8-a4db-4081-bc04-084e3fea7d82","capture_id":"7b008f7d-b191-4b70-af65-1192b5d5203c","user_id":"497acf48-86b4-4231-8ec4-dc…(truncated)
+      HTTP 200 [{"id":"96a6194a-7e09-42f1-ab48-95389a5a0f32","capture_id":"cbf84111-229e-4e0d-8007-76d676f081e5","user_id":"a149c5db-86f7-43d0-b930-c5e2e5f8e3c0","text":"ctrl004d probe transcript","language":"en","provider":"probe","created_at":"2026-08-20T09:46:20.839157+00:00"},{"id":"db7194e9-0d7e-4154-9eef-b93a73c5696d","capture_id":"cbf84111-229e-4e0d-8007-76d676f081e5","user_id":"a149c5db-86f7-43d0-b930-c5…(truncated)
 PASS  transcripts REST row keys === types-declared Row columns (probe consistency)
       row keys: capture_id, created_at, id, language, provider, text, user_id
 PASS  transcripts UPDATE own: allowed
-      HTTP 200 [{"id":"5327b168-276c-4a4a-9a8f-e197d20152b4","capture_id":"7b008f7d-b191-4b70-af65-1192b5d5203c","user_id":"497acf48-86b4-4231-8ec4-dc31783abeea","text":"ctrl004c probe transcript (updated)","language":"en","provider":"probe","created_at":"2026-08-20T07:17:51.373519+00:00"}]
+      HTTP 200 [{"id":"96a6194a-7e09-42f1-ab48-95389a5a0f32","capture_id":"cbf84111-229e-4e0d-8007-76d676f081e5","user_id":"a149c5db-86f7-43d0-b930-c5e2e5f8e3c0","text":"ctrl004d probe transcript (updated)","language":"en","provider":"probe","created_at":"2026-08-20T09:46:20.839157+00:00"}]
 PASS  transcripts DELETE own: allowed (exactly one row returned)
-      HTTP 200 [{"id":"f3443cc8-a4db-4081-bc04-084e3fea7d82","capture_id":"7b008f7d-b191-4b70-af65-1192b5d5203c","user_id":"497acf48-86b4-4231-8ec4-dc31783abeea","text":"disposable second transcript","language":null,"provider":null,"created_at":"2026-08-20T07:17:51.696018+00:00"}]
+      HTTP 200 [{"id":"db7194e9-0d7e-4154-9eef-b93a73c5696d","capture_id":"cbf84111-229e-4e0d-8007-76d676f081e5","user_id":"a149c5db-86f7-43d0-b930-c5e2e5f8e3c0","text":"disposable second transcript","language":null,"provider":null,"created_at":"2026-08-20T09:46:21.106968+00:00"}]
 
 ## Cross-user denial — user2 (attacker session) against user1 (victim) rows.
 ## The full per-table, per-operation grid: SELECT/UPDATE/DELETE on every
@@ -78,37 +78,37 @@ PASS  cross-user DELETE captures: no-op (zero rows affected)
       HTTP 200 []
 PASS  cross-user DELETE transcripts: no-op (zero rows affected)
       HTTP 200 []
-PASS  cross-user INSERT captures (user_id = user1): denied by WITH CHECK (42501)
+PASS  cross-user INSERT captures (user_id = user1): denied by WITH CHECK, exactly HTTP 403 code 42501
       HTTP 403 {"code":"42501","details":null,"hint":null,"message":"new row violates row-level security policy for table \"captures\""}
-PASS  cross-user INSERT profiles (id = user1): denied by WITH CHECK (42501)
+PASS  cross-user INSERT profiles (id = user1): denied by WITH CHECK, exactly HTTP 403 code 42501
       HTTP 403 {"code":"42501","details":null,"hint":null,"message":"new row violates row-level security policy for table \"profiles\""}
-PASS  cross-user INSERT transcripts onto user1 capture (own user_id — WITH CHECK satisfied): composite FK rejects (23503) — the live user_id-consistency guarantee
+PASS  cross-user INSERT transcripts onto user1 capture (own user_id — WITH CHECK satisfied): composite FK rejects, exactly HTTP 409 code 23503 — the live user_id-consistency guarantee
       HTTP 409 {"code":"23503","details":"Key is not present in table \"captures\".","hint":null,"message":"insert or update on table \"transcripts\" violates foreign key constraint \"transcripts_capture_id_user_id_fkey\""}
-PASS  cross-user INSERT transcripts with the victim's own valid (capture_id, user_id) pair: denied by RLS WITH CHECK (42501), distinct from the FK case
+PASS  cross-user INSERT transcripts with the victim's own valid (capture_id, user_id) pair: denied by RLS WITH CHECK, exactly HTTP 403 code 42501, distinct from the FK case
       HTTP 403 {"code":"42501","details":null,"hint":null,"message":"new row violates row-level security policy for table \"transcripts\""}
 PASS  cross-user write attempts were true no-ops: user1 profile present, display_name unchanged
-      HTTP 200 [{"id":"497acf48-86b4-4231-8ec4-dc31783abeea","display_name":"ctrl004c user1"}]
+      HTTP 200 [{"id":"a149c5db-86f7-43d0-b930-c5e2e5f8e3c0","display_name":"ctrl004d user1"}]
 PASS  cross-user write attempts were true no-ops: capture A present, still status 'ready'
-      HTTP 200 [{"id":"7b008f7d-b191-4b70-af65-1192b5d5203c","status":"ready"}]
+      HTTP 200 [{"id":"cbf84111-229e-4e0d-8007-76d676f081e5","status":"ready"}]
 PASS  cross-user write attempts were true no-ops: transcript 1 present, text unchanged
-      HTTP 200 [{"id":"5327b168-276c-4a4a-9a8f-e197d20152b4","text":"ctrl004c probe transcript (updated)"}]
+      HTTP 200 [{"id":"96a6194a-7e09-42f1-ab48-95389a5a0f32","text":"ctrl004d probe transcript (updated)"}]
 
 ## Storage — captures-audio, {user_id}/ scoping
 PASS  user1 upload under own {user_id}/ prefix: allowed
-      HTTP 200 {"Key":"captures-audio/497acf48-86b4-4231-8ec4-dc31783abeea/probe.bin","Id":"3a7216c8-c5ad-4bc5-b429-a3c9aa266e47"}
+      HTTP 200 {"Key":"captures-audio/a149c5db-86f7-43d0-b930-c5e2e5f8e3c0/probe.bin","Id":"a6596697-9871-489b-bf61-f83097c91b5d"}
 PASS  user1 download own object: allowed, bytes intact
-      HTTP 200 ctrl004c probe audio bytes
+      HTTP 200 ctrl004d probe audio bytes
 PASS  user1 list own prefix: exactly the one own object
-      HTTP 200 [{"name":"probe.bin","id":"3a7216c8-c5ad-4bc5-b429-a3c9aa266e47","updated_at":"2026-08-20T07:17:56.952Z","created_at":"2026-08-20T07:17:56.952Z","last_accessed_at":"2026-08-20T07:17:56.952Z","metadata":{"eTag":"\"0076ecf7d4222bd3276833812f9ae624\"","size":26,"mimetype":"application/octet-stream","cacheControl":"no-cache","lastModified":"2026-08-20T07:17:57.000Z","contentLength":26,"httpStatusCode"…(truncated)
-PASS  user1 upload under user2's prefix: denied
+      HTTP 200 [{"name":"probe.bin","id":"a6596697-9871-489b-bf61-f83097c91b5d","updated_at":"2026-08-20T09:46:26.467Z","created_at":"2026-08-20T09:46:26.467Z","last_accessed_at":"2026-08-20T09:46:26.467Z","metadata":{"eTag":"\"33741ac082a4672b3010f8da6fb645d8\"","size":26,"mimetype":"application/octet-stream","cacheControl":"no-cache","lastModified":"2026-08-20T09:46:27.000Z","contentLength":26,"httpStatusCode"…(truncated)
+PASS  user1 upload under user2's prefix: denied, exactly HTTP 400 code AccessDenied
       HTTP 400 {"statusCode":"403","error":"Unauthorized","message":"new row violates row-level security policy","code":"AccessDenied"}
-PASS  upload with no {user_id}/ folder segment: denied (fails closed, foldername[1] is null)
+PASS  upload with no {user_id}/ folder segment: denied, exactly HTTP 400 code AccessDenied (fails closed, foldername[1] is null)
       HTTP 400 {"statusCode":"403","error":"Unauthorized","message":"new row violates row-level security policy","code":"AccessDenied"}
-PASS  user2 download user1's object: denied (not-found obfuscation)
+PASS  user2 download user1's object: denied, exactly HTTP 400 code NoSuchKey (not-found obfuscation)
       HTTP 400 {"statusCode":"404","error":"not_found","message":"Object not found","code":"NoSuchKey"}
 PASS  user2 list user1's prefix: sees zero objects
       HTTP 200 []
-PASS  user2 delete user1's object: denied
+PASS  user2 delete user1's object: denied, exactly HTTP 400 code AccessDenied
       HTTP 400 {"statusCode":"403","error":"Unauthorized","message":"Access denied","code":"AccessDenied"}
 PASS  anon list while an own object exists: still sees zero objects (contrast with user1 list above)
       HTTP 200 []
@@ -116,7 +116,7 @@ PASS  user1 delete own object: allowed (bucket left with no test objects)
       HTTP 200 {"message":"Successfully deleted"}
 
 ## Residual test state (recorded; cleanup is owner-class — see README.md)
-   auth.users: ctrl004c-user1@example.com, ctrl004c-user2@example.com (disposable, namespaced)
+   auth.users: ctrl004d-user1@example.com, ctrl004d-user2@example.com (disposable, namespaced)
    profiles: user1 + user2 rows (provisioned / reinserted); captures: capture A
    (status 'ready', user1); transcripts: transcript 1 (user1); storage: none.
 redaction totality gate: 0 residual occurrences (10 registered values + JWT sweep)

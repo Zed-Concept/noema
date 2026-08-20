@@ -15,8 +15,18 @@ the cross-user matrix is now the full per-table per-operation grid with
 the WITH CHECK isolation probe (finding 5), the redaction totality gate
 now scans the exact committed transcript bytes with a committed planted-leak
 positive control (finding 3), and the staging role/ACL/RLS posture is
-measured by the owner-run `roles-acl.sql` probe (finding 1) — see the
-sections below.
+measured by the owner-run `roles-acl.sql` probe (finding 1).
+
+**Fix cycle 2 (REVIEW-012, 2026-08-20)** narrowed every privileged-role,
+tooling, PUBLIC, `service_role`, column-ACL, and definer-owner statement in
+this directory to the exact measured boundary of `roles-acl.txt`
+(finding 1 — see the measurement-boundary paragraph and claims 19–21),
+stated exactly what the redaction gate does on each red path (finding 3),
+made disposable-user counts per-namespace (finding 4), and tightened every
+live-response oracle to a single exact status + code with the anon summary
+naming its exact subset (finding 5) — then re-ran the live suite under
+those strict oracles in a fresh `ctrl004d-*` namespace. `roles-acl.txt` is
+unchanged: the measurement is settled and was not re-run.
 
 ## The two verification subjects
 
@@ -55,22 +65,36 @@ REVIEW-011 finding 3):
    exit; `rls-probes.mjs` refuses to run without it), and after each
    transcript file is complete — header, child output, exit trailer, the
    exact bytes a commit would record — `redaction-gate.mjs` scans those
-   file bytes against the full ledger plus the JWT shape. A red gate
-   deletes the transcript and fails the run; `redaction-gate.txt` records
-   each file's sha256, binding the committed bytes to the scanned bytes.
-   `redaction-control.txt` is the planted positive control: a synthetic
-   key leaked straight to child stdout provably turns the gate red and the
-   transcript is deleted.
+   file bytes against the full ledger plus the JWT shape.
+   `redaction-gate.txt` records each file's sha256, binding the committed
+   bytes to the scanned bytes. `redaction-control.txt` is the planted
+   positive control: a synthetic key leaked straight to child stdout
+   provably turns the gate red and the transcript is deleted.
 
-A committed transcript can therefore only exist if the exact bytes being
-committed scanned clean — verifiable by comparing `sha256sum` of each
-committed transcript against the value recorded in `redaction-gate.txt`.
+**Exactly what the gate does on red (REVIEW-012 finding 3).** The contract
+is the exit status, not deletion: the gate returns 1 on *every* red path and
+`live-probes.sh` propagates the worst status, so a run that reddens never
+exits 0. Deletion happens on exactly one of those paths — a residual match,
+where secret bytes were found in the scanned file, so the file must not
+survive. The fail-closed paths — ledger missing, unreadable, or implausibly
+small (fewer than two distinct values), or the transcript itself unreadable
+— return 1 **without** unlinking, because in those cases nothing was
+scanned and deleting would destroy evidence about a run that was never
+checked. A transcript on disk after a red run is therefore possible, and it
+is precisely the case where the run's nonzero status is the only thing
+standing between it and a commit.
+
+So the guarantee is: a transcript whose bytes are bound by a GREEN sha256
+line in `redaction-gate.txt` scanned clean at exactly those bytes —
+verifiable by comparing `sha256sum` of each committed transcript against
+the recorded value. A transcript with no such GREEN binding proves nothing
+and must not be committed.
 
 ## Test identifiers (documented per dispatch) and residual staging state
 
 - Test users (disposable, clearly namespaced, created via the
-  publishable-key signup path — the two-user cap the fix-cycle dispatch
-  authorizes): `ctrl004c-user1@example.com`, `ctrl004c-user2@example.com`
+  publishable-key signup path — exactly the two this fix cycle's dispatch
+  authorizes): `ctrl004d-user1@example.com`, `ctrl004d-user2@example.com`
   (`example.com` is RFC-2606-reserved: never deliverable, no real-person
   namespace). Generated passwords existed only in the probe process's
   memory: never persisted, never printed (redaction-registered and
@@ -78,18 +102,23 @@ committed transcript against the value recorded in `redaction-gate.txt`.
 - Storage keys: `{user1-uid}/probe.bin` (uploaded, verified, deleted
   in-run); denied attempts `{user2-uid}/intrusion.bin` and
   `no-folder-probe.bin` created nothing.
-- Residual state after the committed run: the two `ctrl004c-*` auth users,
+- **Disposable-user counts are per-namespace, never global** (REVIEW-012
+  finding 4). This cycle's namespace is `ctrl004d-*` and it contains
+  exactly two users; that is the only user-count statement this directory
+  makes. Earlier namespaces (`ctrl004b-*`, `ctrl004c-*`) have their own
+  records in their own HANDOFF blocks, and nothing here asserts a maximum
+  across namespaces or across time.
+- Residual state after the committed run: the two `ctrl004d-*` auth users,
   their two provisioned/reinserted `profiles` rows, one `captures` row
   (capture A, status `ready`, user1) and one `transcripts` row (user1).
   Storage holds no test objects. **Cleanup is owner-class** (deleting users
   needs the dashboard or a secret-class key): deleting the two users in
   Auth → Users cascades away all their rows (every FK chains to
   `auth.users` ON DELETE CASCADE). Deletion was requested in-loop at this
-  cycle's close; the fix-cycle HANDOFF block records its confirmation
-  state. The superseded Phase B pair (`ctrl004b-user1/2@example.com`)
-  belongs to the same owner-cleanup class. Re-running `--auth` requires
-  fresh-namespace or cleaned-up users: a signup for an existing email
-  cannot recover the original in-memory password.
+  cycle's close; the fix-cycle-2 HANDOFF block records its confirmation
+  state. Re-running `--auth` requires a fresh namespace or cleaned-up
+  users: a signup for an existing email cannot recover the original
+  in-memory password.
 
 ## Owner-executed environment facts (config/credential class, no repo bytes)
 
@@ -102,37 +131,62 @@ committed transcript against the value recorded in `redaction-gate.txt`.
    initially required (`mailer_autoconfirm=false`, the dispatch's NOT RUN
    contingency) → owner-disabled for the Phase B run (2026-08-20) →
    owner-re-enabled after that run (recorded in the REVIEW-011 review
-   dispatch; REVIEW-011 finding 4) → owner-disabled again, on request, for
-   this fix cycle's run (2026-08-20) → re-enable requested in-loop at this
-   cycle's close. **The fix-cycle HANDOFF block is the current-state record
-   of this toggle; nothing in this directory claims its present value.**
+   dispatch; REVIEW-011 finding 4) → owner-disabled for the fix-cycle-1 run
+   → owner-re-enabled at that cycle's close → owner-disabled again, on
+   request, for this fix cycle's run (2026-08-20) → re-enable requested
+   in-loop at this cycle's close. **The newest HANDOFF block is the
+   current-state record of this toggle; nothing in this directory claims
+   its present value.**
 3. The `roles-acl.sql` measurement was owner-executed in the staging SQL
    editor on 2026-08-20 (ruling 10); its verbatim pasted output is
    `roles-acl.txt`.
 
 ## Measured staging role/ACL/RLS posture (`roles-acl.txt`, REVIEW-011 finding 1)
 
-Every statement here reads directly off the owner-run probe output; no
-claim below extends past what the grid supports.
+**The measurement boundary, stated once.** `roles-acl.sql` reads five things
+and nothing else: role attributes from `pg_roles`; **table-level** effective
+privileges via `has_table_privilege`; the raw `relacl` expansion; the
+`information_schema.role_table_grants` PUBLIC count; and the `pg_class` RLS
+flags — plus the SQL-editor session's own `current_user`. It does **not**
+read `pg_proc.proowner`, any column ACL (`pg_attribute.attacl`,
+`has_any_column_privilege`, `information_schema.column_privileges`), or any
+tool session other than the SQL editor it ran in. Every bullet below is
+therefore a **current, table-level** fact about the three v1 tables; each
+statement that reaches past the grid is labeled as an inference, and none is
+absolute.
 
-- **`postgres`: `rolsuper=f rolbypassrls=t`**, full CRUD on all three
-  tables, and the SQL editor measurably executes as it (run-context row).
-  So FORCE does not bind postgres-role tooling — Table Editor, SQL editor,
-  and data-only dumps see rows — and the `TO postgres` provisioning policy
-  is **inert defense-in-depth** (the SECURITY DEFINER insert bypasses row
-  security via the role attribute), load-bearing only under a future role
-  demotion. OPERATIONS.md and the 004a README carry the same corrected
-  statement; the applied migration comments carrying the original premise
-  are immutable and superseded by this measurement.
-- **`service_role`: `rolbypassrls=t` but zero CRUD table privileges** on
-  the three v1 tables (`select/insert/update/delete` all `f`). "Receives
-  nothing" is now a measured effective-privilege fact at the CRUD layer,
-  not just an authored-GRANT fact — and the BYPASSRLS attribute is moot
-  against tables it cannot read or write.
-- **`anon`: zero CRUD** (matches the live 401 `42501` denials);
-  **`authenticated`: exactly the authored CRUD** on all three tables.
-- **PUBLIC: nothing** — no `PUBLIC` grantee in any raw ACL entry, and the
-  information_schema PUBLIC-grant count is 0 for each table.
+- **`postgres`: `rolsuper=f rolbypassrls=t`**, table-level
+  select/insert/update/delete all true on all three tables, and the SQL
+  editor measurably executes with `current_user=postgres` (run-context row).
+  *Inference from the measured attribute, not a transcribed session:* since
+  FORCE binds only non-`BYPASSRLS` roles, expect any dashboard surface
+  running as `postgres` to see all rows despite FORCE. **Table Editor and
+  data-only dumps were never executed or transcribed and their execution
+  identities were not measured** (claim 19) — the SQL editor is the only
+  identity on the record. The `TO postgres` provisioning policy's present
+  effect is **not isolated** by this evidence either: the applied function's
+  owner was not measured (claim 20), so whether the definer insert is
+  admitted by `BYPASSRLS` or by that policy is unproven in both directions.
+  OPERATIONS.md and the 004a README carry the same bounded statement; the
+  applied migration comments carrying the original premise are immutable and
+  superseded by this measurement.
+- **`service_role`: `rolbypassrls=t` with zero table-level CRUD** on the
+  three v1 tables (`select/insert/update/delete` all `f`), and its current
+  raw ACL entries on each are exactly `TRUNCATE`, `TRIGGER`, `MAINTAIN`,
+  `REFERENCES`. The scope of "receives nothing" is therefore **CRUD at the
+  table level** — not a claim about every privilege class, and **not a
+  column-ACL claim: column privileges are exposed separately in PostgreSQL
+  and were not measured.**
+- **`anon`: zero table-level CRUD** (consistent with the live 401 `42501`
+  denials), with the same four non-CRUD raw ACL entries;
+  **`authenticated`: exactly the authored CRUD** on all three tables, plus
+  those same non-CRUD entries. Column ACLs unmeasured for both.
+- **PUBLIC: no current table-level ACL entry.** The raw `relacl` expansion
+  contains no `PUBLIC` grantee on any of the three tables — that is the
+  supported statement. The `information_schema.role_table_grants` PUBLIC
+  count of 0 is recorded but **non-probative on its own**: PostgreSQL
+  documents that view as omitting access made available through PUBLIC.
+  Nothing here speaks to column-level or non-table PUBLIC access.
 - **`relrowsecurity=t` and `relforcerowsecurity=t` measured on all three
   tables** — ENABLE + FORCE are live, not just authored.
 - **Adjacent observation (controller-classified in the fix-cycle loop:
@@ -160,7 +214,7 @@ lockfile (`npm ci` has run); it fetches nothing.
 
 | Artifact | Producer | Class | Notes / normalization |
 | --- | --- | --- | --- |
-| `anon-probes.txt` | `live-probes.sh` → `rls-probes.mjs --anon` | run-varying, captured once (003a connectivity precedent: the committed transcript is the evidence boundary) | varying fields: run-date line, GoTrue version string, response timestamps. Redaction placeholders (`<staging-url>`, `<staging-host>`, `<publishable-key>`, …) per the section above. The exact denial shapes are the recorded contract. File bytes gated post-write by `redaction-gate.mjs` |
+| `anon-probes.txt` | `live-probes.sh` → `rls-probes.mjs --anon` | run-varying, captured once (003a connectivity precedent: the committed transcript is the evidence boundary) | varying fields: run-date line, GoTrue version string, response timestamps. Redaction placeholders (`<staging-url>`, `<staging-host>`, `<publishable-key>`, …) per the section above. The exact denial shapes are the recorded contract. Its summary line names the exact subset — **9 denial/invisibility probes (6 REST + 3 storage) plus 2 service-context probes** (auth-health reachability, auth-settings record), which prove that the denials are policy rather than outage and record the run-time config; totals are never labeled denials (REVIEW-012 finding 5). File bytes gated post-write by `redaction-gate.mjs` |
 | `auth-probes.txt` | `live-probes.sh` → `rls-probes.mjs --auth` | run-varying, captured once | varying fields additionally: user/row/object UUIDs, timestamps. Response bodies over 400 chars truncated with an explicit `…(truncated)` marker; auth-endpoint responses reduced by design (never raw). Re-run precondition: owner cleanup above. File bytes gated post-write by `redaction-gate.mjs` |
 | `redaction-gate.txt` | `live-probes.sh` → `redaction-gate.mjs` | run-varying, captured once (produced with the live transcripts it scans) | per transcript: byte count, sha256 (binds committed bytes to scanned bytes), distinct registered values scanned, JWT-sweep and residual counts, verdict, gate exit. Raw values never printed |
 | `redaction-control.txt` | `capture.sh` → `live-probes.sh --control` | gated | the finding 3 positive control: the real `run_mode` + gate pipeline with synthetic values only (`https://127.0.0.1:9`, instant refusal — no network, no DNS) and the leak hook enabled; proves child exit 1, raw synthetic key present pre-gate, gate RED, transcript deleted. Deterministic lines only (bytes/sha256 of the scratch file omitted); the synthetic key prefix appears only defanged |
@@ -177,8 +231,10 @@ shows why, on a types-shape extraction failure, a redaction positive
 control that fails to prove the red path, any nonzero CI-step exit, a
 nonzero dependency delta, a wrong inventory, a secret-scan match, or a
 broken positive control. `rls-probes.mjs` fails closed on its in-process
-gate and refuses to run unledgered; `redaction-gate.mjs` deletes any
-transcript it reddens. A green artifact set from a red run cannot exist.
+gate and refuses to run unledgered; `redaction-gate.mjs` returns 1 on every
+red path and unlinks the transcript on the residual-match path (see "Exactly
+what the gate does on red" above). A green artifact set from a red run
+cannot exist.
 
 ## Claims
 
@@ -187,22 +243,24 @@ transcript it reddens. A green artifact set from a red run cannot exist.
 | 1 | The owner-regenerated `src/lib/database.types.ts` is committed as-is; the generation run itself (owner-executed, ruling 10) | NOT RUN (generation) — provenance recorded; verification is indirect via claims 2–3, stated as such per dispatch | this README + the phase's first commit |
 | 2 | The repo typechecks with the regenerated types (the shared client compiles against them) | PASS | `gates.txt` (tsc step) |
 | 3 | Probe consistency: live REST row keys equal the types-declared Row columns, all three tables | PASS | `types-shape.txt` + `auth-probes.txt` (the three `row keys ===` probes) |
-| 4 | Anon REST denial: SELECT and INSERT on profiles, captures, transcripts each answer HTTP 401 code `42501` (anon holds no grants); exact shapes recorded as the contract | PASS | `anon-probes.txt` |
-| 5 | Anon storage denial on `captures-audio`: download → not-found obfuscation (400/`NoSuchKey`), upload → RLS rejection (400/`AccessDenied`), list → zero objects, including re-checked while an owner object existed | PASS | `anon-probes.txt` + `auth-probes.txt` (the anon-list contrast probe) |
-| 6 | Signup provisioning created each test user's `profiles` row (the `on_auth_user_created` trigger ran), visible only to its owner, `locale` defaulting `'en'`. The definer insert executes as `postgres`, which measurably carries BYPASSRLS — the `TO postgres` policy is inert defense-in-depth, not the admitting path (see the measured-posture section) | PASS | `auth-probes.txt` + `roles-acl.txt` |
+| 4 | Anon REST denial: SELECT and INSERT on profiles, captures, transcripts each answer **exactly** HTTP 401 code `42501` (anon holds no grants) — six probes, each oracle pinning that one status and that one code (REVIEW-012 finding 5); exact shapes recorded as the contract | PASS | `anon-probes.txt` |
+| 5 | Anon storage denial on `captures-audio`: download → **exactly** 400/`NoSuchKey` (not-found obfuscation), upload → **exactly** 400/`AccessDenied` (RLS rejection), list → **exactly** HTTP 200 with an empty array, including re-checked while an owner object existed | PASS | `anon-probes.txt` + `auth-probes.txt` (the anon-list contrast probe) |
+| 6 | Signup provisioning created each test user's `profiles` row (the `on_auth_user_created` trigger ran), visible only to its owner, `locale` defaulting `'en'`. **Which mechanism admits that definer insert under FORCE is not isolated by this evidence**: the applied function's owner was not measured (claim 20), and either a `BYPASSRLS` definer or the `TO postgres` policy would admit it — the live rows prove the path works, not which link carried it | PASS (provisioning occurred) / admitting mechanism NOT ISOLATED | `auth-probes.txt` + `roles-acl.txt` |
 | 7 | Owner CRUD allowed on own rows across all three tables (profiles: R,U,D,C; captures: C,R,U,D; transcripts: C,R,U,D); `updated_at` triggers fire on profiles and captures | PASS | `auth-probes.txt` |
-| 8 | Cross-user denial is the full per-table, per-operation grid: SELECT RLS-invisible (200, zero rows) on all three tables; UPDATE and DELETE true no-ops (200, zero rows affected) on all three tables, with all three victim rows re-read unchanged; INSERT impersonation denied by WITH CHECK (403 `42501`) on all three tables — for transcripts via the isolation probe: the attacker inserting the victim's own valid `(capture_id, user_id)` pair (FK-satisfiable by construction) is rejected 403 `42501`, so only the RLS WITH CHECK can be the rejector, distinct from claim 9's FK case | PASS | `auth-probes.txt` (16-probe cross-user section) |
-| 9 | The `user_id`-consistency guarantee holds live: a transcript INSERT onto another user's capture with the attacker's own `user_id` (WITH CHECK satisfied) fails 409 `23503` naming `transcripts_capture_id_user_id_fkey` | PASS | `auth-probes.txt` |
-| 10 | Storage `{user_id}/` scoping: own-prefix upload/download/list/delete allowed; other-prefix upload denied; a no-folder key fails closed; cross-user download/list/delete denied | PASS | `auth-probes.txt` |
+| 8 | Cross-user denial is the full per-table, per-operation grid: SELECT RLS-invisible (200, zero rows) on all three tables; UPDATE and DELETE true no-ops (200, zero rows affected) on all three tables, with all three victim rows re-read unchanged; INSERT impersonation denied by WITH CHECK at **exactly** 403 `42501` on all three tables — for transcripts via the isolation probe: the attacker inserting the victim's own valid `(capture_id, user_id)` pair (FK-satisfiable by construction) is rejected **exactly** 403 `42501`, so only the RLS WITH CHECK can be the rejector, distinct from claim 9's FK case. Each oracle pins one status and one code, so a neighboring `401/42501` cannot earn a PASS labeled 403 (REVIEW-012 finding 5) | PASS | `auth-probes.txt` (16-probe cross-user section) |
+| 9 | The `user_id`-consistency guarantee holds live: a transcript INSERT onto another user's capture with the attacker's own `user_id` (WITH CHECK satisfied) fails **exactly** 409 `23503` naming `transcripts_capture_id_user_id_fkey` | PASS | `auth-probes.txt` |
+| 10 | Storage `{user_id}/` scoping: own-prefix upload/download/list/delete allowed; other-prefix upload denied **exactly** 400/`AccessDenied`; a no-folder key fails closed at **exactly** 400/`AccessDenied`; cross-user download **exactly** 400/`NoSuchKey`, list exactly 200 with an empty array, delete **exactly** 400/`AccessDenied` | PASS | `auth-probes.txt` |
 | 11 | The four non-install CI steps pass at this head (typecheck, lint, test, format:check — all exit 0). Install is NOT RUN here: the delta provably contains no dependency change (probe in the transcript), and 002d/003a document the destructive npm-ci ENOTEMPTY transient under a live editor; CI runs the real install when the PR opens | PASS / install NOT RUN with reason | `gates.txt` |
 | 12 | CI itself on this branch | NOT RUN — no `pull_request` event yet | — |
 | 13 | No credential shape exists anywhere in the index (six patterns, each with a matching positive control) | PASS | `secret-scan.txt` |
-| 14 | Redaction totality over both live transcripts: zero residual registered values and zero JWT shapes **in the exact committed file bytes** (post-write, pre-commit; full both-mode ledger), with sha256 binding the committed bytes to the scanned bytes; the gate's red path (direct-child-stdout leakage → RED, transcript deleted) is proven by the committed planted-synthetic-key control | PASS — a committed transcript exists only if its exact bytes scanned clean (the in-process buffer gate additionally ran, first line) | `redaction-gate.txt` (sha256 per transcript) + `redaction-control.txt` (positive control) + the in-process gate line in each transcript |
+| 14 | Redaction totality over both live transcripts: zero residual registered values and zero JWT shapes **in the exact committed file bytes** (post-write, pre-commit; full both-mode ledger), with sha256 binding the committed bytes to the scanned bytes; the residual-match red path (direct-child-stdout leakage → RED, transcript unlinked) is proven by the committed planted-synthetic-key control | PASS — each committed transcript carries a GREEN sha256 binding for exactly its bytes (the in-process buffer gate additionally ran, first line). The gate's contract is its exit status; deletion is the residual-match path only, and the ledger-failure paths return 1 without unlinking | `redaction-gate.txt` (sha256 per transcript) + `redaction-control.txt` (positive control) + the in-process gate line in each transcript |
 | 15 | The five gated artifacts regenerate byte-for-byte (two fresh capture runs, locale pinned) | PASS | `stability.txt` |
 | 16 | `supabase db lint` / local-stack validation of the migration set | NOT RUN — requires Docker and a local database; unchanged Phase A posture | — |
 | 17 | The owner's `db push` / `types:gen` transcripts | NOT RUN here — owner-executed (ruling 10), held by the controller; corroborated indirectly by every live claim above (the applied schema demonstrably exists and behaves exactly as authored) | — |
-| 18 | The exact staging role/ACL/RLS posture: `postgres` `rolbypassrls=t` (rolsuper=f); `service_role` `rolbypassrls=t` with zero CRUD on the three tables; `anon` zero CRUD; `authenticated` exactly the authored CRUD; PUBLIC nothing; `relforcerowsecurity=t` on all three; SQL editor executes as `postgres`; plus the platform-default non-CRUD ACL entries (adjacent observation above) | PASS (measured) — owner-executed probe, captured once | `roles-acl.txt` (verbatim owner paste; probe: `roles-acl.sql`) |
-| 19 | Postgres-role dashboard tooling behavior (Table Editor / SQL editor / data-only dumps *exercised end to end*) | NOT RUN — the role attributes and privileges that determine it are measured (claim 18) and the OPERATIONS sentence is written to that measurement; no dashboard-tooling session or dump was itself transcribed | — |
+| 18 | The **current table-level** staging role/ACL/RLS posture: `postgres` `rolbypassrls=t` (`rolsuper=f`); `service_role` `rolbypassrls=t` with zero table-level CRUD on the three tables; `anon` zero table-level CRUD; `authenticated` exactly the authored table-level CRUD; no current PUBLIC entry in the raw table ACL; `relrowsecurity=t` and `relforcerowsecurity=t` on all three; the SQL-editor session executes as `postgres`; plus the platform-default non-CRUD ACL entries (adjacent observation above). Scope is exactly the grid — see the measurement-boundary paragraph | PASS (measured, at that boundary) — owner-executed probe, captured once | `roles-acl.txt` (verbatim owner paste; probe: `roles-acl.sql`) |
+| 19 | Dashboard tooling *exercised end to end* — Table Editor sessions, data-only dumps, and their execution identities | NOT RUN — only the SQL editor's own `current_user` was measured (claim 18); no Table Editor session, dump, or other tooling run was executed or transcribed. The OPERATIONS.md operator expectation is written as an explicitly-labeled inference from the measured `BYPASSRLS` attribute, never as a transcribed result | — |
+| 20 | The applied `public.handle_new_user` function's owner (the role a SECURITY DEFINER call executes as) | NOT RUN — `roles-acl.sql` does not read `pg_proc.proowner`; PostgreSQL executes a SECURITY DEFINER function with its owner's privileges, so that owner is a required link in any causal claim about the provisioning path, and no artifact here establishes it | — |
+| 21 | Column-level privileges on the three v1 tables | NOT RUN — PostgreSQL exposes column privileges separately from table privileges, and the probe reads none of `pg_attribute.attacl`, `has_any_column_privilege`, or `information_schema.column_privileges`. Every privilege statement in this directory is therefore table-level only | — |
 
 ## Re-running
 

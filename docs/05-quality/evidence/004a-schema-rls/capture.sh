@@ -66,12 +66,14 @@ if [ "$verify_exit" -ne 0 ]; then
   exit 1
 fi
 
-# --- assertions-negative-control.txt — the gate is not vacuous: eight tampered
-# copies of the migration set (five removal/narrowing mutations, two
-# append-class mutations from the audit workflow's findings, and the exact-value
-# neighbor mutation from REVIEW-011 finding 2), must each make
-# verify-migrations.mjs report the named FAIL and exit 1. Mutations happen on
-# scratch copies only; the repo is never touched.
+# --- assertions-negative-control.txt — the gate is not vacuous: twelve
+# tampered copies of the migration set (five removal/narrowing mutations, two
+# append-class mutations from the audit workflow's findings, the exact-value
+# neighbor mutation from REVIEW-011 finding 2, and four REVIEW-012 finding 2
+# absence-class mutations — an added default, a function-argument neighbor,
+# an FK-attribute neighbor, and an appended ON CONFLICT clause) must each
+# make verify-migrations.mjs report the named FAIL and exit 1. Mutations
+# happen on scratch copies only; the repo is never touched.
 control_violations=0
 {
   echo "# Negative control: verify-migrations.mjs must go red on each tampered copy."
@@ -149,6 +151,41 @@ control_violations=0
     && mv "$scratch/t" "$scratch/tamper/20260820100000_v1_core_schema.sql"
   run_scenario "duration_ms CHECK value shifted to its neighbor (>= -1)" \
     "captures.duration_ms integer, nullable, CHECK (duration_ms >= 0)"
+
+  # The four absence-class scenarios (REVIEW-012 finding 2): the committed
+  # oracle once accepted each of these valid neighbors green. One permanent
+  # scenario per demonstrated class — an added default (the review's exact
+  # DEFAULT 0 reproduction), a function-argument neighbor, an FK-attribute
+  # neighbor — plus the appended-ON CONFLICT neighbor from this cycle's
+  # absence-gap audit. Each class's assertion compares one exact string, so
+  # the discrimination proven here holds for every column/site it covers.
+  fresh
+  sed 's/  duration_ms integer/  duration_ms integer default 0/' \
+    "$scratch/tamper/20260820100000_v1_core_schema.sql" > "$scratch/t" \
+    && mv "$scratch/t" "$scratch/tamper/20260820100000_v1_core_schema.sql"
+  run_scenario "DEFAULT 0 added to captures.duration_ms (declared default-free; REVIEW-012 finding 2 reproduction)" \
+    "public.captures: per-column constraint-type multiset is exactly the declared set — no default, check, unique, or other constraint is added to or missing from any column"
+
+  fresh
+  sed '/create table public.captures (/,/^);/ s/id uuid primary key default gen_random_uuid()/id uuid primary key default gen_random_uuid(null)/' \
+    "$scratch/tamper/20260820100000_v1_core_schema.sql" > "$scratch/t" \
+    && mv "$scratch/t" "$scratch/tamper/20260820100000_v1_core_schema.sql"
+  run_scenario "captures.id default mutated to gen_random_uuid(null) — same function name, argument added" \
+    "captures.id uuid PRIMARY KEY DEFAULT gen_random_uuid()"
+
+  fresh
+  sed 's/constraint captures_user_id_fkey references auth.users (id)/constraint captures_user_id_fkey references auth.users (email)/' \
+    "$scratch/tamper/20260820100000_v1_core_schema.sql" > "$scratch/t" \
+    && mv "$scratch/t" "$scratch/tamper/20260820100000_v1_core_schema.sql"
+  run_scenario "captures.user_id FK referenced-attribute list mutated to (email)" \
+    "captures.user_id uuid NOT NULL FK -> auth.users(id) ON DELETE CASCADE"
+
+  fresh
+  sed "s/values ('captures-audio', 'captures-audio', false);/values ('captures-audio', 'captures-audio', false) on conflict (id) do nothing;/" \
+    "$scratch/tamper/20260820100300_v1_storage_captures_audio.sql" > "$scratch/t" \
+    && mv "$scratch/t" "$scratch/tamper/20260820100300_v1_storage_captures_audio.sql"
+  run_scenario "ON CONFLICT DO NOTHING appended to the bucket insert (idempotency neighbor)" \
+    "bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false) — plain insert, no ON CONFLICT (deliberately non-idempotent), no RETURNING"
 
   echo
   echo "--- enforced: every scenario exits 1 with its named FAIL line, or capture.sh exits 1 (fail closed) ---"

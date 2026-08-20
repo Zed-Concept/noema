@@ -39,14 +39,22 @@ staging values. No screen imports the client yet, so no credentials are needed
 to install or start the placeholder app; the one command that does need the two
 values is `npm run check:supabase`, the staging connectivity check (see the
 repository README's Supabase section; evidence:
-`docs/05-quality/evidence/003a-supabase-wiring/`). As of Unit C the three v1
-tables on staging enforce FORCE row-level security, but the measured staging
-`postgres` role carries `BYPASSRLS` (owner-run probe,
-`docs/05-quality/evidence/004b-schema-rls-live/roles-acl.txt`), so
-postgres-role dashboard tooling (Table Editor, SQL editor, data-only dumps)
-still sees all rows in them — FORCE binds only non-`BYPASSRLS` roles, and
-the `TO postgres` provisioning policy is inert defense-in-depth that matters
-only if that role is ever demoted.
+`docs/05-quality/evidence/003a-supabase-wiring/`). As of Unit C the owner-run probe
+(`docs/05-quality/evidence/004b-schema-rls-live/roles-acl.txt`) measures, on
+the three v1 staging tables: `relrowsecurity=t` and `relforcerowsecurity=t`;
+staging `postgres` at `rolsuper=f rolbypassrls=t` with table-level
+select/insert/update/delete all true; and the dashboard SQL editor executing
+with `current_user=postgres`. FORCE binds only non-`BYPASSRLS` roles, so
+**operators should expect** a dashboard surface running as `postgres` to see
+all rows in these tables despite FORCE. Read that expectation as exactly what
+it is — an **unmeasured inference** from the measured `BYPASSRLS` attribute:
+no Table Editor session, data-only dump, or other tooling run was transcribed,
+and no execution identity other than the SQL editor's was measured (004b
+claim 19). The `TO postgres` provisioning policy's present effect is likewise
+not isolated by this evidence: a `BYPASSRLS` definer would admit the
+provisioning insert without it, but the applied function's owner was not
+measured (004b claim 20), so which mechanism currently admits it is unproven
+either way.
 
 Requires Node and npm. CI pins **Node 24 LTS**; Unit A was built and verified on
 Node 26. No global Expo CLI install — `npx` resolves the version in the lockfile.

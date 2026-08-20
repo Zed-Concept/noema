@@ -4,6 +4,15 @@
 // matrix, provisioning surface, and storage policies against the AST —
 // stronger than text grep, still fully static (no database).
 //
+// Absence is pinned as well as presence (REVIEW-012 finding 2): every
+// column's constraint-type multiset is compared exactly (a DEFAULT added to
+// a column declared default-free cannot hide), zero-argument function
+// defaults reject argument/star forms, every FK pins its referenced
+// attribute list, match type, and both actions, types reject typmod/array
+// neighbors, and triggers/functions/grants/indexes/the bucket INSERT pin
+// their optional clauses absent (WHEN, args, STRICT, volatility, extra SET,
+// WITH GRANT OPTION, UNIQUE/WHERE, ON CONFLICT/RETURNING).
+//
 // Environment (set by capture.sh):
 //   SQLPARSE_NODE_MODULES — directory whose node_modules holds the pinned
 //                           libpg-query install (scratch, never committed)
@@ -34,20 +43,48 @@ const files = fs
 
 // --- tiny AST helpers -------------------------------------------------------
 const sval = (x) => x?.String?.sval;
+// Exact type: a typmod (timestamptz(3)) or array bounds (text[]) neighbor
+// yields a marked string that equals no expected plain name.
 const typeOf = (cd) =>
   cd.typeName.names
     .map((s) => s.String.sval)
     .filter((s) => s !== 'pg_catalog')
-    .join('.');
+    .join('.') +
+  (cd.typeName.typmods ? '(typmod)' : '') +
+  (cd.typeName.arrayBounds ? '[]' : '');
 const cons = (cd, type) =>
   (cd.constraints ?? []).map((c) => c.Constraint).filter((c) => c.contype === type);
 const rel = (r) => `${r.schemaname ?? ''}.${r.relname}`;
+// The exact, sorted constraint-type multiset on a column — absence pinning:
+// a constraint added to (or removed from) any column changes this string.
+const consTypes = (cd) =>
+  (cd.constraints ?? [])
+    .map((c) => c.Constraint.contype)
+    .sort()
+    .join(',');
+// A zero-argument function-call default, exactly: any argument, star,
+// DISTINCT, ORDER BY, FILTER, or OVER form yields undefined (REVIEW-012
+// finding 2 — the name alone accepted argument neighbors).
 const defaultFunc = (cd) => {
   const d = cons(cd, 'CONSTR_DEFAULT')[0];
-  return d?.raw_expr?.FuncCall?.funcname?.map((f) => f.String.sval).join('.');
+  const fc = d?.raw_expr?.FuncCall;
+  if (!fc || fc.args || fc.agg_star || fc.agg_distinct || fc.agg_order || fc.agg_filter || fc.over)
+    return undefined;
+  return (fc.funcname ?? []).map((f) => f.String.sval).join('.');
 };
 const defaultString = (cd) => cons(cd, 'CONSTR_DEFAULT')[0]?.raw_expr?.A_Const?.sval?.sval;
 const notNull = (cd) => cons(cd, 'CONSTR_NOTNULL').length === 1;
+// Exact FK shape: referenced table AND attribute list, MATCH SIMPLE, ON
+// UPDATE NO ACTION, ON DELETE CASCADE, expected constraint name (REVIEW-012
+// finding 2 — the attribute list and non-DELETE attributes were unpinned).
+const fkExact = (fk, name, pkTable, pkAttrs) =>
+  !!fk &&
+  fk.conname === name &&
+  rel(fk.pktable) === pkTable &&
+  (fk.pk_attrs ?? []).map(sval).join(',') === pkAttrs &&
+  fk.fk_matchtype === 's' &&
+  fk.fk_upd_action === 'a' &&
+  fk.fk_del_action === 'c';
 
 function isAuthUidCall(node) {
   const fc = node?.FuncCall;
@@ -214,10 +251,7 @@ assert(
   );
   assert(
     'profiles.id FK -> auth.users(id) ON DELETE CASCADE',
-    !!fk &&
-      rel(fk.pktable) === 'auth.users' &&
-      (fk.pk_attrs ?? []).map(sval).join(',') === 'id' &&
-      fk.fk_del_action === 'c',
+    fkExact(fk, 'profiles_id_fkey', 'auth.users', 'id'),
   );
 }
 {
@@ -236,7 +270,10 @@ assert(
     "profiles.locale text NOT NULL DEFAULT 'en'",
     !!c && typeOf(c) === 'text' && notNull(c) && defaultString(c) === 'en',
   );
-  assert("profiles.locale CHECK (locale IN ('en','ar'))", values.join(',') === 'en,ar');
+  assert(
+    "profiles.locale CHECK (locale IN ('en','ar'))",
+    check?.conname === 'profiles_locale_check' && values.join(',') === 'en,ar',
+  );
 }
 for (const name of ['created_at', 'updated_at']) {
   const c = col('public.profiles', name);
@@ -271,9 +308,7 @@ assert(
     !!c &&
       typeOf(c) === 'uuid' &&
       notNull(c) &&
-      !!fk &&
-      rel(fk.pktable) === 'auth.users' &&
-      fk.fk_del_action === 'c',
+      fkExact(fk, 'captures_user_id_fkey', 'auth.users', 'id'),
   );
 }
 {
@@ -290,7 +325,8 @@ assert(
   );
   assert(
     "captures.status CHECK (status IN ('recorded','transcribing','ready','failed'))",
-    values.join(',') === 'recorded,transcribing,ready,failed',
+    check?.conname === 'captures_status_check' &&
+      values.join(',') === 'recorded,transcribing,ready,failed',
   );
 }
 {
@@ -316,7 +352,11 @@ assert(
     (rhs.ival.ival ?? 0) === 0;
   assert(
     'captures.duration_ms integer, nullable, CHECK (duration_ms >= 0)',
-    !!c && typeOf(c) === 'int4' && !notNull(c) && geZero,
+    !!c &&
+      typeOf(c) === 'int4' &&
+      !notNull(c) &&
+      check?.conname === 'captures_duration_ms_check' &&
+      geZero,
   );
 }
 for (const name of ['captured_at', 'created_at', 'updated_at']) {
@@ -330,7 +370,10 @@ for (const name of ['captured_at', 'created_at', 'updated_at']) {
   const uq = tableCons('public.captures').find((c) => c.contype === 'CONSTR_UNIQUE');
   assert(
     'captures UNIQUE (id, user_id) — the referenced key for the composite FK',
-    !!uq && (uq.keys ?? []).map(sval).join(',') === 'id,user_id',
+    !!uq &&
+      uq.conname === 'captures_id_user_id_key' &&
+      !uq.nulls_not_distinct &&
+      (uq.keys ?? []).map(sval).join(',') === 'id,user_id',
   );
 }
 
@@ -366,9 +409,7 @@ assert(
     !!c &&
       typeOf(c) === 'uuid' &&
       notNull(c) &&
-      !!fk &&
-      rel(fk.pktable) === 'auth.users' &&
-      fk.fk_del_action === 'c',
+      fkExact(fk, 'transcripts_user_id_fkey', 'auth.users', 'id'),
   );
 }
 assert(
@@ -397,26 +438,106 @@ for (const name of ['language', 'provider']) {
   const fk = tableCons('public.transcripts').find((c) => c.contype === 'CONSTR_FOREIGN');
   assert(
     'user_id-consistency guarantee: composite FK (capture_id, user_id) -> public.captures (id, user_id) ON DELETE CASCADE',
-    !!fk &&
-      rel(fk.pktable) === 'public.captures' &&
-      (fk.fk_attrs ?? []).map(sval).join(',') === 'capture_id,user_id' &&
-      (fk.pk_attrs ?? []).map(sval).join(',') === 'id,user_id' &&
-      fk.fk_del_action === 'c',
+    fkExact(fk, 'transcripts_capture_id_user_id_fkey', 'public.captures', 'id,user_id') &&
+      (fk.fk_attrs ?? []).map(sval).join(',') === 'capture_id,user_id',
   );
+}
+
+console.log('-- exact constraint sets per column and per table (absence pinning) --');
+// REVIEW-012 finding 2: presence checks alone accepted valid neighbors (a
+// DEFAULT added to a column declared default-free). Each column's exact
+// constraint-type multiset is pinned here, so any constraint added to or
+// removed from any column — a default, an extra CHECK, a UNIQUE, anything —
+// changes the compared string. Table-level constraints and table options
+// (INHERITS, PARTITION BY, OF type, tablespace, IF NOT EXISTS) are pinned
+// the same way.
+{
+  const EXPECTED_COLUMN_CONS = {
+    'public.profiles': {
+      id: 'CONSTR_FOREIGN,CONSTR_PRIMARY',
+      display_name: '',
+      locale: 'CONSTR_CHECK,CONSTR_DEFAULT,CONSTR_NOTNULL',
+      created_at: 'CONSTR_DEFAULT,CONSTR_NOTNULL',
+      updated_at: 'CONSTR_DEFAULT,CONSTR_NOTNULL',
+    },
+    'public.captures': {
+      id: 'CONSTR_DEFAULT,CONSTR_PRIMARY',
+      user_id: 'CONSTR_FOREIGN,CONSTR_NOTNULL',
+      status: 'CONSTR_CHECK,CONSTR_DEFAULT,CONSTR_NOTNULL',
+      audio_path: '',
+      duration_ms: 'CONSTR_CHECK',
+      captured_at: 'CONSTR_DEFAULT,CONSTR_NOTNULL',
+      created_at: 'CONSTR_DEFAULT,CONSTR_NOTNULL',
+      updated_at: 'CONSTR_DEFAULT,CONSTR_NOTNULL',
+    },
+    'public.transcripts': {
+      id: 'CONSTR_DEFAULT,CONSTR_PRIMARY',
+      capture_id: 'CONSTR_NOTNULL',
+      user_id: 'CONSTR_FOREIGN,CONSTR_NOTNULL',
+      text: 'CONSTR_NOTNULL',
+      language: '',
+      provider: '',
+      created_at: 'CONSTR_DEFAULT,CONSTR_NOTNULL',
+    },
+  };
+  const EXPECTED_TABLE_CONS = {
+    'public.profiles': '',
+    'public.captures': 'CONSTR_UNIQUE',
+    'public.transcripts': 'CONSTR_FOREIGN',
+  };
+  for (const [t, want] of Object.entries(EXPECTED_COLUMN_CONS)) {
+    assert(
+      `${t}: per-column constraint-type multiset is exactly the declared set — no default, check, unique, or other constraint is added to or missing from any column`,
+      columns(t).length === Object.keys(want).length &&
+        columns(t).every((cd) => consTypes(cd) === want[cd.colname]),
+    );
+  }
+  for (const [t, want] of Object.entries(EXPECTED_TABLE_CONS)) {
+    const n = tables[t];
+    assert(
+      `${t}: table-level constraints are exactly [${want || 'none'}] and no INHERITS/PARTITION BY/OF type/tablespace/IF NOT EXISTS clause exists`,
+      !!n &&
+        tableCons(t)
+          .map((c) => c.contype)
+          .sort()
+          .join(',') === want &&
+        !n.inhRelations &&
+        !n.partspec &&
+        !n.ofTypename &&
+        !n.tablespacename &&
+        !n.if_not_exists,
+    );
+  }
 }
 
 console.log('-- indexes and updated_at triggers --');
 {
   const idx = byType('IndexStmt').map((n) => ({
+    name: n.idxname,
     table: rel(n.relation),
     cols: (n.indexParams ?? []).map((p) => p.IndexElem?.name).join(','),
+    plain: n.accessMethod === 'btree' && !n.unique && !n.whereClause,
   }));
   assert(
-    'FK-supporting indexes: captures(user_id), transcripts(capture_id,user_id), transcripts(user_id)',
+    'FK-supporting indexes: captures(user_id), transcripts(capture_id,user_id), transcripts(user_id) — each plain btree, non-unique, unpredicated, expected name',
     idx.length === 3 &&
-      idx.some((i) => i.table === 'public.captures' && i.cols === 'user_id') &&
-      idx.some((i) => i.table === 'public.transcripts' && i.cols === 'capture_id,user_id') &&
-      idx.some((i) => i.table === 'public.transcripts' && i.cols === 'user_id'),
+      idx.every((i) => i.plain) &&
+      idx.some(
+        (i) =>
+          i.table === 'public.captures' && i.cols === 'user_id' && i.name === 'captures_user_id_idx',
+      ) &&
+      idx.some(
+        (i) =>
+          i.table === 'public.transcripts' &&
+          i.cols === 'capture_id,user_id' &&
+          i.name === 'transcripts_capture_id_user_id_idx',
+      ) &&
+      idx.some(
+        (i) =>
+          i.table === 'public.transcripts' &&
+          i.cols === 'user_id' &&
+          i.name === 'transcripts_user_id_idx',
+      ),
   );
 }
 {
@@ -424,14 +545,17 @@ console.log('-- indexes and updated_at triggers --');
     (n) => n.funcname.map((f) => f.String.sval).join('.') === 'public.set_updated_at',
   );
   const opts = Object.fromEntries((fn?.options ?? []).map((o) => [o.DefElem.defname, o.DefElem.arg]));
+  const defnames = (fn?.options ?? []).map((o) => o.DefElem.defname).join(',');
   const sp = opts.set?.VariableSetStmt;
   const body = (opts.as?.List?.items?.map(sval).join('') ?? '').replace(/\s+/g, ' ').trim();
   assert(
     "set_updated_at: returns trigger, plpgsql, SECURITY INVOKER, search_path pinned to ''",
     !!fn &&
-      fn.returnType.names.map((s) => s.String.sval).includes('trigger') &&
+      !fn.parameters &&
+      fn.returnType.names.map((s) => s.String.sval).join('.') === 'trigger' &&
+      !fn.returnType.setof &&
+      defnames === 'language,set,as' &&
       opts.language?.String?.sval === 'plpgsql' &&
-      opts.security === undefined &&
       sp?.name === 'search_path' &&
       sp?.args?.[0]?.A_Const?.sval?.sval === '',
   );
@@ -446,7 +570,15 @@ console.log('-- indexes and updated_at triggers --');
   assert(
     'BEFORE UPDATE row triggers run set_updated_at on exactly profiles and captures (transcripts has no updated_at)',
     triggers.length === 2 &&
-      triggers.every((t) => t.timing === 2 && t.events === 16 && t.row === true) &&
+      triggers.every(
+        (t) =>
+          t.timing === 2 &&
+          t.events === 16 &&
+          t.row === true &&
+          !t.whenClause &&
+          !t.args &&
+          !t.isconstraint,
+      ) &&
       triggers
         .map((t) => rel(t.relation))
         .sort()
@@ -462,12 +594,14 @@ console.log('-- grants (staging post-dates the auto-expose default change) --');
     .sort()
     .join(',');
   assert(
-    'each of the three tables is granted exactly select,insert,update,delete',
+    'each of the three tables is granted exactly select,insert,update,delete — table-object grants, no WITH GRANT OPTION',
     grants.length === 3 &&
       tablesGranted === 'public.captures,public.profiles,public.transcripts' &&
       grants.every(
         (g) =>
           g.is_grant === true &&
+          g.objtype === 'OBJECT_TABLE' &&
+          !g.grant_option &&
           (g.privileges ?? []).map((p) => p.AccessPriv.priv_name).join(',') ===
             'select,insert,update,delete',
       ),
@@ -561,12 +695,16 @@ console.log('-- profiles provisioning --');
     (n) => n.funcname.map((f) => f.String.sval).join('.') === 'public.handle_new_user',
   );
   const opts = Object.fromEntries((fn?.options ?? []).map((o) => [o.DefElem.defname, o.DefElem.arg]));
+  const defnames = (fn?.options ?? []).map((o) => o.DefElem.defname).join(',');
   const sp = opts.set?.VariableSetStmt;
   const body = (opts.as?.List?.items?.map(sval).join('') ?? '').replace(/\s+/g, ' ').trim();
   assert(
     "handle_new_user: returns trigger, plpgsql, SECURITY DEFINER, search_path pinned to ''",
     !!fn &&
-      fn.returnType.names.map((s) => s.String.sval).includes('trigger') &&
+      !fn.parameters &&
+      fn.returnType.names.map((s) => s.String.sval).join('.') === 'trigger' &&
+      !fn.returnType.setof &&
+      defnames === 'language,security,set,as' &&
       opts.language?.String?.sval === 'plpgsql' &&
       opts.security?.Boolean?.boolval === true &&
       sp?.name === 'search_path' &&
@@ -584,6 +722,9 @@ console.log('-- profiles provisioning --');
       trg.row === true &&
       (trg.timing ?? 0) === 0 &&
       trg.events === 4 &&
+      !trg.whenClause &&
+      !trg.args &&
+      !trg.isconstraint &&
       trg.funcname.map((f) => f.String.sval).join('.') === 'public.handle_new_user',
   );
 }
@@ -595,8 +736,10 @@ console.log('-- storage: private bucket + owner-only object policies --');
   const vals = ins?.selectStmt?.SelectStmt?.valuesLists?.[0]?.List?.items ?? [];
   const isFalse = (v) => !!v?.A_Const?.boolval && v.A_Const.boolval.boolval !== true;
   assert(
-    "bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false)",
+    "bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false) — plain insert, no ON CONFLICT (deliberately non-idempotent), no RETURNING",
     !!ins &&
+      !ins.onConflictClause &&
+      !ins.returningList &&
       colsNamed === 'id,name,public' &&
       vals[0]?.A_Const?.sval?.sval === 'captures-audio' &&
       vals[1]?.A_Const?.sval?.sval === 'captures-audio' &&

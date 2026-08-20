@@ -16,6 +16,6 @@ registered values scanned: 3 distinct (raw values never printed)
 jwt-shape sweep: 0 matches
 residual registered-value classes: 1 (occurrences: 1)
 verdict: RED — residual secret bytes in the exact transcript file — transcript deleted (exit 1)
-post-gate scratch transcript still exists: no (no required — a red gate deletes fail-closed)
+post-gate scratch transcript still exists: no (no required — the residual-match red path deletes the file)
 
 --- enforced: child exit 1, leak present pre-gate, gate RED (exit 1), transcript deleted — or this control exits 1 ---

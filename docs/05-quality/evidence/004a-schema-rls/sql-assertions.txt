@@ -46,13 +46,20 @@ PASS transcripts.language text, nullable (provider-agnostic)
 PASS transcripts.provider text, nullable (provider-agnostic)
 PASS transcripts.created_at timestamptz NOT NULL DEFAULT now(); no updated_at column
 PASS user_id-consistency guarantee: composite FK (capture_id, user_id) -> public.captures (id, user_id) ON DELETE CASCADE
+-- exact constraint sets per column and per table (absence pinning) --
+PASS public.profiles: per-column constraint-type multiset is exactly the declared set — no default, check, unique, or other constraint is added to or missing from any column
+PASS public.captures: per-column constraint-type multiset is exactly the declared set — no default, check, unique, or other constraint is added to or missing from any column
+PASS public.transcripts: per-column constraint-type multiset is exactly the declared set — no default, check, unique, or other constraint is added to or missing from any column
+PASS public.profiles: table-level constraints are exactly [none] and no INHERITS/PARTITION BY/OF type/tablespace/IF NOT EXISTS clause exists
+PASS public.captures: table-level constraints are exactly [CONSTR_UNIQUE] and no INHERITS/PARTITION BY/OF type/tablespace/IF NOT EXISTS clause exists
+PASS public.transcripts: table-level constraints are exactly [CONSTR_FOREIGN] and no INHERITS/PARTITION BY/OF type/tablespace/IF NOT EXISTS clause exists
 -- indexes and updated_at triggers --
-PASS FK-supporting indexes: captures(user_id), transcripts(capture_id,user_id), transcripts(user_id)
+PASS FK-supporting indexes: captures(user_id), transcripts(capture_id,user_id), transcripts(user_id) — each plain btree, non-unique, unpredicated, expected name
 PASS set_updated_at: returns trigger, plpgsql, SECURITY INVOKER, search_path pinned to ''
 PASS set_updated_at body is exactly the updated_at reassignment plus return new — nothing else
 PASS BEFORE UPDATE row triggers run set_updated_at on exactly profiles and captures (transcripts has no updated_at)
 -- grants (staging post-dates the auto-expose default change) --
-PASS each of the three tables is granted exactly select,insert,update,delete
+PASS each of the three tables is granted exactly select,insert,update,delete — table-object grants, no WITH GRANT OPTION
 PASS grants go to authenticated only — never anon, service_role, or PUBLIC
 -- RLS: enable + force --
 PASS ALTER TABLE statements are exactly the six RLS enable/force commands — no DISABLE, NO FORCE, or any other subtype anywhere
@@ -83,12 +90,12 @@ PASS handle_new_user: returns trigger, plpgsql, SECURITY DEFINER, search_path pi
 PASS handle_new_user body is exactly the single schema-qualified profiles insert plus return new — nothing else runs as definer
 PASS trigger on_auth_user_created: AFTER INSERT FOR EACH ROW on auth.users -> public.handle_new_user
 -- storage: private bucket + owner-only object policies --
-PASS bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false)
+PASS bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false) — plain insert, no ON CONFLICT (deliberately non-idempotent), no RETURNING
 PASS storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped
 PASS storage.objects insert: one policy TO authenticated, bucket-pinned and {user_id}/-scoped on WITH CHECK
 PASS storage.objects update: one policy TO authenticated, bucket-pinned and {user_id}/-scoped on USING and WITH CHECK
 PASS storage.objects delete: one policy TO authenticated, bucket-pinned and {user_id}/-scoped
 PASS storage.objects has exactly those four policies and no table-level ALTER (platform-managed table)
 
-RESULT: 72 assertions, 72 PASS, 0 FAIL, parse failures 0
+RESULT: 78 assertions, 78 PASS, 0 FAIL, parse failures 0
 --- exit code: 0 (0 = every assertion passed) ---

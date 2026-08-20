@@ -42,21 +42,31 @@ authored 2026-08-20 (their timestamps record the authoring date):
 - **Explicit grants, `authenticated` only.** `noema-staging` (created
   2026-08-18) post-dates Supabase's auto-expose default change: new
   public-schema entities carry no Data API privileges until granted, so the
-  grants in the RLS migration are load-bearing. `anon` receives nothing
-  (dispatch: no anon access — it is also denied by having no policies), and
-  `service_role` receives nothing in v1 — the first server-side unit that
-  needs it adds it deliberately. The grants are harmless if the project
-  ever runs under legacy auto-expose behavior; RLS still gates every row.
+  grants in the RLS migration are load-bearing. This migration set authors
+  **no grant to `anon` or `service_role`** — the first server-side unit
+  that needs one adds it deliberately. What the authored text proves is the
+  absence of an authored grant; the *effective* posture is a separate,
+  measured question, and the fix-cycle-1 grid
+  (`../004b-schema-rls-live/roles-acl.txt`) records it as **zero
+  table-level CRUD** for both roles, alongside platform-default non-CRUD
+  ACL entries (`TRUNCATE`, `TRIGGER`, `MAINTAIN`, `REFERENCES`) that this
+  set did not author. Column-level privileges were not measured, so no
+  statement here covers them. The grants are harmless if the project ever
+  runs under legacy auto-expose behavior; RLS still gates every row.
 - **The provisioning insert policy (`TO postgres`).** Authored under the
   Phase A premise that hosted `postgres` lacks BYPASSRLS. The fix-cycle-1
   measurement (`../004b-schema-rls-live/roles-acl.txt`, REVIEW-011
-  finding 1) shows staging `postgres` carries `rolbypassrls=t`, so the
-  SECURITY DEFINER provisioning insert (which executes as `postgres`, at
-  signup time under a null `auth.uid()`) bypasses row security and this
-  policy is currently **inert**. It is retained as defense-in-depth:
-  INSERT-only, on `profiles` only, load-bearing only if the role is ever
-  demoted — and `postgres` is not a Data API role, so nothing
-  client-reachable widens either way.
+  finding 1) shows staging `postgres` carries `rolbypassrls=t`, which would
+  bypass row security for anything executing as that role. Whether the
+  applied SECURITY DEFINER insert *does* execute as `postgres` is
+  **unmeasured** — a SECURITY DEFINER function runs with its owner's
+  privileges, and no artifact reads the applied function's owner
+  (`../004b-schema-rls-live/README.md` claim 20). So this policy's present
+  effect is genuinely undetermined: either it admits the provisioning
+  insert, or a `BYPASSRLS` definer makes it redundant. It is retained as
+  defense-in-depth regardless — INSERT-only, on `profiles` only, and
+  `postgres` is not a Data API role, so nothing client-reachable widens
+  either way.
 - **`auth.uid()` is initplan-wrapped** (`(select auth.uid())`) in every
   policy predicate so it evaluates once per statement, not per row; every
   keyed column is indexed (PK or the FK-supporting indexes).
@@ -72,18 +82,25 @@ authored 2026-08-20 (their timestamps record the authoring date):
   matches staging at link time (`supabase link` warns on mismatch).
 
 **Operational caveat (premise corrected by measurement — REVIEW-011
-finding 1, fix cycle 1):** Phase A assumed hosted `postgres` lacks
-BYPASSRLS, so FORCE would blind postgres-role tooling. The owner-run
-staging measurement (`../004b-schema-rls-live/roles-acl.txt`) shows
-otherwise: `postgres` — the role the dashboard SQL editor measurably
-executes as — carries `rolbypassrls=t`, so the Table Editor, SQL editor
-sessions, and data-only dumps see all rows in these three tables despite
-FORCE (`relforcerowsecurity=t` measured on all three). FORCE still
-policy-checks every non-BYPASSRLS role, signup provisioning is unaffected,
-and FK cascades from `auth.users` deletions are exempt from row security by
-design. The applied migration comments that carry the original premise are
-APPLIED-and-immutable; the correction lives here, in OPERATIONS.md, and in
-the fix-cycle HANDOFF — never in an edit to an applied migration.
+finding 1; narrowed to the measured boundary per REVIEW-012 finding 1):**
+Phase A assumed hosted `postgres` lacks BYPASSRLS, so FORCE would blind
+postgres-role tooling. The owner-run staging measurement
+(`../004b-schema-rls-live/roles-acl.txt`) refutes the premise: `postgres`
+carries `rolbypassrls=t`, and the dashboard SQL editor measurably executes
+with `current_user=postgres`, while `relrowsecurity=t` and
+`relforcerowsecurity=t` hold on all three tables. From those measured
+facts it **follows by inference — not by transcript —** that a surface
+running as `postgres` sees all rows despite FORCE; the SQL editor is the
+only execution identity on the record, and **no Table Editor session or
+data-only dump was run or transcribed** (`../004b-schema-rls-live/README.md`
+claim 19). FORCE still policy-checks every non-BYPASSRLS role, and FK
+cascades from `auth.users` deletions are exempt from row security by
+design. Signup provisioning demonstrably works (proven live in 004b), though
+which mechanism admits its definer insert is not isolated — see the
+`TO postgres` bullet above. The applied migration comments that carry the
+original premise are APPLIED-and-immutable; the correction lives here, in
+OPERATIONS.md, and in the fix-cycle HANDOFF — never in an edit to an
+applied migration.
 
 ## Artifacts and classification
 
@@ -101,8 +118,8 @@ registry access; both pins are exact, so the transcript bytes do not move.
 
 | Artifact | Producer | Class | Notes / normalization |
 | --- | --- | --- | --- |
-| `sql-assertions.txt` | `capture.sh` → `verify-migrations.mjs` | gated | parse validity (real PG17 parser) + 72 AST-level assertions covering the full dispatch scope: entity list, column-by-column types/nullability/defaults/CHECKs, FKs and cascades, the composite-FK consistency guarantee, indexes, triggers, grants, ENABLE+FORCE, the 13-policy matrix with exact predicates, provisioning surface, bucket privacy, and storage policy scoping. Deterministic by construction: pinned parser, repo-relative paths, stable ordering. Exit status is the gate |
-| `assertions-negative-control.txt` | `capture.sh` | gated | the gate discriminates: eight tampered scratch copies (FORCE removed; a DELETE policy removed; a storage policy widened to anon; the composite FK narrowed; SECURITY DEFINER demoted; a countermanding DISABLE ROW LEVEL SECURITY appended; a schema-unqualified USING (true) policy appended; the `duration_ms` CHECK value shifted to its neighbor `>= -1` — REVIEW-011 finding 2's false-green reproduction, kept as a permanent scenario) each exit 1 with the named assertion failing. Mutations never touch the repo |
+| `sql-assertions.txt` | `capture.sh` → `verify-migrations.mjs` | gated | parse validity (real PG17 parser) + 78 AST-level assertions covering the full dispatch scope: entity list, column-by-column types/nullability/defaults/CHECKs, FKs and cascades, the composite-FK consistency guarantee, indexes, triggers, grants, ENABLE+FORCE, the 13-policy matrix with exact predicates, provisioning surface, bucket privacy, and storage policy scoping — **pinning absence as well as presence** (REVIEW-012 finding 2; see claim 2). Deterministic by construction: pinned parser, repo-relative paths, stable ordering. Exit status is the gate |
+| `assertions-negative-control.txt` | `capture.sh` | gated | the gate discriminates: twelve tampered scratch copies (FORCE removed; a DELETE policy removed; a storage policy widened to anon; the composite FK narrowed; SECURITY DEFINER demoted; a countermanding DISABLE ROW LEVEL SECURITY appended; a schema-unqualified USING (true) policy appended; the `duration_ms` CHECK value shifted to its neighbor `>= -1` — REVIEW-011 finding 2's false-green reproduction; and the four REVIEW-012 finding 2 absence-class neighbors — a DEFAULT added to a column declared default-free, a function-argument neighbor `gen_random_uuid(null)`, an FK referenced-attribute mutation to `(email)`, and an appended `ON CONFLICT DO NOTHING`) each exit 1 with the named assertion failing. Mutations never touch the repo |
 | `config-provenance.txt` | `capture.sh` | gated | committed `supabase/config.toml` and `supabase/.gitignore` byte-identical to a fresh `supabase@2.115.0 init` in a scratch git repo named `noema`; `supabase/.temp` untracked and ignored. npx stderr (install noise) dropped; scratch paths never printed |
 | `inventory.txt` | `capture.sh` | gated | the six tracked `supabase/` files with index blob SHAs — the exact bytes every claim here is about. Reads the index (fixed-point discipline, like 003a) |
 | `gates.txt` | `capture.sh` | gated | the four non-install CI steps at this head plus the no-dependency-delta probe (pinned to the dispatch base SHA, package files only). jest `Time:` masked, per-suite duration suffixes stripped, `env:` lines dropped (machine state). `npm ci` deliberately NOT run — see claim 11 |
@@ -120,14 +137,14 @@ broken positive control. A green artifact set from a red run cannot exist.
 | # | Claim | Class | Artifact |
 | --- | --- | --- | --- |
 | 1 | All four migrations parse under the real PostgreSQL 17 grammar (libpg_query, pinned `libpg-query@17.7.4`): 9 + 21 + 3 + 5 = 38 statements, zero failures | PASS | `sql-assertions.txt`, parse section |
-| 2 | The schema is exactly the owner-ruled v1 entity scope — three tables, column-by-column (names, order, types, nullability, defaults, CHECK values), nothing extra anywhere in the set (statement-type whitelist, no extra tables/functions/inserts) | PASS | `sql-assertions.txt` (72/72 AST assertions, including the append-class bounds: exact per-file statement counts, exactly six RLS ALTERs with no countermanding subtype, exactly 17 schema-qualified policies, exactly three triggers, and full-body equality for both functions). Exact-value discipline: the `duration_ms >= 0` assertion compares the literal against zero since the REVIEW-011 fix cycle (finding 2 — it previously accepted any integer), and the sibling constant assertions were audited for the same accepts-neighbor defect: the storage `foldername[1]` ordinal, both boolean constants (`WITH CHECK (true)`, bucket `public = false`), every string literal, trigger timing/event codes, and FK actions are exact-value comparisons |
+| 2 | The schema is exactly the owner-ruled v1 entity scope — three tables, column-by-column (names, order, types, nullability, defaults, CHECK values), nothing extra anywhere in the set (statement-type whitelist, no extra tables/functions/inserts) | PASS | `sql-assertions.txt` (78/78 AST assertions, including the append-class bounds: exact per-file statement counts, exactly six RLS ALTERs with no countermanding subtype, exactly 17 schema-qualified policies, exactly three triggers, and full-body equality for both functions). **Exact-value discipline** — the `duration_ms >= 0` assertion compares the literal against zero (REVIEW-011 finding 2), and the storage `foldername[1]` ordinal, both boolean constants (`WITH CHECK (true)`, bucket `public = false`), every string literal, trigger timing/event codes, and FK actions are exact-value comparisons. **Absence-pinning discipline** (REVIEW-012 finding 2, this cycle): each column's exact constraint-type multiset is compared, so a DEFAULT — or any other constraint — added to a column declared default-free turns it red; each table's exact table-level constraint set is compared, with `INHERITS`/`PARTITION BY`/`OF`/tablespace/`IF NOT EXISTS` pinned absent; function-call defaults reject argument, star, DISTINCT, ORDER BY, FILTER, and OVER neighbors; every FK pins constraint name, referenced table **and attribute list**, match type, and both actions; types reject typmod and array neighbors; and the optional clauses that could widen behavior are pinned absent — trigger `WHEN`/args/`CONSTRAINT`, function `STRICT`/volatility/extra `SET`/parameters/`SETOF`, `WITH GRANT OPTION`, index `UNIQUE`/predicate/access method, and `ON CONFLICT`/`RETURNING` on the bucket insert |
 | 3 | `transcripts.user_id` is provably consistent with the parent capture's `user_id` (composite FK + backing UNIQUE; technique documented above and in the migration comments) | PASS | `sql-assertions.txt` |
 | 4 | FK-supporting indexes exist for every FK; `updated_at` triggers exist exactly where the column exists (profiles, captures — not transcripts) | PASS | `sql-assertions.txt` |
 | 5 | RLS is ENABLEd and FORCEd on all three tables; the policy matrix is per-operation owner-only TO `authenticated` with initplan-wrapped `(select auth.uid()) = id/user_id` predicates (INSERT via WITH CHECK, UPDATE via both); no policy names `anon` or PUBLIC; the sole exception is the documented INSERT-only provisioning policy TO `postgres` | PASS | `sql-assertions.txt` |
-| 6 | Grants are explicit and minimal: select/insert/update/delete on the three tables to `authenticated` only — never `anon`, `service_role`, or PUBLIC | PASS | `sql-assertions.txt` |
+| 6 | The **authored** grants are explicit and minimal: select/insert/update/delete on the three tables, to `authenticated` only, as table-object grants without WITH GRANT OPTION — this set authors no grant naming `anon`, `service_role`, or PUBLIC. (What is *effectively* held is a separate measured question — `../004b-schema-rls-live/README.md` claims 18/21) | PASS | `sql-assertions.txt` |
 | 7 | Provisioning is a SECURITY DEFINER function with `search_path` pinned to `''`, body schema-qualified, wired AFTER INSERT FOR EACH ROW on `auth.users` | PASS | `sql-assertions.txt` |
 | 8 | Storage: `captures-audio` is created private, and exactly four `storage.objects` policies (one per operation, TO `authenticated`) are bucket-pinned and `{user_id}/`-scoped via `(storage.foldername(name))[1] = (select auth.uid()::text)`; keys with no folder fail closed (the segment is null) | PASS | `sql-assertions.txt` |
-| 9 | The assertion gate is not vacuous: eight security/spec-relevant tamperings — five removals/narrowings, two append-class mutations (a countermanding DISABLE, an unqualified extra policy), and the exact-value neighbor mutation (`duration_ms >= -1`, REVIEW-011 finding 2) — each turn it red with the named FAIL and exit 1 | PASS | `assertions-negative-control.txt` |
+| 9 | The assertion gate is not vacuous: twelve security/spec-relevant tamperings — five removals/narrowings, two append-class mutations (a countermanding DISABLE, an unqualified extra policy), the exact-value neighbor mutation (`duration_ms >= -1`, REVIEW-011 finding 2), and one permanent scenario per REVIEW-012 finding 2 absence class (added DEFAULT, function-argument neighbor, FK referenced-attribute neighbor, appended ON CONFLICT) — each turn it red with the named FAIL and exit 1. Each absence-class assertion compares one exact string covering every column or site in its class, so the discrimination the four scenarios prove is not scenario-local | PASS | `assertions-negative-control.txt` |
 | 10 | The committed `supabase/` scaffolding is byte-identical to pinned-CLI init output; machine-local init output (`supabase/.temp`) is untracked and ignored | PASS | `config-provenance.txt` |
 | 11 | The four non-install CI steps pass at this head (typecheck, lint, test, format:check — all exit 0). The install step is NOT RUN here: this unit's delta provably contains no dependency change (probe in the transcript), and 002d/003a document the destructive npm-ci ENOTEMPTY transient under a live editor; CI runs the real install when the PR opens | PASS / install NOT RUN with reason | `gates.txt` |
 | 12 | CI itself on this branch | NOT RUN | no `pull_request` event yet; the workflow file is untouched by this unit |

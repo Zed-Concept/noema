@@ -67,11 +67,14 @@ Branch:             feat/schema-rls-v1
 Controller:         CTRL-004 Schema and RLS v1
 Builder:            Claude Code
 Model+Effort:       Fable 5 / Ultracode (xhigh + workflows) / fresh session
-                    (fix cycles: Fable 5 / Max per ruling 5, fresh session)
+                    (fix cycles: Fable 5 / Max per ruling 5, fresh session;
+                    fix cycle 2 began under those terms and finished under
+                    Opus 5 [1m] per the owner ruling in the Model-transition
+                    note below)
 Reviewer of record: Codex (Codex Sol / Ultra / fresh session); advisory
                     reviewer DeepSeek V4 Pro on the RLS/auth policy diff
                     (RED-on-arrival trigger per ADR-001)
-Status:             REVIEW — fix cycle 1 complete, awaiting re-review
+Status:             REVIEW — fix cycle 2 complete, awaiting re-review
 Dispatch:           Unit C — Schema and RLS v1: author initial SQL migrations
                     and the first RLS policy set for the owner-ruled v1
                     entities, regenerate database types against the applied
@@ -128,6 +131,22 @@ Status moved `BUILD` → `REVIEW` in this amendment (the Evidence line above
 updated from `pending` in the same amendment); `MERGED` only by the
 controller, after review — reviewer of record plus the advisory RLS/auth
 seat per the LOCK.
+
+**Model transition (2026-08-20, fix cycle 2).** Fix cycle 2 was dispatched
+and began as **Fable 5 / Max**, verified against the dispatch before any work
+(learning 3). Mid-cycle the session model was switched to **Opus 5 [1m]**.
+The builder stopped on the mismatch — ruling 4 holds that in-flight units
+finish under their issued terms — and the **owner ruled in-loop on
+2026-08-20 that fix cycle 2 continues and completes under Opus 5 [1m]**,
+with the transition recorded here and in the HANDOFF. Both readings are on
+the record rather than one being silently chosen (the
+`chore/agents-md-formatting` precedent): the session environment reported
+Fable 5 at start and the `/model` command reported `claude-opus-5[1m]` at
+the switch, and no session can resolve from the inside which model produced
+which token. The `Model+Effort` line above carries the original dispatch
+terms plus this ruling; the split of work either side of the switch is in
+the fix-cycle-2 HANDOFF block. For the controller to acknowledge at
+close-out.
 
 ---
 
