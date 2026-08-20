@@ -8,6 +8,204 @@ Append a new block at the top. Never edit an old one.
 
 ---
 
+## 2026-08-20 — feat/schema-rls-v1 (CTRL-004 Unit C, fix cycle 1 — REVIEW-011)
+
+**Controller:** CTRL-004 Schema and RLS v1. **Builder:** Claude Code — Fable
+5, Max effort per ruling 5 (review-fix-loop class), fresh session, model
+verified against the dispatch before any work (learning 3). **Reviewer of
+record:** Codex (Codex Sol / Ultra, fresh session); **advisory reviewer**
+DeepSeek V4 Pro per the LOCK. **Fix-cycle base:**
+`ee7d11588d89b5cc71730c856937aaa6b350dc56` (the dispatch-named origin tip),
+fetched and confirmed before any work (learning 6); clean tree; same branch
+per ruling 5's fix-loop class. **Cycle commits:** `ce59385` (producers) and
+`cfabce9` (measurement + live evidence + corrected prose), plus this state
+commit. **Standing authorization** restated in the dispatch (ruling 7): the
+2026-08-19 RED-lane owner approval covers exactly this unit's schema/RLS
+scope; the four applied migrations are immutable and none was edited —
+every REVIEW-011 premise correction lives in evidence, OPERATIONS.md, and
+this block, never in a migration. **LOCK:** `Status: REVIEW` throughout;
+only its status-line suffix amended, per the dispatch. **.env:** presence
+re-checked by name only (both `EXPO_PUBLIC_SUPABASE_*` variables); no value
+printed.
+
+**Disclosure (ruling 6):** workflows run: 0; subagent fan-out: none. Every
+change and verification in this cycle was made directly in this session
+(Max class per ruling 5; workflows are the Ultracode build-unit tier).
+
+**What I set out to do**
+
+Exactly the five REVIEW-011 findings, as dispatched: F1 measure the
+postgres/ACL premise and rewrite the one OPERATIONS sentence to the
+measurement; F2 make the schema oracle exact-value and add the `>= -1`
+mutation as a permanent negative control; F3 rebuild the redaction gate to
+scan the exact committed transcript bytes with a planted-leak positive
+control; F4 supersede the stale email-confirmation prose in this block; F5
+extend the live matrix to the full per-table per-operation cross-user grid
+including the transcripts WITH CHECK isolation probe.
+
+**Owner-executed events on the record (config/credential class, in-loop
+per ruling 10, each confirmed in the loop):**
+
+1. The owner ran `roles-acl.sql` (committed at `ce59385`, parse-proven a
+   single read-only SelectStmt) in the noema-staging SQL editor on
+   2026-08-20 and pasted the result grid; it is committed verbatim as
+   `004b-schema-rls-live/roles-acl.txt` with a run-state annotation.
+   Measured: `postgres` `rolsuper=f rolbypassrls=t` — the REVIEW-011
+   finding 1 premise conflict is real, and the pre-authorized variant (a)
+   rewrite applies; `service_role` `rolbypassrls=t` with zero CRUD on the
+   three v1 tables; `anon` zero CRUD; `authenticated` exactly the authored
+   CRUD; PUBLIC nothing; `relforcerowsecurity=t` on all three; the SQL
+   editor executes as `postgres`. Adjacent observation
+   (controller-classified in the loop: acknowledged as measured Supabase
+   default-ACL posture, documented, not acted on): platform-default
+   non-CRUD privileges (TRUNCATE, TRIGGER, MAINTAIN, REFERENCES) exist for
+   anon/authenticated/service_role on all three tables; no Data-API
+   operation reaches them.
+2. **Email-confirmation record (REVIEW-011 finding 4 — this block
+   supersedes the Phase B block's current-state prose; no prior block was
+   edited).** The toggle's full sequence on the record: required at Phase
+   B start → owner-disabled for the Phase B run → **owner-re-enabled after
+   the Phase B run** (the fact recorded in the REVIEW-011 review dispatch
+   that the Phase B prose missed) → owner-disabled on request for this
+   cycle's authenticated runs (2026-08-20) → **owner-re-enabled at cycle
+   close, confirmed in-loop 2026-08-20**. Transcripts prove run-time state
+   only (`mailer_autoconfirm=true` inside the committed runs); this block
+   is the current-state record: **email confirmation is ON as of this
+   handoff.**
+3. Disposable users, two runs: the fix-cycle authenticated suite ran
+   twice — once as first landed, then once more after a producer defect
+   was found in the new gate-report writer (below). The owner deleted the
+   first `ctrl004c-*` pair mid-cycle to authorize the rerun, and deleted
+   the final pair (`ctrl004c-user1@example.com`,
+   `ctrl004c-user2@example.com`) at cycle close — **both deletions
+   confirmed in-loop 2026-08-20**; deletion cascades removed all their
+   rows, and the run left storage empty. At no moment did more than two
+   disposable users exist. The superseded Phase B pair (`ctrl004b-*`)
+   remains in the owner-cleanup class it was already in.
+
+**What I changed**
+
+- `004a-schema-rls/verify-migrations.mjs` — the `duration_ms >= 0` oracle
+  now compares the literal against zero (libpg_query protobuf shape:
+  integer 0 omits the inner value; folded negatives carry it; floats use
+  `fval`); `>= -1`, `>= 1`, and `>= 0.0` all verified red. Sibling audit:
+  every other constant assertion (foldername ordinal, both booleans,
+  string literals, trigger timing/events, FK actions) was already
+  exact-value — `duration_ms` was the sole accepts-neighbor site.
+- `004a-schema-rls/capture.sh` + `assertions-negative-control.txt` — the
+  review's `>= -1` false-green reproduction is permanent scenario 8; 8/8
+  discriminate (exit 1 + named FAIL). `README.md` — claims 2/9 and the
+  artifact row updated; the `TO postgres` design bullet and the
+  operational-caveat paragraph rewritten to the measurement.
+- `004b-schema-rls-live/redaction-gate.mjs` (new) + `live-probes.sh` +
+  `rls-probes.mjs` — post-write file-byte totality gate: every registered
+  secret is mirrored to a 0600 scratch ledger (the probe refuses to run
+  unledgered); after each transcript file is complete (header + entire
+  child stdout/stderr + exit trailer) the gate scans those exact bytes
+  against the full both-mode ledger plus the JWT shape, deletes the
+  transcript on red, and records byte count + sha256
+  (`redaction-gate.txt`), binding committed bytes to scanned bytes.
+  `redaction-control.txt` (gated, byte-deterministic, regenerated by
+  capture.sh) proves the red path: a synthetic key leaked straight to
+  child stdout through the real pipeline → gate RED, transcript deleted;
+  synthetic env only (`https://127.0.0.1:9`), key prefix defanged in every
+  committed byte.
+- `004b-schema-rls-live/rls-probes.mjs` — the cross-user section is now
+  the full grid: SELECT/UPDATE/DELETE against victim rows on all three
+  tables, INSERT impersonation on all three, the composite-FK case
+  (WITH CHECK satisfied → 409 `23503` naming the composite FK), the
+  isolation probe (attacker inserts the victim's own valid
+  `(capture_id, user_id)` pair — FK-satisfiable by construction, so only
+  RLS WITH CHECK can reject: 403 `42501`, distinct from the FK case), and
+  three victim-side true-no-op re-reads. Fresh `ctrl004c-*` namespace.
+- Regenerated live evidence: `anon-probes.txt` 11/11, `auth-probes.txt`
+  46/46 (16-probe cross-user grid), `redaction-gate.txt` both files GREEN
+  with sha256 verified equal to the committed bytes; run-state
+  `mailer_autoconfirm=true` recorded in-transcript.
+- `roles-acl.sql` (new, parse-proven read-only) + `roles-acl.txt` (new,
+  owner-pasted verbatim, run-state annotated).
+- `docs/02-roles/OPERATIONS.md` — the one authorized sentence rewritten to
+  pre-authorized variant (a): postgres-role tooling sees rows despite
+  FORCE (BYPASSRLS measured); the `TO postgres` policy documented as inert
+  defense-in-depth against future role demotion.
+- `004b-schema-rls-live/README.md` — measured-posture section (including
+  the controller-classified adjacent observation), two-layer redaction
+  section, full-grid claim 8, corrected claim 6 (the provisioning definer
+  measurably bypasses via BYPASSRLS; the policy is inert), claim 14
+  (file-byte totality + control + sha256 binding), new claims 18 (measured
+  posture) and 19 (dashboard tooling end-to-end NOT RUN — attributes
+  measured, sessions not transcribed), fix-cycle identifiers, and the
+  email-confirmation prose now defers current state to this block.
+- `docs/01-state/BRANCH-NOTES.md` — LOCK status-line suffix only.
+  `docs/01-state/PROJECT-STATE.md` — Unit C Active-work row only.
+
+**Verification (every PASS carries an artifact)**
+
+| Check | Class | Artifact |
+| --- | --- | --- |
+| Exact-value oracle discriminates (`>= -1` neighbor) | PASS | `004a/assertions-negative-control.txt` scenario 8 (permanent) |
+| 72/72 static assertions still pass on the real set | PASS | `004a/sql-assertions.txt` (regenerated byte-identical — no hunk, learning 9) |
+| File-byte redaction gate red path (planted direct-stdout leak) | PASS | `004b/redaction-control.txt` (gated positive control) |
+| File-byte gate green on committed transcripts, sha256-bound | PASS | `004b/redaction-gate.txt`; sha256 of each committed transcript equals the recorded value (checked this session; re-checkable with `shasum -a 256`) |
+| Anon denial (REST + storage) | PASS | `004b/anon-probes.txt` 11/11 |
+| Full cross-user grid incl. WITH CHECK isolation probe | PASS | `004b/auth-probes.txt` 46/46 (16-probe grid section) |
+| Staging role/ACL/RLS posture | PASS (measured, owner-executed) | `004b/roles-acl.txt` |
+| Dashboard tooling exercised end-to-end | NOT RUN — determining attributes measured; no tooling session transcribed | `004b/README.md` claim 19 |
+| Byte-stability, 004a (six gated × 2) | PASS | `004a/stability.txt` (fresh run reproduced the committed transcript byte-identically — no hunk, learning 9) |
+| Byte-stability, 004b (five gated × 2, `redaction-control.txt` joined the set) | PASS | `004b/stability.txt` (fresh transcript) |
+| Four non-install CI steps at this head | PASS | `004a/gates.txt`, `004b/gates.txt` (both regenerated byte-identical inside the stability runs) |
+| Secret scan over the full index (incl. every new artifact) | PASS | `004a/secret-scan.txt`, `004b/secret-scan.txt` (byte-identical) |
+| Range whitespace | PASS | `git diff --check` clean over the cycle range (checked before each push) |
+| `npm ci` | NOT RUN with reason | no dependency delta (probe inside both gates.txt); accepted ENOTEMPTY history not re-litigated |
+| Branch CI | NOT RUN | no `pull_request` event on this branch |
+| `supabase db lint` / local stack | NOT RUN | Docker/database boundary unchanged from Phase A/B |
+| Production access | NOT RUN — prohibited | — |
+
+**What I did not do**
+
+No file under `supabase/` was touched (verifiable in the delta); no edit
+to `REVIEW-*.md`, any ADR, any prior HANDOFF block, or
+`src/lib/database.types.ts`; no new dependencies; no production access; no
+auth-config change by me (owner-executed, on the record above). Parked
+items left parked: the `supabase/.temp` prettier interaction (one
+working-copy manifestation disclosed below), the PostgREST denial hints,
+and the 004a capture process-status coarseness.
+
+**Disclosures**
+
+- Byte-identical regenerations produced no hunks (learning 9):
+  `004a/sql-assertions.txt`, `004a/config-provenance.txt`,
+  `004a/inventory.txt`, `004a/secret-scan.txt`, `004a/gates.txt`,
+  `004a/stability.txt`, `004b/types-shape.txt`, `004b/gates.txt`,
+  `004b/inventory.txt`, `004b/secret-scan.txt`, and both
+  `environment.txt` files. The dispatch's expected touch-set names the
+  004a transcripts and gates; the recordable deltas are listed above and
+  the byte-identical remainder is disclosed, never manufactured.
+- The 004a `gates.txt` regeneration in this working copy tripped the
+  parked `supabase/.temp` prettier item (owner machine residue flagged by
+  that step's working-tree walk — it predates 004b's checkout-index
+  normalization). The committed clean-clone-reproducible copy was kept,
+  and both cycle-end stability gates ran in a disposable clone of the
+  staged tree (REVIEW-009-loop precedent): all comparisons identical,
+  both gates exit 0.
+- The first landed version of the new gate-report writer left a blank
+  line at EOF of `redaction-gate.txt` (a `git diff --check` violation),
+  caught before commit. The fix went into the producer
+  (`live-probes.sh`), never into its output: the owner deleted the first
+  user pair, and the full live suite re-ran under the fixed producer —
+  the committed transcripts and gate report are that second run's.
+  `redaction-control.txt` was proven byte-unaffected by the fix.
+
+**Next step**
+
+Controller routes the re-review (fresh review record per workflow step 5;
+advisory seat per the LOCK). Owner merge waits for a PASS review.
+
+LOCK status line: `Status: REVIEW — fix cycle 1 complete, awaiting
+re-review`.
+
+---
+
 ## 2026-08-20 — feat/schema-rls-v1 (REVIEW-011 full-unit review)
 
 **Controller:** CTRL-004 Schema and RLS v1. **Reviewer of record:** Codex Sol,

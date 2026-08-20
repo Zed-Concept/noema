@@ -96,7 +96,7 @@ What is in flight, who owns it, and what it is blocked on. One row per stream.
 
 | Stream | Owner | Status | Blocked on |
 |---|---|---|---|
-| Unit C — Schema and RLS v1 (`feat/schema-rls-v1`) | Claude Code | Phase B built on the owner-applied schema: owner-regenerated types committed as-is; live evidence (`004b-schema-rls-live`) proves anon denial, signup provisioning, owner CRUD, cross-user denial, and storage `{user_id}/` scoping (51/51 probes); LOCK flipped to REVIEW | Reviewer-of-record + advisory (DeepSeek V4 Pro) routing, then owner merge |
+| Unit C — Schema and RLS v1 (`feat/schema-rls-v1`) | Claude Code | REVIEW-011 FAIL → fix cycle 1 complete (`ce59385` + `cfabce9`): staging role/ACL posture measured (postgres BYPASSRLS — FORCE-RLS prose corrected to the pre-authorized variant), exact-value schema oracle with a permanent `>= -1` control, file-byte redaction gate with a planted-leak control, full cross-user grid live (anon 11/11, auth 46/46 incl. the WITH CHECK isolation probe), stale auth-state record superseded in the HANDOFF; LOCK stays REVIEW with the fix-cycle suffix | Re-review by the reviewer of record + advisory (DeepSeek V4 Pro), then owner merge |
 | Production Supabase project | Owner | Parked by ruling — create in East US (North Virginia) before any launch-facing unit | Free-tier slot or Pro upgrade at that time |
 
 Unit A merged 2026-08-19 at `8d648bb` (PR #2, REVIEW-007 PASS); its full

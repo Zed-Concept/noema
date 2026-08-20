@@ -71,7 +71,7 @@ Model+Effort:       Fable 5 / Ultracode (xhigh + workflows) / fresh session
 Reviewer of record: Codex (Codex Sol / Ultra / fresh session); advisory
                     reviewer DeepSeek V4 Pro on the RLS/auth policy diff
                     (RED-on-arrival trigger per ADR-001)
-Status:             REVIEW
+Status:             REVIEW — fix cycle 1 complete, awaiting re-review
 Dispatch:           Unit C — Schema and RLS v1: author initial SQL migrations
                     and the first RLS policy set for the owner-ruled v1
                     entities, regenerate database types against the applied
