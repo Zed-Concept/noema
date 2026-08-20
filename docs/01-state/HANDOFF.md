@@ -8,6 +8,110 @@ Append a new block at the top. Never edit an old one.
 
 ---
 
+## 2026-08-20 — feat/schema-rls-v1 (REVIEW-011 full-unit review)
+
+**Controller:** CTRL-004 Schema and RLS v1. **Reviewer of record:** Codex Sol,
+Ultra effort, fresh session. **Reviewed base:**
+`64c1ce603491fb2cb6e8b7b948a369731a436c7f`. **Target:**
+`5ec404cb2d382b9cd2eda24de24abfac90d19730`. **Verdict:** FAIL.
+**LOCK:** `Status: REVIEW` — unchanged; MERGED remains controller-only.
+
+**Disclosure (ruling 6):** workflows run: 0. Review methods: fixed-range
+Standards/Spec review, Noema governance review, and Supabase/PostgreSQL
+authorization plus evidence-boundary verification. Subagent fan-out: three
+read-only lanes — repository standards, dispatch/spec compliance, and
+PostgreSQL/RLS plus evidence controls. No subagent edited the repository.
+
+**What happened**
+
+I reviewed the full four-commit Unit C range after a successful fresh fetch and
+exact-SHA/ancestry confirmation. The immutable
+`docs/04-reviews/REVIEW-011.md` verdict is **FAIL** with four medium
+verdict-driving findings and one low non-driving finding:
+
+1. The unit's hosted-`postgres` premise conflicts with the fetched upstream
+   `supabase/postgres` `develop` snapshot and is unmeasured on exact staging.
+   That pinned snapshot assigns `postgres` `BYPASSRLS`; PostgreSQL says that
+   role attribute always bypasses RLS. The `TO postgres` policy is therefore
+   not proven causal, and the OPERATIONS claim that postgres-role Table Editor,
+   SQL editor, and data-only dumps see zero rows is unsupported (and false if
+   staging matches the vendor baseline). The static GRANT AST proves the three
+   authored grants name `authenticated`; it does not prove the absolute
+   effective-ACL claim that `service_role`/PUBLIC receive nothing.
+2. The Phase A exact-schema oracle accepts `duration_ms >= -1` while still
+   printing PASS for `duration_ms >= 0` and returning 72/72, exit 0. The
+   committed migration is correct; the claimed exact-value proof is not.
+3. The Phase B redaction gate scans only its private `out()` buffer while the
+   shell commits the child's complete stdout/stderr. A synthetic direct-output
+   control preserved a registered fake key while the gate printed zero
+   residuals and returned 0. Current transcripts/tree scanned clean; this is a
+   fail-closed guarantee defect, not a found credential leak.
+4. The target says staging “now has email confirmation disabled” and leaves
+   re-enabling as a future call. The review dispatch records that the owner
+   re-enabled it after the probe run. The transcripts correctly prove only the
+   run-time `mailer_autoconfirm=true` state; the post-run handoff is stale.
+5. Low/non-driving: the live claim says cross-user write denial across all
+   three tables, but the producer runs SELECT on all three, UPDATE only on
+   captures, DELETE only on transcripts, and RLS-denied INSERT only on
+   profiles/captures. The transcript insert is rejected by the composite FK,
+   not transcript WITH CHECK. Static policy coverage is complete; the live
+   claim must be narrowed or the missing operations added.
+
+No authenticated end-user policy bypass was found. The twelve authenticated
+owner policies and every predicate position (including both sides of all three
+UPDATE policies), composite-FK mechanism and supporting indexes, provisioning
+function/trigger structure, storage policy predicates, and generated
+Row/Insert/Update/relationship source shape are correct on direct and AST
+inspection.
+
+**Verification and classifications**
+
+| Check | Class | Evidence/result |
+|---|---|---|
+| Fresh refs and exact range | PASS | `origin/main` = supplied base; `origin/feat/schema-rls-v1` = supplied target; four linear commits; 37 files, +3977/-11 |
+| Phase A committed gate | PASS with finding 2 limit | six gated artifacts × two exact-target runs; all identical; process 0 |
+| Phase B offline committed gate | PASS with findings 3/5 limits | four gated artifacts × two exact-target runs; all identical; process 0 |
+| Duration-value counterfactual | FAIL introduced | `>= -1` still produced the named PASS, 72/72, process 0; mutation reversed, tracked temp tree clean |
+| Redaction counterfactual | FAIL introduced | registered synthetic key bypassed `out()`, survived stdout, zero-residual line, process 0; mutation reversed, tracked temp tree clean |
+| Current credential residue | PASS for declared shapes/configured URL-host-ref-key; run-only exact values NOT RUN | committed positive-controlled scans and fresh exact-target scans found no declared shape or exact current configured value; ephemeral probe passwords/tokens unavailable for exact comparison |
+| Authored authenticated GRANT shape | PASS | exactly three CRUD grants, each to `authenticated` only |
+| Effective privileged-role ACL/FORCE/tool behavior | NOT RUN / claimed PASS fails | no role-attribute, effective-privilege, dashboard, or dump artifact; no reviewer DB query |
+| Committed anon/auth behavior | PASS for operations recorded / fresh live NOT RUN | `anon-probes.txt` 11/11; `auth-probes.txt` 40/40; reviewer did not create users or query staging |
+| Types generation and migration application | NOT RUN by reviewer | owner-executed under ruling 10; compile and Row names corroborated indirectly, full Insert/Update/Relationships checked directly in source |
+| OPERATIONS change scope | PASS scope / FAIL semantics | exact +5/-1 wrapping one authorized grammatical sentence; finding 1 applies |
+| Email-confirmation current-state record | FAIL introduced / fresh query NOT RUN | review dispatch records owner re-enable; target prose says still disabled |
+| State and immutable boundaries | PASS | Unit C Active-work only; prior HANDOFF suffix byte-identical; LOCK remains REVIEW; prior ADR/review files untouched |
+| Local non-install gates | PASS from committed artifacts | typecheck, lint, Jest, format check all encode exit 0 and reproduced byte-for-byte |
+| `npm ci` | NOT RUN with reason | no package/lockfile delta; accepted ENOTEMPTY history not re-litigated |
+| Branch CI | NOT RUN | fresh GitHub query: zero PRs and zero workflow runs for this branch |
+| `supabase db lint` / local stack | NOT RUN | database/Docker boundary not exercised |
+| Advisory verdict | NOT RUN in this record | DeepSeek V4 Pro remains the separately routed advisory reviewer |
+| Delta whitespace | PASS | exact base-to-target `git diff --check`, process 0 |
+| Production | NOT RUN — prohibited | no credential, query, write, deploy, or outward-facing action |
+
+**What I did not do**
+
+I did not edit any migration, evidence producer/transcript, generated type,
+OPERATIONS content, lock/controller state, prior HANDOFF block, ADR, or prior
+review. The configured public staging URL/key and their derived host/ref were
+handled only by a nonprinting local exact-value residue comparison; none was
+emitted or sent in a request. I did not query staging or production, create
+test users, change auth settings, apply schema, regenerate types, open a PR,
+push, merge, deploy, or perform owner cleanup. All reviewer mutations were
+synthetic, disposable, reversed, and outside the primary checkout. The
+review's only writes are this additive block and the new immutable REVIEW-011
+record.
+
+**Next step**
+
+Controller dispatches a fix cycle for REVIEW-011 findings 1-4 and either
+narrows or extends finding 5's live claim. Applied migrations remain immutable;
+the reviewer made no remediation. Owner merge waits for a later PASS review.
+
+LOCK status line: `Status: REVIEW`.
+
+---
+
 ## 2026-08-20 — feat/schema-rls-v1 (CTRL-004 Unit C, Phase B)
 
 **Controller:** CTRL-004 Schema and RLS v1. **Builder:** Claude Code — Fable
