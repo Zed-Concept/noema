@@ -8,6 +8,112 @@ Append a new block at the top. Never edit an old one.
 
 ---
 
+## 2026-08-20 — feat/schema-rls-v1 (REVIEW-013 fix-cycle-2 re-review)
+
+**Controller:** CTRL-004 Schema and RLS v1. **Reviewer of record:** Codex Sol,
+Ultra effort, fresh session. **Reviewed base:**
+`64c1ce603491fb2cb6e8b7b948a369731a436c7f`. **Target:**
+`45396fc2527220d81a541897baa34c4521eab502`. **Prior record:** REVIEW-012.
+**Verdict:** **FAIL.** **LOCK:** unchanged at `Status: REVIEW — fix cycle 2
+complete, awaiting re-review`; MERGED remains controller-only.
+
+The controller-disclosed Fable 5 to Opus 5 transition is accepted under the
+owner in-loop ruling. The harness-fixed Fable 5 commit trailer is the known
+cosmetic artifact named in the dispatch and is not a finding.
+
+**Disclosure (ruling 6):** one workflow ran: `standards-spec-review`, with two
+read-only subagents for the required Standards and Spec axes. One additional
+read-only subagent audited the schema oracle adversarially. Supabase/PostgreSQL
+and governance/evidence-boundary checks ran in the main review lane. No
+subagent edited the repository.
+
+**Scope and outcome**
+
+I fetched before inspecting the reviewed implementation/evidence, confirmed
+both supplied commit objects and exact remote/local refs, and confirmed the
+base is the target's merge-base and ancestor. The clean exact target contains
+ten linear Unit C commits: 44 files, +6247/-12. The REVIEW-012-to-target delta
+is one commit, 16 files, +792/-241. Applied migrations,
+`src/lib/database.types.ts`, ADRs, prior REVIEW records, and `roles-acl.*` are
+unchanged in the fix cycle. Full-range and fix-delta `git diff --check` pass.
+
+The immutable `docs/04-reviews/REVIEW-013.md` records four classified
+findings; three medium findings are verdict-driving:
+
+1. **F1 remains partial (medium).** Current 004b README, producer comment, and
+   regenerated anon transcript say anon holds no grants/table grants. The
+   settled grid itself records `MAINTAIN`, `REFERENCES`, `TRIGGER`, and
+   `TRUNCATE`, and column ACLs remain NOT RUN. The supported statement is zero
+   current table-level SELECT/INSERT or CRUD. The other tooling, owner,
+   PUBLIC, service-role, and column-ACL boundaries are repaired.
+2. **F2 remains open (medium).** Six new parse-valid one-change neighbors —
+   CHECK `NOT IN`, a policy subquery with `WHERE false`, column-only
+   `SELECT(id)`, a second public bucket row, `UPDATE OF display_name`, and an
+   index `INCLUDE(id)` — each returned process 0 and 78/78 PASS. The actual
+   migrations remain correct; the claimed exact/absence oracle is false-green.
+3. **New fix-cycle-2 evidence defect (medium).** The claimed 18-neighbor PASS
+   has no committed full-battery artifact. Its prose says five prior plus
+   thirteen additional neighbors but enumerates seventeen additional classes,
+   so the count is also internally inconsistent.
+4. **Historical LOCK prose residue (low, non-driving).** The Phase B note in
+   `BRANCH-NOTES.md` still calls all 11 anon probes denials. Current artifacts
+   correctly report 9 denial/invisibility plus 2 service-context probes.
+
+**REVIEW-012 finding disposition**
+
+| Prior finding | Status | Reviewer boundary |
+| --- | --- | --- |
+| F1 privileged-role claims | **NOT CLEARED** | Most boundaries are narrowed honestly; the residual anon no-grants statement is broader than `roles-acl.txt`. |
+| F2 exact-schema oracle | **NOT CLEARED** | Baseline 78/78 and permanent 12/12 controls pass, but six fresh material neighbors remain green; the claimed 18-run battery is unsupported/miscounted. |
+| F3 delete-on-red prose | **CLEARED** | Fresh missing-ledger control returned 1 and retained the file; the planted residual control deletes it. |
+| F4 disposable-user maximum | **CLEARED at the recorded boundary** | The global claim is withdrawn and superseded by per-namespace accounting. The dispatch records confirmation ON and both `ctrl004d` users deleted; fresh live verification was NOT RUN. |
+| F5 response oracle/anon label | **PRODUCER AND CURRENT SUMMARY CLEARED; LOW HISTORICAL RESIDUE** | Exact status/code pairs and 9+2 labeling pass; the old Phase B LOCK sentence remains stale. |
+
+**Verification**
+
+| Check | Class | Evidence/result |
+| --- | --- | --- |
+| Exact refs, ancestry, sequence, and range sizes | PASS | Fresh fetch; exact base/target; ten linear commits; dispatched full/fix-cycle counts. |
+| Fix-cycle exclusions and immutable boundaries | PASS | No applied migration, generated type, ADR, prior REVIEW, or `roles-acl.*` delta; HANDOFF is top insertion; LOCK remains REVIEW. |
+| 004a exact-target stability | PASS | Six gated artifacts × two detached plain-path runs; all twelve comparisons identical; process 0. |
+| 004a static baseline/permanent controls | PASS | Fresh 78/78 baseline and 12/12 permanent negative scenarios, each process 1 with its named FAIL. |
+| 004a exact/absence oracle | FAIL introduced by Unit C; retained after fix cycle 2 | Six new material neighbor classes returned process 0 and 78/78; no counterfactual was applied to a database. |
+| Claimed 18-neighbor audit | FAIL introduced | No committed full artifact; five + thirteen prose lists seventeen additional classes. |
+| F3 redaction behavior | PASS | Missing-ledger red path retained its file; planted residual path removed it. |
+| Initial exact-target 004b stability attempt | FAIL pre-existing to this review write; attribution NOT VERIFIABLE | The wrapper returned 1 and deleted its suppressed scratch diagnostics, so the cause cannot be classified more narrowly. |
+| Subsequent exact-target 004b captures | PASS | A direct capture and complete five-artifact × two-run retry reproduced all five committed bytes; all ten comparisons were identical, process 0. |
+| Live artifact hashes and counts | PASS from committed artifacts / fresh live NOT RUN | Anon 3518 B, SHA-256 `f2a3717c…d9b9`, 11 PASS; auth 12415 B, `3b23ba2e…4ef6`, 46 PASS; zero FAIL; 16 cross-user probes. |
+| F4 external state | PASS from controller-restated owner record / fresh external verification NOT RUN | Confirmation ON and both `ctrl004d` deletions are recorded; reviewer made no staging/auth query. |
+| Four non-install repository gates | PASS from fresh stability | Typecheck, lint, Jest, and format-check exit-0 transcripts reproduced byte-for-byte. |
+| `npm ci` | NOT RUN with reason | No package or lockfile delta. |
+| Branch CI | NOT RUN | Fresh GitHub queries found no PR and no workflow run at the exact target. |
+| Advisory result | NOT RUN | DeepSeek V4 Pro remains named in the LOCK; no advisory verdict artifact was supplied. |
+| Production access | NOT RUN — prohibited | No production credential, query, write, deploy, or outward-facing action occurred. |
+
+Standards: **4 findings; worst severity medium.** Spec: **3 findings; worst
+severity medium.** The full axis reports, stable evidence anchors, and the
+initial 004b fail-closed-run disclosure are in REVIEW-013.
+
+**What I did not do**
+
+No Supabase project query or write; no auth toggle or user creation/deletion;
+no migration application/edit, type generation, RED-lane mutation, PR, push,
+merge, deploy, secret output, or production access. This review writes exactly
+`docs/04-reviews/REVIEW-013.md` and this top-insert HANDOFF block.
+
+**Next step**
+
+Controller routes fix cycle 3 to the same builder/branch and obtains the named
+advisory outcome. The minimum verdict-driving work is to narrow the remaining
+F1 anon-grant statement, make the exact oracle reject the demonstrated
+neighbors, and replace the unsupported/miscounted neighbor-audit PASS with a
+committed reproducible artifact. Owner merge waits for a later PASS review.
+
+LOCK status line: `Status: REVIEW — fix cycle 2 complete, awaiting
+re-review`.
+
+---
+
 ## 2026-08-20 — feat/schema-rls-v1 (CTRL-004 Unit C, fix cycle 2 — REVIEW-012)
 
 **Controller:** CTRL-004 Schema and RLS v1. **Builder:** Claude Code, same
