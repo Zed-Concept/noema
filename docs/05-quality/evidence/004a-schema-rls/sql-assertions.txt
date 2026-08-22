@@ -28,7 +28,7 @@ PASS every CREATE FUNCTION carries only funcname/returnType/options — no OR RE
 PASS every GRANT is an object-level, RESTRICT-behaviour grant of whole-table privileges — no GRANTED BY grantor and no WITH GRANT OPTION field at all
 PASS every ALTER TABLE targets a plain table by name — no ONLY, no IF EXISTS, no non-table objtype — and each command carries only its subtype
 PASS every policy carries only its name/table/command/permissiveness/roles/predicates, and all 17 are PERMISSIVE — a RESTRICTIVE policy inverts how the policy set combines
-PASS the bucket INSERT carries only relation/cols/selectStmt/override, with OVERRIDING unset and a bare VALUES source — no WITH clause, ON CONFLICT, or RETURNING
+PASS the bucket INSERT carries only relation/cols/selectStmt/override, with OVERRIDING unset, bare-name target columns, and a bare VALUES source — no WITH clause, ON CONFLICT, or RETURNING
 -- public.profiles --
 PASS profiles columns are exactly (id, display_name, locale, created_at, updated_at)
 PASS profiles.id uuid PRIMARY KEY
@@ -104,7 +104,7 @@ PASS handle_new_user: returns trigger, plpgsql, SECURITY DEFINER, search_path pi
 PASS handle_new_user body is exactly the single schema-qualified profiles insert plus return new — nothing else runs as definer
 PASS trigger on_auth_user_created: AFTER INSERT FOR EACH ROW on auth.users -> public.handle_new_user
 -- storage: private bucket + owner-only object policies --
-PASS bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false) — exactly one VALUES row, plain insert, no ON CONFLICT (deliberately non-idempotent), no RETURNING
+PASS bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false) — exactly one VALUES row of exactly three values, plain insert, no ON CONFLICT (deliberately non-idempotent), no RETURNING
 PASS storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped
 PASS storage.objects insert: one policy TO authenticated, bucket-pinned and {user_id}/-scoped on WITH CHECK
 PASS storage.objects update: one policy TO authenticated, bucket-pinned and {user_id}/-scoped on USING and WITH CHECK

@@ -29,6 +29,24 @@
 # names are extracted below — the file is never sourced, and no value is ever
 # echoed.
 #
+# CONTROL-VARIABLE CONTAINMENT (REVIEW-016 finding 2). This script inherits
+# its caller's environment wholesale and passes it to the child, and it reads
+# a child exit of 0 as success. That combination makes any environment
+# variable this evidence suite gives special meaning an ambient switch on a
+# production run: the retired SETTINGS_PREFLIGHT_CONTROL made the child exit 0
+# after the auth-settings preflight with zero probes, and this script would
+# have committed that transcript and stayed green if the auth child passed. So
+# before anything else runs, every control variable this suite defines is
+# checked against the INHERITED environment and the run is REFUSED — exit 5,
+# nothing read, nothing written, no network touched. It aborts rather than
+# clearing the variable and continuing, because an ambient control variable
+# means this is not the environment the evidence claims to have been produced
+# in, and that fact must surface rather than be tidied away. The check covers
+# --control mode too (which sets its own leak flag AFTER this point), so it is
+# not a mode-specific courtesy. The permanent proof that it aborts, and that
+# it still admits a clean environment, is section 2 of
+# settings-preflight-control.txt.
+#
 # --control mode (the finding 3 positive control, run by capture.sh): the
 # same run_mode + gate pipeline against synthetic values only — the URL is
 # https://127.0.0.1:9 (instant refusal; no network, no DNS) and the key is
@@ -41,7 +59,10 @@
 # both gates green; 1 any probe failure, redaction trip, or gate red; 2 not
 # configured; 3 authenticated path NOT RUN (reason recorded in the
 # transcript; the anon evidence stands separately); 4 the auth-settings
-# preflight failed closed before any probe ran (REVIEW-015 finding 2).
+# preflight failed closed before any probe ran (REVIEW-015 finding 2); 5 a
+# control variable was present in the inherited environment and the run was
+# refused before anything was read, written, or contacted (REVIEW-016
+# finding 2 — this code is returned in both modes).
 # --control mode: 0 the control proved the red path exactly; 1 otherwise.
 #
 # Usage, from the repo root:
@@ -52,6 +73,24 @@ export LC_ALL=C
 export LANG=C
 evdir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$(git rev-parse --show-toplevel)"
+
+# --- control-variable containment: refuse before doing anything at all -------
+# Every environment variable this evidence suite gives special meaning. A name
+# retired from the producers stays on this list: a stale ambient value must
+# still surface as a refusal rather than pass unnoticed (REVIEW-016 finding 2).
+CONTROL_VARS='REDACTION_CONTROL_LEAK SETTINGS_PREFLIGHT_CONTROL'
+control_present=''
+for cv in $CONTROL_VARS; do
+  eval "cv_isset=\${$cv+set}"
+  if [ "${cv_isset:-}" = set ]; then control_present="$control_present $cv"; fi
+done
+if [ -n "$control_present" ]; then
+  echo "REFUSED: control variable(s) present in the inherited environment:${control_present}." >&2
+  echo "A control variable is an ambient switch on a production run, so the run is" >&2
+  echo "refused rather than silently continued or silently cleared. Nothing was" >&2
+  echo "read, written, or contacted (REVIEW-016 finding 2)." >&2
+  exit 5
+fi
 
 scratch="$(mktemp -d)"
 chmod 700 "$scratch"

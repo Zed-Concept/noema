@@ -25,9 +25,39 @@
 //      KIND as well as the operator name. Four different predicates share
 //      the name '=' (see opExpr), one of them its exact negation.
 //   2. Every node whose shape a class claims to pin is compared against the
-//      exact key set the committed set produces under the pinned parser
-//      (onlyKeys), so any grammar clause the class does not account for
+//      list of keys the committed set produces under the pinned parser
+//      (noUnlistedKeys), so any grammar clause the class does not account for
 //      makes the node reject instead of riding along unread.
+//
+// CARDINALITY, AND THE SAME SHAPE TEST EVERYWHERE (REVIEW-016 finding 1).
+// Rule 2 pins which keys a node may carry; it says nothing about how many
+// entries a LIST under one of those keys holds, and it was applied to the
+// nodes REVIEW-015 named rather than to every node the classes claim. Reading
+// a position without pinning arity is not pinning: isFolderEq() read
+// indirection[0] and never required the subscript list to hold exactly one
+// entry, so (storage.foldername(name))[1][2] — apply-valid, because
+// PostgreSQL returns NULL for the wrong number of subscripts instead of
+// raising — made the folder equality UNKNOWN for every row, denying owners,
+// while this oracle still printed its `{user_id}/-scoped` PASS. Auditing
+// every named class for that same defect shape found 25 accepted in-class
+// neighbors across four classes (RLS, Storage bucket row, Functions, Foreign
+// keys). Three more structural rules close them:
+//   3. Subscript lists are read WHOLE by intSubscripts(): the exact number of
+//      subscripts, each a plain integer index, no slice. Position alone is
+//      never enough.
+//   4. Every function call a class pins goes through the SAME shape test
+//      defaultFunc() already applied to column defaults (plainCall), so
+//      VARIADIC, DISTINCT, ORDER BY, FILTER, OVER, and a star argument reject
+//      wherever a call is pinned — not only inside a DEFAULT clause. The
+//      guard existed in this file and was simply not shared.
+//   5. Every comparison of a named thing goes through the helper that MARKS
+//      its neighbors, at every site: typeName() marks typmod and array so
+//      `::text[]` and `returns trigger[]` cannot equal `text` and `trigger`;
+//      bareTarget() rejects an output alias on a pinned SELECT target;
+//      isPlainRel() is applied to FK referenced tables too, so a catalog
+//      qualifier cannot ride on the one relation reference that skipped it.
+// List cardinalities a single assertion owns — the VALUES row's item count,
+// the INSERT target-column list — are pinned at those assertion sites.
 // Every class named in README.md's "What the oracle proves" list is required
 // by capture.sh to carry at least one permanent scenario in
 // assertions-negative-control.txt, and capture.sh fails closed if that list
@@ -86,11 +116,69 @@ const sval = (x) => x?.String?.sval;
 // EXISTS beside an index key list; REFERENCING / OR REPLACE on a trigger;
 // GRANTED BY on a grant; ONLY on an ALTER TABLE; OVERRIDING on an INSERT
 // (REVIEW-015 finding 1). Instead of chasing each field as it is found,
-// every such node is compared against the exact key set the committed
-// migrations produce under the pinned parser: anything else makes it
-// reject. This is the isBareSelect technique below, generalized.
-const onlyKeys = (node, allowed) =>
+// every such node is listed against the keys the committed migrations
+// produce under the pinned parser: a key that is not on the list makes the
+// node reject. This is the isBareSelect technique below, generalized.
+//
+// The test is deliberately "nothing unlisted rides along", NOT set equality,
+// and the name says so (REVIEW-016 standards note: the previous name and
+// comment said "exact key set" while the code compared a subset). Set
+// equality would be wrong here: libpg_query emits protobuf, which OMITS a
+// scalar field at its default value, so `timing: 0` and `is_slice: false`
+// are absent rather than present-and-false. An absent key is therefore not a
+// signal; an unlisted one is. Where a default value is itself meaningful it
+// is pinned BY VALUE alongside this test, and where a list's length is
+// meaningful it is pinned by length — neither follows from the key list.
+const noUnlistedKeys = (node, allowed) =>
   !!node && Object.keys(node).every((k) => allowed.includes(k));
+// The complete subscript list of an A_Indirection as plain integer indices,
+// or null if the node carries anything else. Cardinality is the point:
+// `[1][2]` is a second scalar subscript that PostgreSQL evaluates to NULL
+// rather than rejecting, and `[1:1]` is a slice whose `uidx` matches while
+// `is_slice`/`lidx` go unread — both changed the expressly pinned storage
+// folder predicate and both ran green (REVIEW-016 finding 1).
+const intSubscripts = (ind) => {
+  if (!Array.isArray(ind?.indirection)) return null;
+  const out = [];
+  for (const e of ind.indirection) {
+    const ix = e?.A_Indices;
+    // Only `uidx`: a slice carries is_slice/lidx and rejects here.
+    if (!noUnlistedKeys(ix, ['uidx'])) return null;
+    const c = ix.uidx?.A_Const;
+    // Integer constant only — a text or cast subscript is a different lookup.
+    if (!c || !('ival' in c)) return null;
+    out.push(c.ival.ival ?? 0);
+  }
+  return out;
+};
+// A plain function call node: nothing but the name, the arguments, and the
+// explicit-call format. Every aggregate/window decoration libpg_query can
+// hang on a FuncCall — agg_star, agg_distinct, agg_order, agg_filter, over,
+// func_variadic — is an unlisted key and rejects. defaultFunc() enforced
+// exactly this for column defaults; the RLS predicate call sites read only
+// funcname/args, so `auth.uid(*)`, `auth.uid() OVER ()`,
+// `storage.foldername(VARIADIC name)`, `... DISTINCT`, `... ORDER BY`, and
+// `... FILTER (WHERE …)` all rode along inside the pinned predicate
+// (REVIEW-016 finding 1). One helper now serves every call site.
+const isPlainCallNode = (fc) =>
+  noUnlistedKeys(fc, ['funcname', 'args', 'funcformat', 'location']) &&
+  fc.funcformat === 'COERCE_EXPLICIT_CALL';
+// …and, at a pinned site, that call with an exact name and argument count.
+const plainCall = (node, name, argc) => {
+  const fc = node?.FuncCall;
+  return isPlainCallNode(fc) &&
+    (fc.args ?? []).length === argc &&
+    (fc.funcname ?? []).map((f) => f.String?.sval).join('.') === name
+    ? fc
+    : null;
+};
+// A SELECT target that is exactly a value: no output alias, no indirection.
+// `(select auth.uid() as u)` is a different target list wearing the same
+// value, and rode along unread (REVIEW-016 finding 1).
+const bareTarget = (t) => {
+  const rt = t?.ResTarget;
+  return noUnlistedKeys(rt, ['val', 'location']) ? rt.val : undefined;
+};
 // Exactly the binary operator `op` — the A_Expr KIND as well as the operator
 // name. The kind check is the load-bearing half: libpg_query represents
 //   a IS DISTINCT FROM b      as AEXPR_DISTINCT
@@ -108,14 +196,21 @@ const opExpr = (expr, op) => {
   return ae && ae.kind === 'AEXPR_OP' && ae.name.map(sval).join('') === op ? ae : null;
 };
 // Exact type: a typmod (timestamptz(3)) or array bounds (text[]) neighbor
-// yields a marked string that equals no expected plain name.
-const typeOf = (cd) =>
-  cd.typeName.names
-    .map((s) => s.String.sval)
-    .filter((s) => s !== 'pg_catalog')
-    .join('.') +
-  (cd.typeName.typmods ? '(typmod)' : '') +
-  (cd.typeName.arrayBounds ? '[]' : '');
+// yields a marked string that equals no expected plain name. Every type-name
+// comparison in this file goes through this one helper — the cast inside the
+// storage initplan and both `returns trigger` checks re-joined `names`
+// themselves and dropped the markers, so `auth.uid()::text[]` and
+// `returns trigger[]` ran green (REVIEW-016 finding 1).
+const typeName = (tn) =>
+  !tn
+    ? ''
+    : (tn.names ?? [])
+        .map((s) => s.String?.sval)
+        .filter((s) => s !== 'pg_catalog')
+        .join('.') +
+      (tn.typmods ? '(typmod)' : '') +
+      (tn.arrayBounds ? '[]' : '');
+const typeOf = (cd) => typeName(cd.typeName);
 const cons = (cd, type) =>
   (cd.constraints ?? []).map((c) => c.Constraint).filter((c) => c.contype === type);
 const rel = (r) => `${r.schemaname ?? ''}.${r.relname}`;
@@ -132,8 +227,10 @@ const consTypes = (cd) =>
 const defaultFunc = (cd) => {
   const d = cons(cd, 'CONSTR_DEFAULT')[0];
   const fc = d?.raw_expr?.FuncCall;
-  if (!fc || fc.args || fc.agg_star || fc.agg_distinct || fc.agg_order || fc.agg_filter || fc.over)
-    return undefined;
+  // isPlainCallNode is the shared guard: the clause list this used to
+  // enumerate by hand is now "no unlisted key", which also covers
+  // func_variadic and any clause a later grammar adds.
+  if (!isPlainCallNode(fc) || (fc.args ?? []).length !== 0) return undefined;
   return (fc.funcname ?? []).map((f) => f.String.sval).join('.');
 };
 const defaultString = (cd) => cons(cd, 'CONSTR_DEFAULT')[0]?.raw_expr?.A_Const?.sval?.sval;
@@ -144,18 +241,18 @@ const notNull = (cd) => cons(cd, 'CONSTR_NOTNULL').length === 1;
 const fkExact = (fk, name, pkTable, pkAttrs) =>
   !!fk &&
   fk.conname === name &&
+  // The one relation reference in this file that did not go through
+  // isPlainRel, so `references somedb.auth.users (id)` — a catalogname rel()
+  // does not print — compared equal to the intended table (REVIEW-016
+  // finding 1).
+  isPlainRel(fk.pktable) &&
   rel(fk.pktable) === pkTable &&
   (fk.pk_attrs ?? []).map(sval).join(',') === pkAttrs &&
   fk.fk_matchtype === 's' &&
   fk.fk_upd_action === 'a' &&
   fk.fk_del_action === 'c';
 
-function isAuthUidCall(node) {
-  const fc = node?.FuncCall;
-  if (!fc || fc.args) return false;
-  const names = (fc.funcname ?? []).map((f) => f.String.sval);
-  return names.length === 2 && names[0] === 'auth' && names[1] === 'uid';
-}
+const isAuthUidCall = (node) => !!plainCall(node, 'auth.uid', 0);
 // (select auth.uid()) — or, with cast: (select auth.uid()::text)
 // The subselect is pinned to a bare one-target SELECT: libpg_query emits only
 // `targetList` plus the two always-present scalar defaults for that shape, so
@@ -178,15 +275,11 @@ function isSelectAuthUid(node, cast) {
   if (!sl || sl.subLinkType !== 'EXPR_SUBLINK') return false;
   const sel = sl.subselect?.SelectStmt;
   if (!isBareSelect(sel) || (sel.targetList ?? []).length !== 1) return false;
-  const val = sel.targetList[0].ResTarget.val;
+  const val = bareTarget(sel.targetList[0]);
   if (cast === 'text') {
     const tc = val?.TypeCast;
     if (!tc) return false;
-    const t = tc.typeName.names
-      .map((s) => s.String.sval)
-      .filter((s) => s !== 'pg_catalog')
-      .join('.');
-    return t === 'text' && isAuthUidCall(tc.arg);
+    return typeName(tc.typeName) === 'text' && isAuthUidCall(tc.arg);
   }
   return isAuthUidCall(val);
 }
@@ -213,11 +306,15 @@ function isFolderEq(expr) {
   const ae = opExpr(expr, '=');
   if (!ae) return false;
   const ind = ae.lexpr?.A_Indirection;
-  const fc = ind?.arg?.FuncCall;
-  const fnames = (fc?.funcname ?? []).map((f) => f.String.sval).join('.');
-  const folderOk = fnames === 'storage.foldername' && fc.args?.length === 1 && isColRef(fc.args[0], 'name');
-  const idxOk = ind?.indirection?.[0]?.A_Indices?.uidx?.A_Const?.ival?.ival === 1;
-  return folderOk && idxOk && isSelectAuthUid(ae.rexpr, 'text');
+  if (!noUnlistedKeys(ind, ['arg', 'indirection'])) return false;
+  const fc = plainCall(ind.arg, 'storage.foldername', 1);
+  if (!fc || !isColRef(fc.args[0], 'name')) return false;
+  // The WHOLE subscript list, not indirection[0]: exactly one scalar index,
+  // and that index is 1. `[1][2]` and `[1:1]` both matched the old
+  // position-only read (REVIEW-016 finding 1).
+  const subs = intSubscripts(ind);
+  if (!subs || subs.length !== 1 || subs[0] !== 1) return false;
+  return isSelectAuthUid(ae.rexpr, 'text');
 }
 function isStoragePredicate(expr) {
   const be = expr?.BoolExpr;
@@ -233,7 +330,7 @@ const roleNames = (p) => (p.roles ?? []).map((r) => r.RoleSpec?.rolename ?? r.Ro
 // the length test.
 const isEmptySearchPath = (sp) =>
   !!sp &&
-  onlyKeys(sp, ['kind', 'name', 'args']) &&
+  noUnlistedKeys(sp, ['kind', 'name', 'args']) &&
   sp.kind === 'VAR_SET_VALUE' &&
   sp.name === 'search_path' &&
   (sp.args ?? []).length === 1 &&
@@ -241,7 +338,7 @@ const isEmptySearchPath = (sp) =>
 // A plain, non-inheriting, permanent relation reference: `ONLY t` and an
 // UNLOGGED/TEMP table are different objects wearing the same name.
 const isPlainRel = (r) =>
-  onlyKeys(r, ['schemaname', 'relname', 'inh', 'relpersistence', 'location']) &&
+  noUnlistedKeys(r, ['schemaname', 'relname', 'inh', 'relpersistence', 'location']) &&
   r.inh === true &&
   r.relpersistence === 'p';
 
@@ -359,7 +456,7 @@ console.log('-- node-form pinning: no unlisted grammar clause rides along --');
     every(
       byType('CreateStmt'),
       (n) =>
-        onlyKeys(n, ['relation', 'tableElts', 'oncommit']) &&
+        noUnlistedKeys(n, ['relation', 'tableElts', 'oncommit']) &&
         n.oncommit === 'ONCOMMIT_NOOP' &&
         isPlainRel(n.relation),
     ),
@@ -367,7 +464,7 @@ console.log('-- node-form pinning: no unlisted grammar clause rides along --');
   assert(
     'every table element is a ColumnDef or a Constraint — no LIKE source table, which contributes columns that never appear in the compared column list',
     every(byType('CreateStmt'), (n) =>
-      (n.tableElts ?? []).every((e) => onlyKeys(e, ['ColumnDef']) || onlyKeys(e, ['Constraint'])),
+      (n.tableElts ?? []).every((e) => noUnlistedKeys(e, ['ColumnDef']) || noUnlistedKeys(e, ['Constraint'])),
     ),
   );
   assert(
@@ -377,9 +474,9 @@ console.log('-- node-form pinning: no unlisted grammar clause rides along --');
         .filter((e) => e.ColumnDef)
         .every(
           (e) =>
-            onlyKeys(e.ColumnDef, ['colname', 'typeName', 'is_local', 'constraints', 'location']) &&
+            noUnlistedKeys(e.ColumnDef, ['colname', 'typeName', 'is_local', 'constraints', 'location']) &&
             e.ColumnDef.is_local === true &&
-            onlyKeys(e.ColumnDef.typeName, [
+            noUnlistedKeys(e.ColumnDef.typeName, [
               'names',
               'typemod',
               'location',
@@ -395,7 +492,7 @@ console.log('-- node-form pinning: no unlisted grammar clause rides along --');
       (n.tableElts ?? [])
         .flatMap((e) => (e.ColumnDef ? (e.ColumnDef.constraints ?? []) : e.Constraint ? [e] : []))
         .every((c) =>
-          onlyKeys(c.Constraint, [
+          noUnlistedKeys(c.Constraint, [
             'contype',
             'conname',
             'location',
@@ -417,7 +514,7 @@ console.log('-- node-form pinning: no unlisted grammar clause rides along --');
     every(
       byType('IndexStmt'),
       (n) =>
-        onlyKeys(n, ['idxname', 'relation', 'accessMethod', 'indexParams']) &&
+        noUnlistedKeys(n, ['idxname', 'relation', 'accessMethod', 'indexParams']) &&
         isPlainRel(n.relation),
     ),
   );
@@ -426,8 +523,8 @@ console.log('-- node-form pinning: no unlisted grammar clause rides along --');
     every(byType('IndexStmt'), (n) =>
       (n.indexParams ?? []).every(
         (p) =>
-          onlyKeys(p, ['IndexElem']) &&
-          onlyKeys(p.IndexElem, ['name', 'ordering', 'nulls_ordering']) &&
+          noUnlistedKeys(p, ['IndexElem']) &&
+          noUnlistedKeys(p.IndexElem, ['name', 'ordering', 'nulls_ordering']) &&
           typeof p.IndexElem.name === 'string' &&
           p.IndexElem.ordering === 'SORTBY_DEFAULT' &&
           p.IndexElem.nulls_ordering === 'SORTBY_NULLS_DEFAULT',
@@ -443,14 +540,14 @@ console.log('-- node-form pinning: no unlisted grammar clause rides along --');
       every(
         byType('CreateTrigStmt'),
         (t) =>
-          onlyKeys(t, ['trigname', 'relation', 'funcname', 'row', 'timing', 'events']) &&
+          noUnlistedKeys(t, ['trigname', 'relation', 'funcname', 'row', 'timing', 'events']) &&
           isPlainRel(t.relation),
       ),
   );
   assert(
     'every CREATE FUNCTION carries only funcname/returnType/options — no OR REPLACE, parameter list, or SQL-standard body',
     every(byType('CreateFunctionStmt'), (n) =>
-      onlyKeys(n, ['funcname', 'returnType', 'options']),
+      noUnlistedKeys(n, ['funcname', 'returnType', 'options']),
     ),
   );
   assert(
@@ -458,7 +555,7 @@ console.log('-- node-form pinning: no unlisted grammar clause rides along --');
     every(
       byType('GrantStmt'),
       (g) =>
-        onlyKeys(g, [
+        noUnlistedKeys(g, [
           'is_grant',
           'targtype',
           'objtype',
@@ -469,9 +566,9 @@ console.log('-- node-form pinning: no unlisted grammar clause rides along --');
         ]) &&
         g.targtype === 'ACL_TARGET_OBJECT' &&
         g.behavior === 'DROP_RESTRICT' &&
-        (g.objects ?? []).every((o) => onlyKeys(o, ['RangeVar']) && isPlainRel(o.RangeVar)) &&
+        (g.objects ?? []).every((o) => noUnlistedKeys(o, ['RangeVar']) && isPlainRel(o.RangeVar)) &&
         (g.privileges ?? []).every(
-          (p) => onlyKeys(p, ['AccessPriv']) && onlyKeys(p.AccessPriv, ['priv_name']),
+          (p) => noUnlistedKeys(p, ['AccessPriv']) && noUnlistedKeys(p.AccessPriv, ['priv_name']),
         ),
     ),
   );
@@ -480,11 +577,11 @@ console.log('-- node-form pinning: no unlisted grammar clause rides along --');
     every(
       byType('AlterTableStmt'),
       (n) =>
-        onlyKeys(n, ['relation', 'cmds', 'objtype']) &&
+        noUnlistedKeys(n, ['relation', 'cmds', 'objtype']) &&
         n.objtype === 'OBJECT_TABLE' &&
         isPlainRel(n.relation) &&
         (n.cmds ?? []).every(
-          (c) => onlyKeys(c, ['AlterTableCmd']) && onlyKeys(c.AlterTableCmd, ['subtype', 'behavior']),
+          (c) => noUnlistedKeys(c, ['AlterTableCmd']) && noUnlistedKeys(c.AlterTableCmd, ['subtype', 'behavior']),
         ),
     ),
   );
@@ -493,7 +590,7 @@ console.log('-- node-form pinning: no unlisted grammar clause rides along --');
     every(
       policies,
       (p) =>
-        onlyKeys(p, [
+        noUnlistedKeys(p, [
           'policy_name',
           'table',
           'cmd_name',
@@ -503,19 +600,28 @@ console.log('-- node-form pinning: no unlisted grammar clause rides along --');
           'with_check',
         ]) &&
         p.permissive === true &&
-        onlyKeys(p.table, ['schemaname', 'relname', 'inh', 'relpersistence', 'location']) &&
+        noUnlistedKeys(p.table, ['schemaname', 'relname', 'inh', 'relpersistence', 'location']) &&
         p.table.inh === true,
     ),
   );
   assert(
-    'the bucket INSERT carries only relation/cols/selectStmt/override, with OVERRIDING unset and a bare VALUES source — no WITH clause, ON CONFLICT, or RETURNING',
+    'the bucket INSERT carries only relation/cols/selectStmt/override, with OVERRIDING unset, bare-name target columns, and a bare VALUES source — no WITH clause, ON CONFLICT, or RETURNING',
     every(
       byType('InsertStmt'),
       (n) =>
-        onlyKeys(n, ['relation', 'cols', 'selectStmt', 'override']) &&
+        noUnlistedKeys(n, ['relation', 'cols', 'selectStmt', 'override']) &&
         n.override === 'OVERRIDING_NOT_SET' &&
         isPlainRel(n.relation) &&
-        onlyKeys(n.selectStmt?.SelectStmt, ['valuesLists', 'limitOption', 'op']),
+        // Each target column is a bare name: `(id, name, public[1])` parses,
+        // and the compared name list prints `public` either way
+        // (REVIEW-016 finding 1).
+        (n.cols ?? []).every(
+          (c) =>
+            noUnlistedKeys(c, ['ResTarget']) &&
+            noUnlistedKeys(c.ResTarget, ['name', 'location']) &&
+            typeof c.ResTarget.name === 'string',
+        ) &&
+        noUnlistedKeys(n.selectStmt?.SelectStmt, ['valuesLists', 'limitOption', 'op']),
     ),
   );
 }
@@ -851,7 +957,9 @@ console.log('-- indexes and updated_at triggers --');
     "set_updated_at: returns trigger, plpgsql, SECURITY INVOKER, search_path pinned to ''",
     !!fn &&
       !fn.parameters &&
-      fn.returnType.names.map((s) => s.String.sval).join('.') === 'trigger' &&
+      // typeName marks array/typmod neighbors: `returns trigger[]` parses and
+      // used to compare equal to `trigger` (REVIEW-016 finding 1).
+      typeName(fn.returnType) === 'trigger' &&
       !fn.returnType.setof &&
       defnames === 'language,set,as' &&
       opts.language?.String?.sval === 'plpgsql' &&
@@ -1013,7 +1121,7 @@ console.log('-- profiles provisioning --');
     "handle_new_user: returns trigger, plpgsql, SECURITY DEFINER, search_path pinned to ''",
     !!fn &&
       !fn.parameters &&
-      fn.returnType.names.map((s) => s.String.sval).join('.') === 'trigger' &&
+      typeName(fn.returnType) === 'trigger' &&
       !fn.returnType.setof &&
       defnames === 'language,security,set,as' &&
       opts.language?.String?.sval === 'plpgsql' &&
@@ -1048,14 +1156,18 @@ console.log('-- storage: private bucket + owner-only object policies --');
   // the expected private row still matched (REVIEW-013 finding 2). Row
   // cardinality is now pinned.
   const valuesLists = ins?.selectStmt?.SelectStmt?.valuesLists ?? [];
+  // The row's ITEM count as well as the row count: a fourth expression in the
+  // row parses beside an unchanged three-column target list, and only
+  // vals[0..2] were read (REVIEW-016 finding 1).
   const vals = valuesLists[0]?.List?.items ?? [];
   const isFalse = (v) => !!v?.A_Const?.boolval && v.A_Const.boolval.boolval !== true;
   assert(
-    "bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false) — exactly one VALUES row, plain insert, no ON CONFLICT (deliberately non-idempotent), no RETURNING",
+    "bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false) — exactly one VALUES row of exactly three values, plain insert, no ON CONFLICT (deliberately non-idempotent), no RETURNING",
     !!ins &&
       !ins.onConflictClause &&
       !ins.returningList &&
       valuesLists.length === 1 &&
+      vals.length === 3 &&
       colsNamed === 'id,name,public' &&
       vals[0]?.A_Const?.sval?.sval === 'captures-audio' &&
       vals[1]?.A_Const?.sval?.sval === 'captures-audio' &&

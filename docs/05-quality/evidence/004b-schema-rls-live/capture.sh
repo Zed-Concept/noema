@@ -63,13 +63,19 @@ if [ "$rc_exit" -ne 0 ]; then
   exit 1
 fi
 
-# --- settings-preflight-control.txt — REVIEW-015 finding 2 control: the
-# auth-settings preflight in rls-probes.mjs must abort the run, before any
-# probe, on every unusable /auth/v1/settings response — and must still accept
-# a well-formed one. Drives the real child against a loopback HTTP server
-# (127.0.0.1, ephemeral port, synthetic key; no Supabase project, credential,
-# or network host is contacted). Deterministic by construction, so it is
-# gated.
+# --- settings-preflight-control.txt — the REVIEW-015 finding 2 and
+# REVIEW-016 finding 2 controls, in two sections. Section 1: the auth-settings
+# preflight in rls-probes.mjs must abort the run, before any probe, on every
+# unusable /auth/v1/settings response — in BOTH production modes — and a
+# well-formed response must still let the run continue into probes. Section 2:
+# live-probes.sh must refuse to start, before anything is read or written, when
+# a control variable is present in its inherited environment, in both of its
+# modes, and must still admit a clean environment. Neither producer carries a
+# test hook: every case drives a real entry point with no control variable set,
+# against a loopback HTTP server (127.0.0.1, ephemeral port, synthetic key; no
+# Supabase project, credential, or network host is contacted, and the children
+# read their URL and key from the environment, never from .env). Deterministic
+# by construction, so it is gated.
 if node "$evdir/settings-control.mjs" > "$outdir/settings-preflight-control.txt" 2>&1; then
   sc_exit=0
 else

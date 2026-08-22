@@ -287,6 +287,21 @@ async function readAuthSettings() {
   };
 }
 
+// NO TEST HOOK LIVES BELOW THIS LINE, DELIBERATELY (REVIEW-016 finding 2).
+// The previous revision proved the preflight ACCEPTS a well-formed response
+// with an env flag, SETTINGS_PREFLIGHT_CONTROL, read right here: set it and
+// --anon exited 0 after the preflight with zero probes. live-probes.sh
+// inherits its caller's environment, does not clear or reject that name, and
+// treats child 0 as success — so an ambient flag could skip every anon denial
+// probe while the wrapper stayed green. A success exit reachable from the
+// production path by environment alone is a fail-open path, whatever it was
+// built for. It is gone: settings-control.mjs now drives the REAL --anon and
+// --auth modes against a loopback server whose settings response it controls,
+// and live-probes.sh refuses to start at all if any control variable is
+// present in its inherited environment (exit 5). The positive case is proved
+// by the production run CONTINUING past the preflight, not by a flag that
+// stops it.
+//
 // Fail-closed preflight, run in BOTH modes before any probe. Exit 4 is
 // distinct from 3 (auth path NOT RUN for a recorded, legitimate reason): 4
 // means the run could not establish the config it depends on, so nothing
@@ -327,15 +342,6 @@ async function anonMode() {
   // preconditions produces no PASS labels at all (REVIEW-015 finding 2).
   const auth = await readAuthSettings();
   requireUsableAuthSettings(auth);
-  // Positive control hook: proves the preflight ACCEPTS a well-formed
-  // settings response rather than being unconditionally red. Set only by
-  // live-probes.sh --settings-control; a real run never sets it.
-  if (process.env.SETTINGS_PREFLIGHT_CONTROL === '1') {
-    out();
-    out('preflight-control: the settings preflight ACCEPTED this response and would');
-    out('have continued; stopping here so the control measures the preflight alone.');
-    finish(0);
-  }
   out();
   const health = await req('GET', '/auth/v1/health');
   probe(

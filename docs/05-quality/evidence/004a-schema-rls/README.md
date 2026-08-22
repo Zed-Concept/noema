@@ -129,13 +129,16 @@ because at least one permanent scenario in
 that changes it.** Every scenario carries a class tag; `capture.sh` derives
 the set of demonstrated classes from those tags, parses this list back out
 of this file, and **exits 1 unless the two sets are identical** — in either
-direction. A class that cannot be demonstrated is removed from this list
+direction, and unless this list is free of duplicate class names, so the two
+sets cannot be made to match by two entries collapsing under `sort -u`
+(REVIEW-016 finding 1 demonstrated that boundary on a disposable
+countercontrol). A class that cannot be demonstrated is removed from this list
 rather than defended in prose, and a control cannot silently drop out of the
 claim. The cross-check, with both lists printed, is at the end of
 `assertions-negative-control.txt`.
 
-Two structural rules in `verify-migrations.mjs` produce the discrimination
-this list now asserts, and both replace field-by-field enumeration:
+Five structural rules in `verify-migrations.mjs` produce the discrimination
+this list asserts, and all of them replace field-by-field enumeration:
 
 - **Operator comparisons pin the AST kind, not just the operator name.**
   libpg_query names `IS DISTINCT FROM`, `IS NOT DISTINCT FROM`, `= ANY (…)`
@@ -143,16 +146,58 @@ this list now asserts, and both replace field-by-field enumeration:
   intended predicate. One `opExpr()` helper now serves every operator site,
   closing the asymmetry where `isOwnPredicate()` checked the kind and the
   duplicated storage helpers did not.
-- **Node forms are pinned by their exact key set.** A class that reads only
+- **Node forms are pinned against a list of permitted keys.** A class that reads only
   the field carrying its property accepts every other clause the same node
   can hold — a `LIKE` table element that never reaches the column list,
   `COLLATE`/`STORAGE`/`COMPRESSION` beside a type name, `DESC`/opclass
   inside an index key, `CONCURRENTLY`/`TABLESPACE` beside an index,
   `REFERENCING`/`OR REPLACE` on a trigger, `GRANTED BY` on a grant, `ONLY`
   on an `ALTER TABLE`, `OVERRIDING` on an `INSERT`. Each such node is
-  compared against exactly the key set the committed migrations produce
-  under the pinned parser, so an unaccounted-for clause rejects instead of
-  riding along unread.
+  compared against the list of keys the committed migrations produce under
+  the pinned parser (`noUnlistedKeys`), so an unaccounted-for clause rejects
+  instead of riding along unread. The test is "nothing unlisted rides
+  along", not set equality: libpg_query emits protobuf, which omits a scalar
+  field at its default value, so an *absent* key is not a signal while an
+  *unlisted* one is. Meaningful default values are pinned by value
+  alongside, and meaningful list lengths by length — neither follows from
+  the key list.
+
+The next three rules come from **REVIEW-016 finding 1**, which showed the
+first two were necessary and not sufficient. The finding was one neighbor —
+`(storage.foldername(name))[1]` widened to `[1][2]`, which PostgreSQL
+evaluates to NULL rather than rejecting, so the folder equality is UNKNOWN
+for every row and owners are denied, while the oracle still printed its
+`{user_id}/-scoped` PASS. `isFolderEq()` read `indirection[0]` and never
+required the subscript list to hold exactly one entry. Auditing **every**
+class above for that same defect shape — a class claiming exactness while
+the assertion reads only part of a node's structure — found **25** accepted
+in-class neighbors across four classes (RLS, Storage bucket row, Functions,
+Foreign keys), all now permanent scenarios in group 8 of
+`assertions-negative-control.txt`:
+
+- **Lists are read whole, never by position.** Every subscript list goes
+  through `intSubscripts()`, which requires the exact number of subscripts,
+  each a plain integer index and not a slice — `[1][2]` and `[1:1]` both
+  matched a position-only read. The list lengths a single assertion owns
+  (the bucket `VALUES` row's item count, the `INSERT` target-column list)
+  are pinned at those assertion sites.
+- **One function-call shape test, applied everywhere a call is pinned.**
+  `defaultFunc()` already rejected `VARIADIC`, `DISTINCT`, `ORDER BY`,
+  `FILTER`, `OVER`, and a star argument for column defaults; the RLS
+  predicate call sites read only the name and argument list, so
+  `auth.uid(*)`, `auth.uid() OVER ()`, `storage.foldername(VARIADIC name)`
+  and their siblings rode along inside the expressly pinned predicate. The
+  guard existed in the file and was simply not shared; `plainCall()` now
+  serves every site.
+- **Named things are compared through the helper that marks their
+  neighbors, at every site.** `typeName()` marks typmod and array bounds, so
+  `::text[]` and `returns trigger[]` cannot compare equal to `text` and
+  `trigger` — the storage cast and both `returns trigger` checks re-joined
+  the name themselves and dropped the markers. `bareTarget()` rejects an
+  output alias on a pinned `SELECT` target. `isPlainRel()` now covers the
+  foreign key's referenced table too — the one relation reference that
+  skipped it, so a catalog qualifier the compared name never prints rode
+  along.
 
 **Enumerated classes — what is pinned.** Every class below has at least one
 permanent scenario in `assertions-negative-control.txt` proving it actually
@@ -189,7 +234,10 @@ above:
    pinned zero-argument (argument, star, DISTINCT, ORDER BY, FILTER, OVER
    rejected); both boolean constants.
 6. **Foreign keys** — constraint name, referencing and referenced attribute
-   lists, referenced table, match type, `ON UPDATE`, and `ON DELETE`.
+   lists, referenced table — pinned to a plain, non-inheriting, permanent
+   relation like every other relation reference, so a catalog qualifier the
+   compared name never prints rejects — match type, `ON UPDATE`, and
+   `ON DELETE`.
 7. **Indexes** — name, table, key-column list, access method, uniqueness,
    predicate, and `INCLUDE` list, plus the exact node shape of the index and
    of every key element, so `CONCURRENTLY`, `IF NOT EXISTS`, `TABLESPACE`,
@@ -199,7 +247,10 @@ above:
    function, the three trigger names, and the optional clauses pinned
    absent: `WHEN`, `UPDATE OF` column list, args, `CONSTRAINT`,
    `REFERENCING` transition tables, and `OR REPLACE`.
-9. **Functions** — name, absence of parameters, return type, language,
+9. **Functions** — name, absence of parameters, return type **with typmod
+   and array neighbors marked** (so `returns trigger[]` rejects; a
+   `pg_catalog.` qualifier is normalized away, exactly as it is for column
+   types, because it names the same type), language,
    `SECURITY` flag, the exact option-name sequence (so an extra `SET` or
    `STRICT` is rejected), `OR REPLACE` pinned absent, full body-text
    equality, and the pinned empty `search_path` compared as a **complete**
@@ -220,11 +271,19 @@ above:
     `= ANY (…)` and `= ALL (…)` — all of which libpg_query names `=` —
     reject; the first inverts the predicate outright. The initplan
     `(select auth.uid())` subquery stays pinned to a bare one-target SELECT,
-    so an added `WHERE`/`LIMIT`/`GROUP BY` is rejected.
-12. **Storage bucket row** — target relation, column list, `VALUES` row
-    count, each literal value, `ON CONFLICT`, `RETURNING`, and the
-    statement's exact node shape, so `OVERRIDING` and a `WITH` clause
-    reject.
+    so an added `WHERE`/`LIMIT`/`GROUP BY` is rejected, and that single
+    target is pinned to a bare value so an output alias rejects. The storage
+    folder lookup pins the **whole subscript list** — exactly one plain
+    integer index, value 1 — so `[1][2]` and the slice `[1:1]` reject; every
+    function call in these predicates pins the same call shape column
+    defaults already did, so `VARIADIC`, `DISTINCT`, `ORDER BY`, `FILTER`,
+    `OVER`, and a star argument reject; and the owner cast pins `text` with
+    array and typmod neighbors marked, so `::text[]` rejects.
+12. **Storage bucket row** — target relation, column list as bare names (so
+    subscript indirection such as `public[1]`, which prints the same name,
+    rejects), `VALUES` row count **and that row's item count**, each literal
+    value, `ON CONFLICT`, `RETURNING`, and the statement's own node shape,
+    so `OVERRIDING` and a `WITH` clause reject.
 
 **What it does not prove.**
 
@@ -235,6 +294,12 @@ above:
 - Properties no assertion names are unpinned. Comments, whitespace, and
   formatting are unpinned by design; so is statement order within a file
   beyond the per-file counts.
+- **Spellings that parse to the same node are accepted, deliberately.**
+  `CAST(x AS text)` and `x::text`, `f(ALL x)` and `f(x)`, and
+  `pg_catalog.trigger` and `trigger` are the same AST (modulo source
+  offsets) or the same type. The oracle pins the predicate, not its
+  spelling, so these are not neighbors, and they cannot appear in the
+  battery, which requires a red run.
 - It is **static**: it reads migration text, never a database. What the
   applied schema actually is, what privileges are effectively held, and what
   the platform grants by default are separate measured questions, and belong
@@ -259,7 +324,7 @@ registry access; both pins are exact, so the transcript bytes do not move.
 | Artifact | Producer | Class | Notes / normalization |
 | --- | --- | --- | --- |
 | `sql-assertions.txt` | `capture.sh` → `verify-migrations.mjs` | gated | parse validity (real PG17 parser) + 91 AST-level assertions over the twelve enumerated classes in *What the oracle proves*: entity list, column-by-column types/nullability/defaults/CHECKs, FKs and cascades, the composite-FK consistency guarantee, indexes, triggers, grants, ENABLE+FORCE, the 13-policy matrix with exact predicates, provisioning surface, bucket privacy, and storage policy scoping — **pinning absence as well as presence within those classes** (REVIEW-012 finding 2, REVIEW-013 finding 2; see claim 2 and the coverage statement). Deterministic by construction: pinned parser, repo-relative paths, stable ordering. Exit status is the gate |
-| `assertions-negative-control.txt` | `capture.sh` | gated | **the complete permanent neighbor battery** — 55 tampered scratch copies in seven labelled groups (removals/narrowings; append-class; the REVIEW-011 exact-value neighbor; the REVIEW-012 absence classes; the remaining fix-cycle-2 absence classes made permanent; the six REVIEW-013 finding 2 classes; the twenty-three REVIEW-015 finding 1 classes), each exiting 1 with its named assertion failing. Every neighbor class any claim in this directory names is enumerated and run here — no claim rests on a scratch-only run (REVIEW-013 finding 3). The stated total is computed from the run counter and cross-checked by `capture.sh` against the artifact's own `scenario:` lines, so the count cannot drift from the enumeration. Every scenario additionally carries the enumerated class it demonstrates, and the closing cross-check compares the set of demonstrated classes against the list parsed out of this README — `capture.sh` exits 1 on any difference in either direction, which is what entitles that list to name a class at all (REVIEW-015 finding 1). Mutations never touch the repo |
+| `assertions-negative-control.txt` | `capture.sh` | gated | **the complete permanent neighbor battery** — 80 tampered scratch copies in eight labelled groups (removals/narrowings; append-class; the REVIEW-011 exact-value neighbor; the REVIEW-012 absence classes; the remaining fix-cycle-2 absence classes made permanent; the six REVIEW-013 finding 2 classes; the twenty-three REVIEW-015 finding 1 classes; the twenty-five REVIEW-016 finding 1 classes), each exiting 1 with its named assertion failing. Every neighbor class any claim in this directory names is enumerated and run here — no claim rests on a scratch-only run (REVIEW-013 finding 3). The stated total is computed from the run counter and cross-checked by `capture.sh` against the artifact's own `scenario:` lines, so the count cannot drift from the enumeration. Every scenario additionally carries the enumerated class it demonstrates, and the closing cross-check compares the set of demonstrated classes against the list parsed out of this README — `capture.sh` exits 1 on any difference in either direction, and on a duplicate name in the claimed list, which is what entitles that list to name a class at all (REVIEW-015 finding 1; the duplicate guard closes the `sort -u` boundary REVIEW-016 finding 1 demonstrated). Mutations never touch the repo |
 | `config-provenance.txt` | `capture.sh` | gated | committed `supabase/config.toml` and `supabase/.gitignore` byte-identical to a fresh `supabase@2.115.0 init` in a scratch git repo named `noema`; `supabase/.temp` untracked and ignored. npx stderr (install noise) dropped; scratch paths never printed |
 | `inventory.txt` | `capture.sh` | gated | the six tracked `supabase/` files with index blob SHAs — the exact bytes every claim here is about. Reads the index (fixed-point discipline, like 003a) |
 | `gates.txt` | `capture.sh` | gated | the four non-install CI steps at this head plus the no-dependency-delta probe (pinned to the dispatch base SHA, package files only). jest `Time:` masked, per-suite duration suffixes stripped, `env:` lines dropped (machine state). The format check runs the pinned local prettier against a clean `git checkout-index` of the staged tree — the normalization `../004b-schema-rls-live/capture.sh` already used, adopted here in fix cycle 4 because regenerating this artifact surfaced the difference: prettier walks untracked working-copy files and does not read nested ignore rules, so the owner's machine-local `supabase/.temp` residue (untracked, ignored by `supabase/.gitignore`) reddened this step over machine state while 004b, measuring the staged tree at the same head, was green. CI checks out only the tracked tree, and this now measures exactly that. `npm ci` deliberately NOT run — see claim 11 |
@@ -277,14 +342,14 @@ broken positive control. A green artifact set from a red run cannot exist.
 | # | Claim | Class | Artifact |
 | --- | --- | --- | --- |
 | 1 | All four migrations parse under the real PostgreSQL 17 grammar (libpg_query, pinned `libpg-query@17.7.4`): 9 + 21 + 3 + 5 = 38 statements, zero failures | PASS | `sql-assertions.txt`, parse section |
-| 2 | Every property in the twelve enumerated classes of *What the oracle proves* holds on this migration set: three tables, column-by-column (names, order, types, nullability, defaults, CHECK values **and operators**), the enumerated set-shape bounds (statement-type whitelist, exact per-file statement counts, no extra tables/functions/inserts), and per-class absence pinning. **This is an enumerated-assertion result, explicitly not a proof of exhaustive schema equivalence — parse-valid neighbors outside the enumerated classes may pass** (REVIEW-013 finding 2; the bounded coverage statement and the known limits are in *What the oracle proves*) | PASS, bounded to the enumerated classes | `sql-assertions.txt` (91/91 AST assertions, including the append-class bounds: exact per-file statement counts, exactly six RLS ALTERs with no countermanding subtype, exactly 17 schema-qualified policies, exactly three triggers, and full-body equality for both functions). **Exact-value discipline** — the `duration_ms >= 0` assertion compares the literal against zero (REVIEW-011 finding 2), and the storage `foldername[1]` ordinal, both boolean constants (`WITH CHECK (true)`, bucket `public = false`), every string literal, trigger timing/event codes, and FK actions are exact-value comparisons. **Absence-pinning discipline** (REVIEW-012 finding 2, extended by REVIEW-013 finding 2): each column's exact constraint-type multiset is compared, so a DEFAULT — or any other constraint — added to a column declared default-free turns it red; each table's exact table-level constraint set is compared, with `INHERITS`/`PARTITION BY`/`OF`/tablespace/`IF NOT EXISTS` pinned absent; CHECK `IN` lists pin the operator, so a `NOT IN` neighbor with the same values turns it red; function-call defaults reject argument, star, DISTINCT, ORDER BY, FILTER, and OVER neighbors; every FK pins constraint name, referenced table **and attribute list**, match type, and both actions; types reject typmod and array neighbors; the initplan `(select auth.uid())` subquery is pinned to a bare one-target SELECT, so an added `WHERE`/`LIMIT`/`GROUP BY` turns it red; grants pin per-column privilege lists absent; the bucket insert pins its `VALUES` row count; and the remaining optional clauses that could widen behavior are pinned absent — trigger `WHEN`/`UPDATE OF`/args/`CONSTRAINT`, function `STRICT`/volatility/extra `SET`/parameters/`SETOF`, `WITH GRANT OPTION`, index `UNIQUE`/predicate/access method/`INCLUDE`, and `ON CONFLICT`/`RETURNING` on the bucket insert |
+| 2 | Every property in the twelve enumerated classes of *What the oracle proves* holds on this migration set: three tables, column-by-column (names, order, types, nullability, defaults, CHECK values **and operators**), the enumerated set-shape bounds (statement-type whitelist, exact per-file statement counts, no extra tables/functions/inserts), and per-class absence pinning. **This is an enumerated-assertion result, explicitly not a proof of exhaustive schema equivalence — parse-valid neighbors outside the enumerated classes may pass** (REVIEW-013 finding 2; the bounded coverage statement and the known limits are in *What the oracle proves*) | PASS, bounded to the enumerated classes | `sql-assertions.txt` (91/91 AST assertions, including the append-class bounds: exact per-file statement counts, exactly six RLS ALTERs with no countermanding subtype, exactly 17 schema-qualified policies, exactly three triggers, and full-body equality for both functions). **Exact-value discipline** — the `duration_ms >= 0` assertion compares the literal against zero (REVIEW-011 finding 2), and the storage folder lookup's **whole subscript list** — exactly one plain integer index, value 1, so `[1][2]` and `[1:1]` turn it red (REVIEW-016 finding 1) — both boolean constants (`WITH CHECK (true)`, bucket `public = false`), every string literal, trigger timing/event codes, and FK actions are exact-value comparisons. **Absence-pinning discipline** (REVIEW-012 finding 2, extended by REVIEW-013 finding 2): each column's exact constraint-type multiset is compared, so a DEFAULT — or any other constraint — added to a column declared default-free turns it red; each table's exact table-level constraint set is compared, with `INHERITS`/`PARTITION BY`/`OF`/tablespace/`IF NOT EXISTS` pinned absent; CHECK `IN` lists pin the operator, so a `NOT IN` neighbor with the same values turns it red; that same call-shape guard now applies at **every** pinned call site, not only column defaults, so argument, star, `VARIADIC`, `DISTINCT`, `ORDER BY`, `FILTER`, and `OVER` neighbors of `auth.uid()` and `storage.foldername(name)` reject too (REVIEW-016 finding 1); every FK pins constraint name, referenced table — as a plain, non-inheriting, permanent relation, so a catalog qualifier rejects — **and attribute list**, match type, and both actions; every type-name comparison rejects typmod and array neighbors, function return types included, so `returns trigger[]` and `::text[]` turn it red; the initplan `(select auth.uid())` subquery is pinned to a bare one-target SELECT, so an added `WHERE`/`LIMIT`/`GROUP BY` turns it red, and its single target is pinned to a bare value so an output alias turns it red; grants pin per-column privilege lists absent; the bucket insert pins its `VALUES` row count, that row's item count, and bare-name target columns; and the remaining optional clauses that could widen behavior are pinned absent — trigger `WHEN`/`UPDATE OF`/args/`CONSTRAINT`, function `STRICT`/volatility/extra `SET`/parameters/`SETOF`, `WITH GRANT OPTION`, index `UNIQUE`/predicate/access method/`INCLUDE`, and `ON CONFLICT`/`RETURNING` on the bucket insert |
 | 3 | `transcripts.user_id` is provably consistent with the parent capture's `user_id` (composite FK + backing UNIQUE; technique documented above and in the migration comments) | PASS | `sql-assertions.txt` |
 | 4 | FK-supporting indexes exist for every FK; `updated_at` triggers exist exactly where the column exists (profiles, captures — not transcripts) | PASS | `sql-assertions.txt` |
 | 5 | RLS is ENABLEd and FORCEd on all three tables; the policy matrix is per-operation owner-only TO `authenticated` with initplan-wrapped `(select auth.uid()) = id/user_id` predicates (INSERT via WITH CHECK, UPDATE via both); no policy names `anon` or PUBLIC; the sole exception is the documented INSERT-only provisioning policy TO `postgres` | PASS | `sql-assertions.txt` |
 | 6 | The **authored** grants are explicit and minimal: select/insert/update/delete on the three tables, to `authenticated` only, as table-object grants without WITH GRANT OPTION — this set authors no grant naming `anon`, `service_role`, or PUBLIC. (What is *effectively* held is a separate measured question — `../004b-schema-rls-live/README.md` claims 18/21) | PASS | `sql-assertions.txt` |
 | 7 | Provisioning is a SECURITY DEFINER function with `search_path` pinned to `''`, body schema-qualified, wired AFTER INSERT FOR EACH ROW on `auth.users` | PASS | `sql-assertions.txt` |
 | 8 | Storage: `captures-audio` is created private, and exactly four `storage.objects` policies (one per operation, TO `authenticated`) are bucket-pinned and `{user_id}/`-scoped via `(storage.foldername(name))[1] = (select auth.uid()::text)`; keys with no folder fail closed (the segment is null) | PASS | `sql-assertions.txt` |
-| 9 | The oracle is not vacuous, and **the enumerated-class list in *What the oracle proves* is derived from this battery rather than asserted beside it**: 55 security/spec-relevant tamperings in seven labelled groups — five removals/narrowings; two append-class mutations (a countermanding DISABLE, an unqualified extra policy); the exact-value neighbor (`duration_ms >= -1`, REVIEW-011 finding 2); the four REVIEW-012 finding 2 absence classes (added DEFAULT, function-argument neighbor, FK referenced-attribute neighbor, appended ON CONFLICT); the fourteen further absence classes that fix cycle 2 ran in scratch only (FK `ON UPDATE`, FK `MATCH FULL`, FK rename, `WITH GRANT OPTION`, unique index, partial index, trigger `WHEN`, extra `SET`, `STRICT`, typmod, second column CHECK, column UNIQUE, table-level CHECK, `NULLS NOT DISTINCT`); the six REVIEW-013 finding 2 classes (CHECK `NOT IN`, policy subquery `WHERE false`, column-only `SELECT(id)`, a second public bucket row, `UPDATE OF display_name`, index `INCLUDE(id)`); and the **twenty-three REVIEW-015 finding 1 classes** — neighbors that changed a property a named class SAYS it pins and passed green anyway: the storage folder-owner equality reversed to `IS DISTINCT FROM` (decisive: the confidentiality predicate inverted while the oracle printed its `{user_id}/-scoped` PASS), the storage bucket equality likewise, a storage `IS NOT DISTINCT FROM` that stops failing closed on a null folder, the provisioning policy made `AS RESTRICTIVE`, `ALTER TABLE ONLY`, a renamed migration filename, a fifth non-`.sql` file, a `LIKE` table element, a renamed trigger, `COLLATE`, `STORAGE EXTERNAL`, `UNLOGGED`, CHECK `NO INHERIT`, `>= ANY`, index `DESC`, index `CONCURRENTLY`, trigger `REFERENCING`, `CREATE OR REPLACE` on a trigger and on a function, `search_path = '', public` on both functions, `GRANTED BY`, and `OVERRIDING USER VALUE` — each turning it red with its named FAIL and exit 1. **No claim in this directory rests on a scratch-only neighbor run** (REVIEW-013 finding 3). Three fail-closed cross-checks bind the artifact to its own claims: the stated count is derived from the run counter and compared to the artifact's `scenario:` lines; every scenario must carry a class tag; and the set of classes demonstrated here must equal the set *What the oracle proves* enumerates, or `capture.sh` exits 1. Each absence-class assertion compares one exact string covering every column or site in its class, so the discrimination is not scenario-local. This is discrimination over the enumerated classes; it is not evidence of exhaustive coverage — see *What the oracle proves* | PASS | `assertions-negative-control.txt` |
+| 9 | The oracle is not vacuous, and **the enumerated-class list in *What the oracle proves* is derived from this battery rather than asserted beside it**: 80 security/spec-relevant tamperings in eight labelled groups — five removals/narrowings; two append-class mutations (a countermanding DISABLE, an unqualified extra policy); the exact-value neighbor (`duration_ms >= -1`, REVIEW-011 finding 2); the four REVIEW-012 finding 2 absence classes (added DEFAULT, function-argument neighbor, FK referenced-attribute neighbor, appended ON CONFLICT); the fourteen further absence classes that fix cycle 2 ran in scratch only (FK `ON UPDATE`, FK `MATCH FULL`, FK rename, `WITH GRANT OPTION`, unique index, partial index, trigger `WHEN`, extra `SET`, `STRICT`, typmod, second column CHECK, column UNIQUE, table-level CHECK, `NULLS NOT DISTINCT`); the six REVIEW-013 finding 2 classes (CHECK `NOT IN`, policy subquery `WHERE false`, column-only `SELECT(id)`, a second public bucket row, `UPDATE OF display_name`, index `INCLUDE(id)`); and the **twenty-three REVIEW-015 finding 1 classes** — neighbors that changed a property a named class SAYS it pins and passed green anyway: the storage folder-owner equality reversed to `IS DISTINCT FROM` (decisive: the confidentiality predicate inverted while the oracle printed its `{user_id}/-scoped` PASS), the storage bucket equality likewise, a storage `IS NOT DISTINCT FROM` that stops failing closed on a null folder, the provisioning policy made `AS RESTRICTIVE`, `ALTER TABLE ONLY`, a renamed migration filename, a fifth non-`.sql` file, a `LIKE` table element, a renamed trigger, `COLLATE`, `STORAGE EXTERNAL`, `UNLOGGED`, CHECK `NO INHERIT`, `>= ANY`, index `DESC`, index `CONCURRENTLY`, trigger `REFERENCING`, `CREATE OR REPLACE` on a trigger and on a function, `search_path = '', public` on both functions, `GRANTED BY`, and `OVERRIDING USER VALUE`; and the **twenty-five REVIEW-016 finding 1 classes** — the result of auditing *every* named class for the defect shape REVIEW-016 found in one of them, a class claiming exactness while the assertion reads only part of a node's structure: the storage folder lookup given a second subscript `[1][2]` on each of the four policies (decisive: apply-valid, evaluates to NULL, denies owners, and the oracle printed its `{user_id}/-scoped` PASS), the slice `[1:1]`, five aggregate/window clauses on `storage.foldername(name)` (`VARIADIC`, `DISTINCT`, `ORDER BY`, `FILTER`, `OVER`), four on `auth.uid()` across the storage and `profiles` initplans (star argument twice, `OVER`, `FILTER`), the owner cast widened to `::text[]` and `::pg_catalog.text[]`, an output alias on both pinned initplan targets, a fourth expression in the bucket `VALUES` row, subscript indirection on a bucket target column, `returns trigger[]` on both functions, and a catalog qualifier on the `auth.users` and composite foreign keys — each turning it red with its named FAIL and exit 1. **No claim in this directory rests on a scratch-only neighbor run** (REVIEW-013 finding 3). Four fail-closed cross-checks bind the artifact to its own claims: the stated count is derived from the run counter and compared to the artifact's `scenario:` lines; every scenario must carry a class tag; the claimed class list must be duplicate-free; and the set of classes demonstrated here must equal the set *What the oracle proves* enumerates, or `capture.sh` exits 1. Each absence-class assertion compares one exact string covering every column or site in its class, so the discrimination is not scenario-local. This is discrimination over the enumerated classes; it is not evidence of exhaustive coverage — see *What the oracle proves* | PASS | `assertions-negative-control.txt` |
 | 10 | The committed `supabase/` scaffolding is byte-identical to pinned-CLI init output; machine-local init output (`supabase/.temp`) is untracked and ignored | PASS | `config-provenance.txt` |
 | 11 | The four non-install CI steps pass at this head (typecheck, lint, test, format:check — all exit 0). The install step is NOT RUN here: this unit's delta provably contains no dependency change (probe in the transcript), and 002d/003a document the destructive npm-ci ENOTEMPTY transient under a live editor; CI runs the real install when the PR opens | PASS / install NOT RUN with reason | `gates.txt` |
 | 12 | CI itself on this branch | NOT RUN | no `pull_request` event yet; the workflow file is untouched by this unit |

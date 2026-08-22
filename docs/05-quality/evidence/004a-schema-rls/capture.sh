@@ -78,7 +78,10 @@ fi
 #     enumerated `scenario:` lines actually written;
 #   * every scenario must carry a class tag;
 #   * the SET OF CLASSES demonstrated here is compared to the set README.md
-#     enumerates under "What the oracle proves". A class README claims but no
+#     enumerates under "What the oracle proves", and README's claimed list is
+#     required to be duplicate-free so the set comparison cannot be satisfied
+#     by two names collapsing into one (REVIEW-016 finding 1 boundary). A
+#     class README claims but no
 #     scenario demonstrates fails this script, and so does a class
 #     demonstrated here but missing from README. The claim is therefore
 #     derived from the battery rather than asserted alongside it: a class that
@@ -197,7 +200,7 @@ control_classes=""
   sed "s/values ('captures-audio', 'captures-audio', false);/values ('captures-audio', 'captures-audio', false) on conflict (id) do nothing;/" \
     "$STOR" > "$scratch/t" && mv "$scratch/t" "$STOR"
   run_scenario "Storage bucket row" "ON CONFLICT DO NOTHING appended to the bucket insert (idempotency neighbor)" \
-    "bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false) — exactly one VALUES row, plain insert, no ON CONFLICT (deliberately non-idempotent), no RETURNING"
+    "bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false) — exactly one VALUES row of exactly three values, plain insert, no ON CONFLICT (deliberately non-idempotent), no RETURNING"
 
   echo
   echo "== group 5: the remaining fix-cycle-2 absence classes, made permanent"
@@ -313,7 +316,7 @@ control_classes=""
   sed "s/values ('captures-audio', 'captures-audio', false);/values ('captures-audio', 'captures-audio', false), ('neighbor-public', 'neighbor-public', true);/" \
     "$STOR" > "$scratch/t" && mv "$scratch/t" "$STOR"
   run_scenario "Storage bucket row" "second VALUES row appended to the bucket insert, creating a public bucket" \
-    "bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false) — exactly one VALUES row, plain insert, no ON CONFLICT (deliberately non-idempotent), no RETURNING"
+    "bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false) — exactly one VALUES row of exactly three values, plain insert, no ON CONFLICT (deliberately non-idempotent), no RETURNING"
 
   fresh
   sed 's/  before update on public.profiles/  before update of display_name on public.profiles/' "$CORE" \
@@ -471,17 +474,138 @@ control_classes=""
   run_scenario "Storage bucket row" "bucket insert given OVERRIDING USER VALUE" \
     "the bucket INSERT carries only relation/cols/selectStmt/override"
 
+  echo
+  echo "== group 8: the REVIEW-016 finding 1 classes — the audit of EVERY named"
+  echo "== class for the defect shape REVIEW-016 found in one of them: a class"
+  echo "== claims exactness while the assertion reads only PART of a node's"
+  echo "== structure. Twenty-five accepted in-class neighbors across four classes,"
+  echo "== closed at three structural causes: a subscript list read by position"
+  echo "== instead of whole; a function-call shape test that existed for column"
+  echo "== defaults but was not shared with the predicate call sites; and named"
+  echo "== things compared without the helper that marks their neighbors =="
+
+  for pol in select insert update delete; do
+    case "$pol" in
+      select) expect="storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped" ;;
+      insert) expect="storage.objects insert: one policy TO authenticated, bucket-pinned and {user_id}/-scoped on WITH CHECK" ;;
+      update) expect="storage.objects update: one policy TO authenticated, bucket-pinned and {user_id}/-scoped on USING and WITH CHECK" ;;
+      delete) expect="storage.objects delete: one policy TO authenticated, bucket-pinned and {user_id}/-scoped" ;;
+    esac
+    fresh
+    perl -0777 -pi -e "s/(create policy captures_audio_${pol}_own.*?)\(storage\.foldername\(name\)\)\[1\]/\$1(storage.foldername(name))[1][2]/s" "$STOR"
+    run_scenario "RLS" "storage $pol folder lookup given a second subscript: (storage.foldername(name))[1][2] — apply-valid (PostgreSQL returns NULL for the wrong number of subscripts), so the owner predicate is UNKNOWN for every row and owners are denied (REVIEW-016 finding 1, decisive case)" \
+      "$expect"
+  done
+
+  fresh
+  perl -0777 -pi -e 's/(create policy captures_audio_select_own.*?)\(storage\.foldername\(name\)\)\[1\]/$1(storage.foldername(name))[1:1]/s' "$STOR"
+  run_scenario "RLS" "storage SELECT folder subscript made the slice [1:1] (uidx still 1; is_slice and lidx went unread)" \
+    "storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped"
+
+  for arg in "variadic name" "distinct name" "name order by 1"; do
+    fresh
+    perl -0777 -pi -e "s/(create policy captures_audio_select_own.*?)storage\.foldername\(name\)/\$1storage.foldername($arg)/s" "$STOR"
+    run_scenario "RLS" "storage SELECT folder call given an aggregate clause: storage.foldername($arg)" \
+      "storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped"
+  done
+
+  for clause in "filter (where true)" "over ()"; do
+    fresh
+    perl -0777 -pi -e "s/(create policy captures_audio_select_own.*?)(storage\.foldername\(name\))/\$1\$2 $clause/s" "$STOR"
+    run_scenario "RLS" "storage SELECT folder call given $clause" \
+      "storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped"
+  done
+
+  for cast in "text[]" "pg_catalog.text[]"; do
+    fresh
+    perl -0777 -pi -e "s/(create policy captures_audio_select_own.*?)auth\.uid\(\)::text/\$1auth.uid()::$cast/s" "$STOR"
+    run_scenario "RLS" "storage SELECT owner cast widened to ::$cast (array neighbor of the pinned scalar cast; the schema qualifier must not erase the array marker)" \
+      "storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped"
+  done
+
+  fresh
+  perl -0777 -pi -e 's/(create policy captures_audio_select_own.*?)auth\.uid\(\)::text/$1auth.uid(*)::text/s' "$STOR"
+  run_scenario "RLS" "storage SELECT initplan call given a star argument: auth.uid(*)" \
+    "storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped"
+
+  fresh
+  perl -0777 -pi -e 's/(create policy captures_audio_select_own.*?)(auth\.uid\(\))/$1$2 over ()/s' "$STOR"
+  run_scenario "RLS" "storage SELECT initplan call given OVER ()" \
+    "storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped"
+
+  fresh
+  perl -0777 -pi -e 's/(create policy captures_audio_select_own.*?)\(select (auth\.uid\(\)::text)\)/$1(select $2 as t)/s' "$STOR"
+  run_scenario "RLS" "storage SELECT initplan target given an output alias: (select auth.uid()::text as t)" \
+    "storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped"
+
+  fresh
+  perl -0777 -pi -e 's/(create policy profiles_select_own.*?)\(select auth\.uid\(\)\)/$1(select auth.uid() as u)/s' "$RLS"
+  run_scenario "RLS" "profiles SELECT initplan target given an output alias: (select auth.uid() as u)" \
+    "public.profiles select: one permissive policy TO authenticated, (select auth.uid()) = id"
+
+  fresh
+  perl -0777 -pi -e 's/(create policy profiles_select_own.*?)auth\.uid\(\)/$1auth.uid(*)/s' "$RLS"
+  run_scenario "RLS" "profiles SELECT initplan call given a star argument: auth.uid(*)" \
+    "public.profiles select: one permissive policy TO authenticated, (select auth.uid()) = id"
+
+  for clause in "over ()" "filter (where true)"; do
+    fresh
+    perl -0777 -pi -e "s/(create policy profiles_select_own.*?)(auth\.uid\(\))/\$1\$2 $clause/s" "$RLS"
+    run_scenario "RLS" "profiles SELECT initplan call given $clause" \
+      "public.profiles select: one permissive policy TO authenticated, (select auth.uid()) = id"
+  done
+
+  fresh
+  sed "s/values ('captures-audio', 'captures-audio', false);/values ('captures-audio', 'captures-audio', false, true);/" \
+    "$STOR" > "$scratch/t" && mv "$scratch/t" "$STOR"
+  run_scenario "Storage bucket row" "bucket INSERT VALUES row given a fourth expression (the row COUNT was pinned; the row's item count was not)" \
+    "bucket captures-audio created private"
+
+  fresh
+  sed 's/insert into storage.buckets (id, name, public)/insert into storage.buckets (id, name, public[1])/' \
+    "$STOR" > "$scratch/t" && mv "$scratch/t" "$STOR"
+  run_scenario "Storage bucket row" "bucket INSERT target column given subscript indirection: public[1] (the compared name list prints \"public\" either way)" \
+    "the bucket INSERT carries only relation/cols/selectStmt/override"
+
+  fresh
+  perl -0777 -pi -e 's/create function public\.set_updated_at\(\)\nreturns trigger/create function public.set_updated_at()\nreturns trigger[]/s' "$CORE"
+  run_scenario "Functions" "set_updated_at return type made the array neighbor trigger[] (the return type was joined without the typmod/array marking every column type already gets)" \
+    "set_updated_at: returns trigger, plpgsql, SECURITY INVOKER, search_path pinned to ''"
+
+  fresh
+  perl -0777 -pi -e 's/create function public\.handle_new_user\(\)\nreturns trigger/create function public.handle_new_user()\nreturns trigger[]/s' "$PROV"
+  run_scenario "Functions" "handle_new_user return type made the array neighbor trigger[]" \
+    "handle_new_user: returns trigger, plpgsql, SECURITY DEFINER, search_path pinned to ''"
+
+  fresh
+  sed 's/references auth.users (id) on delete cascade/references somedb.auth.users (id) on delete cascade/' \
+    "$CORE" > "$scratch/t" && mv "$scratch/t" "$CORE"
+  run_scenario "Foreign keys" "auth.users FKs given a catalog qualifier: references somedb.auth.users (id) — the one relation reference that did not go through isPlainRel, and the compared name drops catalogname" \
+    "profiles.id FK -> auth.users(id) ON DELETE CASCADE"
+
+  fresh
+  perl -0777 -pi -e 's/references public\.captures \(id, user_id\)/references somedb.public.captures (id, user_id)/s' "$CORE"
+  run_scenario "Foreign keys" "composite FK referenced table given a catalog qualifier: references somedb.public.captures (id, user_id)" \
+    "user_id-consistency guarantee: composite FK (capture_id, user_id) -> public.captures (id, user_id) ON DELETE CASCADE"
+
   # --- the claim is derived from the battery above, not asserted beside it.
   # README.md may name a class in "What the oracle proves" only if some
   # scenario here demonstrates the oracle rejects a neighbor changing it. Both
   # lists are computed independently and compared; a difference in either
   # direction fails this script (REVIEW-015 finding 1).
-  readme_classes="$(sed -n '/^\*\*Enumerated classes/,/^\*\*What it does not prove/p' \
-    "$evdir/README.md" | sed -n 's/^[0-9][0-9]*\. \*\*\([^*]*\)\*\*.*/\1/p' | sort -u)"
+  readme_raw="$(sed -n '/^\*\*Enumerated classes/,/^\*\*What it does not prove/p' \
+    "$evdir/README.md" | sed -n 's/^[0-9][0-9]*\. \*\*\([^*]*\)\*\*.*/\1/p')"
+  readme_classes="$(printf '%s' "$readme_raw" | grep -v '^$' | sort -u)"
   battery_classes="$(printf '%s' "$control_classes" | grep -v '^$' | sort -u)"
+  # `sort -u` collapses duplicates on BOTH sides, so a README that names one
+  # class twice would still compare equal to a battery that tags one scenario
+  # twice — a boundary REVIEW-016 finding 1 demonstrated on a disposable
+  # countercontrol. The claimed list is the side a claim is read off, so it is
+  # required to be duplicate-free before the comparison.
+  readme_dupes="$(printf '%s' "$readme_raw" | grep -v '^$' | sort | uniq -d | paste -sd'; ' -)"
   only_readme="$(comm -23 <(printf '%s\n' "$readme_classes") <(printf '%s\n' "$battery_classes") | grep -v '^$' | paste -sd'; ' -)"
   only_battery="$(comm -13 <(printf '%s\n' "$readme_classes") <(printf '%s\n' "$battery_classes") | grep -v '^$' | paste -sd'; ' -)"
-  if [ "$readme_classes" = "$battery_classes" ]; then
+  if [ "$readme_classes" = "$battery_classes" ] && [ -z "$readme_dupes" ]; then
     classes_match=yes
   else
     classes_match=no
@@ -503,6 +627,7 @@ control_classes=""
   echo
   echo "claimed but not demonstrated: ${only_readme:-<none>} (must be <none>)"
   echo "demonstrated but not claimed: ${only_battery:-<none>} (must be <none>)"
+  echo "duplicate class names in README's claimed list: ${readme_dupes:-<none>} (must be <none>)"
   echo "class lists identical: $classes_match (yes required)"
 
   echo
@@ -529,7 +654,7 @@ if [ "$tagged" -ne "$control_scenarios" ]; then
   control_violations=$((control_violations + 1))
 fi
 if [ "$classes_match" != "yes" ]; then
-  echo "FAIL CLOSED: the classes README.md claims and the classes this battery demonstrates differ — claimed-not-demonstrated: ${only_readme:-<none>}; demonstrated-not-claimed: ${only_battery:-<none>}" >&2
+  echo "FAIL CLOSED: the classes README.md claims and the classes this battery demonstrates do not correspond — claimed-not-demonstrated: ${only_readme:-<none>}; demonstrated-not-claimed: ${only_battery:-<none>}; duplicate claimed names: ${readme_dupes:-<none>}" >&2
 fi
 if [ "$control_violations" -ne 0 ]; then
   echo "FAIL CLOSED: neighbor battery failed to discriminate ($control_violations violation(s)) — see $outdir/assertions-negative-control.txt" >&2

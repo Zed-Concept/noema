@@ -1,64 +1,219 @@
-# Auth-settings preflight — permanent control (REVIEW-015 finding 2).
-# rls-probes.mjs --anon is driven against a loopback HTTP server that
-# controls the /auth/v1/settings response. Five negative controls, one per
-# red path the preflight must catch, plus one positive control proving the
-# preflight still ACCEPTS a well-formed response. Synthetic key, 127.0.0.1
-# only: no Supabase project, credential, or network host is contacted.
+# Live-probe fail-closed controls — permanent (REVIEW-015 finding 2,
+# REVIEW-016 finding 2). No test hook exists in either producer: every case
+# below drives the REAL production entry points with no control variable set.
+# Loopback only — 127.0.0.1 on an ephemeral port, 127.0.0.1:9 for the
+# unreachable case, a runtime-assembled synthetic key, and children that read
+# their URL and key from the environment and never from .env. No Supabase
+# project, credential, or network host is contacted.
 #
-# The defect under test: a settings read that failed was reported as
-# HTTP 0 with undefined fields and the run continued to 46 PASS / exit 0.
-# The `unreachable` case below reproduces that exact input.
+# section 1 — the auth-settings preflight aborts before any probe on every
+# unusable /auth/v1/settings response, in BOTH production modes, and lets a
+# well-formed one through. The defect under test: a settings read that failed
+# was reported as HTTP 0 with undefined fields and the run continued to
+# 46 PASS / exit 0. The `unreachable` case reproduces that exact input. Each
+# case runs --anon AND --auth, so the auth mode's own preflight call is
+# exercised; four cases isolate one boolean guard from the other, so neither
+# guard can be deleted without turning cases red.
 
-case: unreachable
+case: unreachable [--anon]
 what it feeds the preflight: no listener — the transport failure shape req() maps to HTTP 0 (what the committed auth transcript recorded)
 child exit code: 4 (4 required)
 preflight verdict: ABORTED (ABORTED required)
 recorded reason matches "settings request did not return HTTP 200 (got 0)": yes (yes required)
-zero probe PASS lines emitted: yes (yes required)
+probe PASS lines emitted: 0 (0 required)
 case verdict: as pinned
 
-case: http-503
+case: unreachable [--auth]
+what it feeds the preflight: no listener — the transport failure shape req() maps to HTTP 0 (what the committed auth transcript recorded)
+child exit code: 4 (4 required)
+preflight verdict: ABORTED (ABORTED required)
+recorded reason matches "settings request did not return HTTP 200 (got 0)": yes (yes required)
+probe PASS lines emitted: 0 (0 required)
+case verdict: as pinned
+
+case: http-503 [--anon]
 what it feeds the preflight: reachable but non-200
 child exit code: 4 (4 required)
 preflight verdict: ABORTED (ABORTED required)
 recorded reason matches "settings request did not return HTTP 200 (got 503)": yes (yes required)
-zero probe PASS lines emitted: yes (yes required)
+probe PASS lines emitted: 0 (0 required)
 case verdict: as pinned
 
-case: unparseable
+case: http-503 [--auth]
+what it feeds the preflight: reachable but non-200
+child exit code: 4 (4 required)
+preflight verdict: ABORTED (ABORTED required)
+recorded reason matches "settings request did not return HTTP 200 (got 503)": yes (yes required)
+probe PASS lines emitted: 0 (0 required)
+case verdict: as pinned
+
+case: unparseable [--anon]
 what it feeds the preflight: HTTP 200 whose body is not JSON
 child exit code: 4 (4 required)
 preflight verdict: ABORTED (ABORTED required)
 recorded reason matches "settings response body was not parseable JSON": yes (yes required)
-zero probe PASS lines emitted: yes (yes required)
+probe PASS lines emitted: 0 (0 required)
 case verdict: as pinned
 
-case: missing-fields
+case: unparseable [--auth]
+what it feeds the preflight: HTTP 200 whose body is not JSON
+child exit code: 4 (4 required)
+preflight verdict: ABORTED (ABORTED required)
+recorded reason matches "settings response body was not parseable JSON": yes (yes required)
+probe PASS lines emitted: 0 (0 required)
+case verdict: as pinned
+
+case: missing-fields [--anon]
 what it feeds the preflight: HTTP 200, valid JSON, neither flag present
 child exit code: 4 (4 required)
 preflight verdict: ABORTED (ABORTED required)
 recorded reason matches "disable_signup is not a boolean (undefined)": yes (yes required)
-zero probe PASS lines emitted: yes (yes required)
+probe PASS lines emitted: 0 (0 required)
 case verdict: as pinned
 
-case: null-flags
+case: missing-fields [--auth]
+what it feeds the preflight: HTTP 200, valid JSON, neither flag present
+child exit code: 4 (4 required)
+preflight verdict: ABORTED (ABORTED required)
+recorded reason matches "disable_signup is not a boolean (undefined)": yes (yes required)
+probe PASS lines emitted: 0 (0 required)
+case verdict: as pinned
+
+case: null-flags [--anon]
 what it feeds the preflight: HTTP 200, both flags present but null — the shape a partial outage returns
 child exit code: 4 (4 required)
 preflight verdict: ABORTED (ABORTED required)
 recorded reason matches "disable_signup is not a boolean (null)": yes (yes required)
-zero probe PASS lines emitted: yes (yes required)
+probe PASS lines emitted: 0 (0 required)
 case verdict: as pinned
 
-case: well-formed
-what it feeds the preflight: POSITIVE CONTROL — HTTP 200 with both flags boolean; the preflight must ACCEPT, or the five results above would prove nothing
-child exit code: 0 (0 required)
-preflight verdict: ACCEPTED (ACCEPTED required)
-zero probe PASS lines emitted: yes (yes required)
+case: null-flags [--auth]
+what it feeds the preflight: HTTP 200, both flags present but null — the shape a partial outage returns
+child exit code: 4 (4 required)
+preflight verdict: ABORTED (ABORTED required)
+recorded reason matches "disable_signup is not a boolean (null)": yes (yes required)
+probe PASS lines emitted: 0 (0 required)
 case verdict: as pinned
 
-cases run: 6 (5 negative + 1 positive)
+case: disable-signup-non-boolean [--anon]
+what it feeds the preflight: ISOLATES disable_signup — mailer_autoconfirm is a valid boolean, so only the disable_signup guard can reject this
+child exit code: 4 (4 required)
+preflight verdict: ABORTED (ABORTED required)
+recorded reason matches "disable_signup is not a boolean ("false")": yes (yes required)
+probe PASS lines emitted: 0 (0 required)
+case verdict: as pinned
+
+case: disable-signup-non-boolean [--auth]
+what it feeds the preflight: ISOLATES disable_signup — mailer_autoconfirm is a valid boolean, so only the disable_signup guard can reject this
+child exit code: 4 (4 required)
+preflight verdict: ABORTED (ABORTED required)
+recorded reason matches "disable_signup is not a boolean ("false")": yes (yes required)
+probe PASS lines emitted: 0 (0 required)
+case verdict: as pinned
+
+case: mailer-missing [--anon]
+what it feeds the preflight: ISOLATES mailer_autoconfirm — disable_signup is a valid boolean and the mailer flag is absent, so only the mailer guard can reject this
+child exit code: 4 (4 required)
+preflight verdict: ABORTED (ABORTED required)
+recorded reason matches "mailer_autoconfirm is not a boolean (undefined)": yes (yes required)
+probe PASS lines emitted: 0 (0 required)
+case verdict: as pinned
+
+case: mailer-missing [--auth]
+what it feeds the preflight: ISOLATES mailer_autoconfirm — disable_signup is a valid boolean and the mailer flag is absent, so only the mailer guard can reject this
+child exit code: 4 (4 required)
+preflight verdict: ABORTED (ABORTED required)
+recorded reason matches "mailer_autoconfirm is not a boolean (undefined)": yes (yes required)
+probe PASS lines emitted: 0 (0 required)
+case verdict: as pinned
+
+case: mailer-null [--anon]
+what it feeds the preflight: ISOLATES mailer_autoconfirm — disable_signup valid, mailer flag null
+child exit code: 4 (4 required)
+preflight verdict: ABORTED (ABORTED required)
+recorded reason matches "mailer_autoconfirm is not a boolean (null)": yes (yes required)
+probe PASS lines emitted: 0 (0 required)
+case verdict: as pinned
+
+case: mailer-null [--auth]
+what it feeds the preflight: ISOLATES mailer_autoconfirm — disable_signup valid, mailer flag null
+child exit code: 4 (4 required)
+preflight verdict: ABORTED (ABORTED required)
+recorded reason matches "mailer_autoconfirm is not a boolean (null)": yes (yes required)
+probe PASS lines emitted: 0 (0 required)
+case verdict: as pinned
+
+case: mailer-non-boolean [--anon]
+what it feeds the preflight: ISOLATES mailer_autoconfirm — disable_signup valid, mailer flag a string
+child exit code: 4 (4 required)
+preflight verdict: ABORTED (ABORTED required)
+recorded reason matches "mailer_autoconfirm is not a boolean ("true")": yes (yes required)
+probe PASS lines emitted: 0 (0 required)
+case verdict: as pinned
+
+case: mailer-non-boolean [--auth]
+what it feeds the preflight: ISOLATES mailer_autoconfirm — disable_signup valid, mailer flag a string
+child exit code: 4 (4 required)
+preflight verdict: ABORTED (ABORTED required)
+recorded reason matches "mailer_autoconfirm is not a boolean ("true")": yes (yes required)
+probe PASS lines emitted: 0 (0 required)
+case verdict: as pinned
+
+case: well-formed [--anon]
+what it feeds the preflight: POSITIVE CONTROL — HTTP 200 with both flags boolean; the production run must CONTINUE past the preflight into probes, or the nine results above would prove only that the preflight is unconditionally red
+child exit code: 1 (1 required)
+preflight verdict: CONTINUED (CONTINUED required)
+probe lines emitted after the preflight: 11 (> 0 required — this is what "continued" means)
+case verdict: as pinned
+
+case: well-formed [--auth]
+what it feeds the preflight: POSITIVE CONTROL — HTTP 200 with both flags boolean; the production run must CONTINUE past the preflight into probes, or the nine results above would prove only that the preflight is unconditionally red
+child exit code: 3 (3 required)
+preflight verdict: CONTINUED (CONTINUED required)
+probe lines emitted after the preflight: 2 (> 0 required — this is what "continued" means)
+case verdict: as pinned
+
+# section 2 — live-probes.sh refuses to start when a control variable is
+# present in its inherited environment. The defect under test: an ambient
+# control variable was an undeclared switch on a production run, because the
+# wrapper passes its whole environment to the child and reads child 0 as
+# success. The wrapper must ABORT, not clear the variable and continue.
+
+case: leak-var-default-mode
+what it hands the wrapper: REDACTION_CONTROL_LEAK present, default (production) mode
+wrapper exit code: 5 (5 required)
+refusal message printed: yes (yes required)
+handed output directory left untouched: yes (yes required — the refusal precedes every read and write)
+case verdict: as pinned
+
+case: retired-var-default-mode
+what it hands the wrapper: SETTINGS_PREFLIGHT_CONTROL present — the name is retired from the producers, and a stale ambient value must still surface as a refusal
+wrapper exit code: 5 (5 required)
+refusal message printed: yes (yes required)
+handed output directory left untouched: yes (yes required — the refusal precedes every read and write)
+case verdict: as pinned
+
+case: leak-var-control-mode
+what it hands the wrapper: REDACTION_CONTROL_LEAK present, --control mode — the guard is not a courtesy the production path alone gets
+wrapper exit code: 5 (5 required)
+refusal message printed: yes (yes required)
+handed output directory left untouched: yes (yes required — the refusal precedes every read and write)
+case verdict: as pinned
+
+case: clean-env-control-mode
+what it hands the wrapper: POSITIVE CONTROL — no control variable in the inherited environment, --control mode: the guard must ADMIT the run and let it complete, or the three refusals above would prove only that the wrapper never starts
+wrapper exit code: 0 (0 required)
+refusal message printed: no (no required)
+run completed and wrote redaction-control.txt: yes (yes required)
+case verdict: as pinned
+
+section 1 cases run: 20 (9 negative + 1 positive, each in both production modes)
+section 2 cases run: 4 (3 refusals + 1 positive)
 violations: 0 (0 required)
---- enforced: every case exits exactly as pinned, the five red paths abort
---- with their exact recorded reason and emit no probe PASS, and the
---- well-formed case is accepted — or capture.sh exits 1 (fail closed) ---
+--- enforced: every preflight case exits exactly as pinned; the nine red
+--- paths abort in both modes with their exact recorded reason and emit no
+--- probe PASS; the well-formed case continues into probes in both modes;
+--- the wrapper refuses every ambient control variable in both of its modes
+--- without touching the output directory, and still admits a clean
+--- environment — or capture.sh exits 1 (fail closed) ---
 --- exit code: 0 (0 = every case behaved exactly as pinned) ---
