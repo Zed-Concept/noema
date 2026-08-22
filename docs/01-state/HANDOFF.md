@@ -1,3 +1,132 @@
+## 2026-08-23 — feat/schema-rls-v1 (REVIEW-016 fix-cycle-4 re-review)
+
+**Controller:** CTRL-004 Schema and RLS v1. **Reviewer of record:** Codex Sol,
+Ultra effort, fresh session. **Reviewed base:**
+`64c1ce603491fb2cb6e8b7b948a369731a436c7f`. **Target:**
+`1a090bab654565be79bef57504038d5822717e3e`. **Prior records:** REVIEW-011,
+REVIEW-012, REVIEW-013, REVIEW-015 (FAIL); REVIEW-014 (advisory, SOUND,
+non-gating). **Verdict:** **FAIL.** **LOCK:** unchanged at
+`Status: REVIEW — fix cycle 4 complete, awaiting re-review`; MERGED remains
+controller-only.
+
+The dispatched Opus 5 / `max` substitution is accepted. The harness-fixed
+Fable 5 trailer is the known cosmetic artifact and is not a finding. The
+controller-authorized 004a `.temp` normalization and two transcript
+divergences are accepted. 004a's pre-existing nonzero-gate machinery chore
+is not widened. REVIEW-015 finding 3 and REVIEW-013 finding 4 are excluded
+and are not treated as open builder findings. No live run was performed.
+
+**Disclosure (ruling 6):** one review workflow ran:
+`standards-spec-review`, with separate read-only Standards and Spec axes.
+Five read-only subagents covered those axes, an independent oracle-adversary
+lane, and the first 004a/004b stability attempts. The main lane reran both
+suites with the network/loopback permissions they require. A final
+`docs-guard` skill pass source-checked the two records. No subagent edited the
+repository.
+
+**Scope and exact-head confirmation**
+
+- Before substantive review, `git fetch origin` returned 0 and both supplied
+  SHAs resolved to commits. Fresh `origin/main`/local `main` equalled the
+  base; `origin/feat/schema-rls-v1`, local HEAD, and the clean checked-out
+  branch equalled the target; base is an ancestor of target.
+- Full reviewed range: fifteen linear commits, 49 files, +9103/-12. The one
+  post-REVIEW-015 commit has parent `f994f8d`: 20 files, +1523/-144.
+- The fix-cycle diff is empty for all four applied migrations,
+  `src/lib/database.types.ts`, ADRs, prior REVIEW records, `roles-acl.*`, and
+  all three live transcripts. Full-range and fix-cycle `git diff --check`
+  returned 0. LOCK stayed REVIEW.
+- No Supabase project was queried; no credential was read; no live producer,
+  user/toggle operation, migration apply, type generation, push, PR, merge,
+  deploy, or other outward-facing action occurred.
+
+**Findings**
+
+1. **Medium — FAIL introduced by Unit C and retained after fix cycle 4;
+   verdict-driving.** The oracle still accepts an apply-valid neighbor inside
+   the claimed exact RLS predicate class. Changing the first storage SELECT
+   owner lookup from `(storage.foldername(name))[1]` to
+   `(storage.foldername(name))[1][2]` parsed and returned process 0,
+   including the `{user_id}/-scoped PASS and `91 assertions, 91 PASS`.
+   `isFolderEq()` reads only `indirection[0]` and never pins cardinality.
+   [Supabase Storage's definition](https://github.com/supabase/storage/blob/4fa61fba9371c4bd40cbb81509f07bcb3af21683/migrations/tenant/0002-storage-schema.sql#L85-L94)
+   returns a one-dimensional `text[]` path, and
+   [PostgreSQL returns NULL for the wrong number of
+   subscripts](https://www.postgresql.org/docs/17/arrays.html); the mutated
+   policy therefore denies owners. The committed migration remains correct.
+2. **Medium — FAIL introduced by fix cycle 4; verdict-driving.** The new
+   `SETTINGS_PREFLIGHT_CONTROL=1` positive hook calls `finish(0)` after a
+   usable anon preflight with zero probes. The real `live-probes.sh` inherits
+   and neither rejects nor clears it, so an ambient flag can skip every anon
+   probe while the overall wrapper remains green if auth passes. The six-case
+   control also always spawns `--anon` and never isolates an invalid
+   `mailer_autoconfirm`: disposable removal of the auth-mode preflight or of
+   the mailer boolean guard left all six cases green. Current red-path source
+   is correct, but the live seam and cited proof are not fail-closed.
+3. **Low — FAIL introduced by fix-cycle-4 HANDOFF prose; non-driving.** The
+   builder HANDOFF says +1516/-144; exact `f994f8d..1a090ba` numstat is
+   +1523/-144, matching the dispatch. The paths and protected boundary are
+   otherwise correct.
+
+**REVIEW-015 disposition**
+
+- F1 is **not cleared**. All 55 committed controls discriminate and their
+  twelve unique labels match in both directions, but the fresh in-class RLS
+  neighbor still returns 91/91. The derivation proves unique label-set
+  equality, not every property inside a broad author-supplied class.
+- F2 is **partly corrected, not cleared**. Unusable settings now reach exit 4
+  before probes in both source paths, and claim 22 correctly rejects the
+  transcript's HTTP-0 line. The uncontained success hook and incomplete
+  permanent control remain finding 2.
+- REVIEW-015 F3 and REVIEW-013 F4 are excluded by controller ruling and were
+  not re-litigated.
+
+**Verification and classifications**
+
+- **PASS:** exact-target 004a baseline — 91 PASS, zero FAIL/parse failures,
+  process 0. **PASS at enumerated boundary:** 55 scenarios, 55 tags, 55
+  exit-1/named-FAIL results, twelve matching class labels.
+- **FAIL introduced by Unit C; retained:** genuine named-class
+  discrimination, on the apply-valid `[1][2]` RLS counterexample.
+- **PASS:** 004a stability — six gated artifacts x two captures, all 12
+  byte-identical, process 0. **PASS:** 004b offline stability — six gated
+  artifacts x two captures, all 12 byte-identical, process 0.
+- **PASS at six exact inputs:** settings preflight control — five exit-4
+  aborts, one accepted positive, zero violations, process 0. **FAIL
+  introduced by fix cycle 4:** both-mode/both-flag mutation sensitivity and
+  containment of the positive-control success exit.
+- **PASS at its stated behavioral boundary:** claim 22 — two
+  `session=yes` signups and 46 authenticated PASS results establish the
+  run-time inference, consistent with [Supabase's Confirm Email
+  contract](https://supabase.com/docs/guides/auth/general-configuration);
+  the HTTP-0 settings line is not evidence and no present toggle value is
+  claimed.
+- **PASS for unchanged-byte integrity / live behavior NOT RUN this cycle:**
+  anon and auth transcript hashes match their GREEN bindings; anon has 11
+  PASS, auth 46 PASS, zero FAIL. Transcripts were not regenerated.
+- **PASS:** both suites' typecheck, lint, Jest, format-check, secret scan, and
+  whitespace records. **NOT RUN with reason:** `npm ci` (no dependency
+  delta), branch CI (fresh queries: zero PRs and zero target-SHA runs), local
+  `supabase db lint`/stack (Docker/database boundary), and every owner/live
+  operation (dispatch required no live run). **NOT RUN — prohibited:**
+  production access.
+
+**Standards / Spec:** Standards: 3 findings, worst medium. Spec: 2 findings,
+worst medium. Details and separate axis reports are immutable in
+`docs/04-reviews/REVIEW-016.md`.
+
+**Files written — exactly the dispatched two:**
+
+- `docs/04-reviews/REVIEW-016.md` — new immutable FAIL record.
+- `docs/01-state/HANDOFF.md` — this one top-inserted block; no prior block
+  edited.
+
+**Next step:** controller routes findings 1 and 2 through the same-builder,
+same-branch fix loop if authorized. Finding 3 is an accuracy correction for
+that cycle. LOCK stays `REVIEW`; MERGED is controller-only.
+
+---
+
 ## 2026-08-22 — feat/schema-rls-v1 (CTRL-004 Unit C, fix cycle 4 — REVIEW-015)
 
 **Controller:** CTRL-004 Schema and RLS v1. **Builder:** Claude Code, same
