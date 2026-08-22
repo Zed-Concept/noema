@@ -1,3 +1,113 @@
+## 2026-08-22 — feat/schema-rls-v1 (REVIEW-015 fix-cycle-3 re-review)
+
+**Controller:** CTRL-004 Schema and RLS v1. **Reviewer of record:** Codex Sol,
+Ultra effort, fresh session. **Reviewed base:**
+`64c1ce603491fb2cb6e8b7b948a369731a436c7f`. **Target:**
+`4032af86385760375e8accb4e47c81c9c5ed7b04`. **Prior records:** REVIEW-011,
+REVIEW-012, REVIEW-013 (FAIL); REVIEW-014 (advisory, SOUND, non-gating).
+**Verdict:** **FAIL.** **LOCK:** unchanged at `Status: REVIEW — fix cycle 3
+complete, awaiting re-review`; MERGED remains controller-only.
+
+The Opus 5 [1m] / Max substitution is accepted under the owner ruling. The
+harness-fixed Fable 5 trailer is the dispatched cosmetic artifact and is not a
+finding. REVIEW-013 finding 4 remains controller-owned and excluded. The
+REVIEW-014 claim-6 disposition, standing rulings, and backlog are accepted and
+not re-litigated.
+
+**Disclosure (ruling 6):** one workflow ran: `standards-spec-review`, with
+separate read-only Standards and Spec axes. Three read-only subagents covered
+the anon/live evidence, bounded oracle, and permanent-battery/scope lanes; two
+then supplied the Standards and Spec reports. No subagent edited the repo.
+
+**Scope and outcome**
+
+I fetched before inspecting reviewed content, confirmed the supplied commit
+objects and exact remote/local refs, and confirmed the clean target descends
+from the base. The full range is thirteen linear commits, 46 files,
++7370/-12. Fix cycle 3 (`bac4c05`) is exactly 13 files, +761/-153; the
+advisory commit (`4032af8`) is exactly REVIEW-014 plus one HANDOFF insertion,
+two files, +198/-0. Applied migrations, the generated types, ADRs, prior
+reviews, and `roles-acl.*` are unchanged in fix cycle 3. All whitespace and
+insertion-only boundary checks pass.
+
+The immutable `docs/04-reviews/REVIEW-015.md` records three classified
+findings; two medium findings are verdict-driving:
+
+1. **F2 is not cleared (medium).** The non-exhaustive bound is honest, and
+   the six REVIEW-013 classes now reject, but material false greens remain
+   **inside** properties the twelve named classes say they pin. Most directly,
+   changing a storage SELECT folder-owner equality to `IS DISTINCT FROM`
+   reverses the confidentiality predicate while the exact pinned oracle still
+   returns process 0, 78/78, and prints the named storage-policy PASS. The
+   storage helpers compare operator name but omit the AST kind. Further
+   in-class green controls cover the bucket comparator, provisioning-policy
+   permissiveness, exact empty `search_path`, filename identity, and a
+   `TableLikeClause`. The applied migrations themselves remain correct; this
+   is a proof-artifact failure under the controller's bounded-class ruling.
+2. **Auth-settings evidence false-green (medium).** `anon-probes.txt` proves
+   pre-run `mailer_autoconfirm=true`, but the new `auth-probes.txt` records
+   `HTTP 0 ... mailer_autoconfirm=undefined`. The producer does not count that
+   failed read as a probe, so it still reports 46 PASS / 0 FAIL, while README
+   and this cycle's builder HANDOFF say both transcripts recorded true. No
+   committed evidence file binds the post-re-enable false measurement. The
+   46 live behavior probes remain valid; the post-state/deletions remain
+   controller-restated owner/builder facts and fresh reviewer verification is
+   NOT RUN.
+3. **Literal evidence-history inaccuracies (low, non-driving).** The builder
+   HANDOFF's grep-verified claim that the old no-grants phrases occur nowhere
+   is false: 004b README retains them as historical/negating quotations. The
+   substantive privilege claim is correctly narrowed. Also, the `USERS`
+   comment names current `ctrl004e-*` as a previously deleted namespace where
+   it should name `ctrl004d-*`; the actual two-user array is correct.
+
+**REVIEW-013 disposition**
+
+| Prior item | Status | Reviewer boundary |
+| --- | --- | --- |
+| F1 anon privilege wording | **CLEARED substantively** | Current producer, transcript, and claim 4 use zero current table-level CRUD and state the non-CRUD/column-ACL boundary. The literal history miss is low only. |
+| F2 bounded oracle | **NOT CLEARED** | Inside-class storage predicate and other named-property false greens remain; REVIEW-015 finding 1. |
+| F3 permanent battery | **CLEARED** | 32 permanent scenarios, 32 exit-1/named-FAIL results, derived counter, artifact cross-check, and byte-identical fresh replay. |
+| Finding 4 historical LOCK label | **EXCLUDED** | Controller-owned superseding close-out note; deliberately untouched. |
+
+**Verification**
+
+| Check | Class | Evidence/result |
+| --- | --- | --- |
+| Exact refs/range/scope | PASS | Fresh fetch; exact base/target; thirteen commits; dispatched fix/advisory counts and protected exclusions match. |
+| 004a exact-target stability | PASS | Six gated artifacts × two runs, all twelve comparisons identical, process 0. |
+| Static baseline/permanent controls | PASS with finding-1 limit | 78/78 baseline; committed/fresh 32-scenario blob `04f3224afc3f1c71c038a5106f69b50a953e4527`; 32 scenario lines and 32 exit-1/named-FAIL results. |
+| Named-class coverage | FAIL introduced by Unit C; retained | Storage `IS DISTINCT FROM` and other inside-class controls return process 0 and 78/78. |
+| F1 measured anon boundary | PASS | `roles-acl.txt` plus corrected producer/transcript/claim 4 agree at current table CRUD; non-CRUD and column-ACL limits are explicit. |
+| Live binding/count arithmetic | PASS | Anon 3756 B, `9ba3c2b5…d643f`, 11/0; auth 12429 B, `059edefa…f0e34`, 46/0; both equal GREEN gate bindings. |
+| Auth-settings artifact claim | FAIL introduced in this cycle's evidence | Auth transcript records HTTP 0/undefined while prose says it recorded true. |
+| 004b offline stability | PASS | Five gated artifacts × two runs, all ten comparisons identical, process 0. |
+| Four non-install gates and secret scans | PASS | Fresh exact-target captures reproduced all committed exit-0/clean bytes. |
+| Post-run toggle/users | Controller-restated record / fresh external NOT RUN | No secret-class credential was used; no live query was made. |
+| `npm ci` | NOT RUN with reason | No package or lockfile delta. |
+| Branch CI | NOT RUN | Fresh GitHub queries: zero branch PRs, zero runs at target SHA. |
+| Production access | NOT RUN — prohibited | No credential, query, write, deploy, or outward-facing action. |
+
+**What I did not do**
+
+No Supabase query or write; no auth toggle or user creation/deletion; no
+migration application/edit, type generation, remediation, PR, push, merge,
+deploy, secret output, or production access. Counterfactuals were static,
+disposable, and never applied. This review writes exactly
+`docs/04-reviews/REVIEW-015.md` and this top-insert HANDOFF block.
+
+**Next step**
+
+Controller routes another fix cycle to the same builder/branch. Minimum
+verdict-driving work is to make every demonstrated inside-class property
+discriminate with permanent controls and make the auth-settings measurement
+fail closed with a committed before/after evidence boundary. Owner merge waits
+for a later PASS review. REVIEW-013 finding 4 remains close-out-only.
+
+LOCK status line: `Status: REVIEW — fix cycle 3 complete, awaiting
+re-review`.
+
+---
+
 ## 2026-08-20 — feat/schema-rls-v1 (REVIEW-014 advisory record, controller-committed)
 
 **Controller:** CTRL-004 Schema and RLS v1. **Advisory reviewer:** DeepSeek
