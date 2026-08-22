@@ -1,0 +1,64 @@
+# Auth-settings preflight — permanent control (REVIEW-015 finding 2).
+# rls-probes.mjs --anon is driven against a loopback HTTP server that
+# controls the /auth/v1/settings response. Five negative controls, one per
+# red path the preflight must catch, plus one positive control proving the
+# preflight still ACCEPTS a well-formed response. Synthetic key, 127.0.0.1
+# only: no Supabase project, credential, or network host is contacted.
+#
+# The defect under test: a settings read that failed was reported as
+# HTTP 0 with undefined fields and the run continued to 46 PASS / exit 0.
+# The `unreachable` case below reproduces that exact input.
+
+case: unreachable
+what it feeds the preflight: no listener — the transport failure shape req() maps to HTTP 0 (what the committed auth transcript recorded)
+child exit code: 4 (4 required)
+preflight verdict: ABORTED (ABORTED required)
+recorded reason matches "settings request did not return HTTP 200 (got 0)": yes (yes required)
+zero probe PASS lines emitted: yes (yes required)
+case verdict: as pinned
+
+case: http-503
+what it feeds the preflight: reachable but non-200
+child exit code: 4 (4 required)
+preflight verdict: ABORTED (ABORTED required)
+recorded reason matches "settings request did not return HTTP 200 (got 503)": yes (yes required)
+zero probe PASS lines emitted: yes (yes required)
+case verdict: as pinned
+
+case: unparseable
+what it feeds the preflight: HTTP 200 whose body is not JSON
+child exit code: 4 (4 required)
+preflight verdict: ABORTED (ABORTED required)
+recorded reason matches "settings response body was not parseable JSON": yes (yes required)
+zero probe PASS lines emitted: yes (yes required)
+case verdict: as pinned
+
+case: missing-fields
+what it feeds the preflight: HTTP 200, valid JSON, neither flag present
+child exit code: 4 (4 required)
+preflight verdict: ABORTED (ABORTED required)
+recorded reason matches "disable_signup is not a boolean (undefined)": yes (yes required)
+zero probe PASS lines emitted: yes (yes required)
+case verdict: as pinned
+
+case: null-flags
+what it feeds the preflight: HTTP 200, both flags present but null — the shape a partial outage returns
+child exit code: 4 (4 required)
+preflight verdict: ABORTED (ABORTED required)
+recorded reason matches "disable_signup is not a boolean (null)": yes (yes required)
+zero probe PASS lines emitted: yes (yes required)
+case verdict: as pinned
+
+case: well-formed
+what it feeds the preflight: POSITIVE CONTROL — HTTP 200 with both flags boolean; the preflight must ACCEPT, or the five results above would prove nothing
+child exit code: 0 (0 required)
+preflight verdict: ACCEPTED (ACCEPTED required)
+zero probe PASS lines emitted: yes (yes required)
+case verdict: as pinned
+
+cases run: 6 (5 negative + 1 positive)
+violations: 0 (0 required)
+--- enforced: every case exits exactly as pinned, the five red paths abort
+--- with their exact recorded reason and emit no probe PASS, and the
+--- well-formed case is accepted — or capture.sh exits 1 (fail closed) ---
+--- exit code: 0 (0 = every case behaved exactly as pinned) ---

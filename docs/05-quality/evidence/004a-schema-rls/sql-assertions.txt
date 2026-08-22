@@ -8,13 +8,27 @@ OK   20260820100200_v1_profile_provisioning.sql  statements=3
 OK   20260820100300_v1_storage_captures_audio.sql  statements=5
 
 -- statement inventory --
-PASS migration files are exactly the four v1 files, in apply order
+PASS migration files are exactly the four v1 files, whole filenames, in apply order: 20260820100000_v1_core_schema.sql, 20260820100100_v1_rls_policies.sql, 20260820100200_v1_profile_provisioning.sql, 20260820100300_v1_storage_captures_audio.sql
+PASS the migrations directory holds exactly those four files and nothing else — a non-.sql sibling cannot hide behind the parser filter
 PASS statement counts per file are exactly 9, 21, 3, 5 (38 total — appended statements cannot hide)
 PASS every statement type is on the expected whitelist
 PASS exactly three tables are created: public.profiles, public.captures, public.transcripts
 PASS exactly three triggers are created in the whole set (two set_updated_at, one provisioning)
 PASS the only INSERT targets storage.buckets
 PASS exactly two functions are created: public.set_updated_at, public.handle_new_user
+-- node-form pinning: no unlisted grammar clause rides along --
+PASS CREATE TABLE nodes carry only relation/tableElts/oncommit — no WITH options, USING method, INHERITS, PARTITION BY, OF type, TABLESPACE, or IF NOT EXISTS; every table is permanent and non-inheriting
+PASS every table element is a ColumnDef or a Constraint — no LIKE source table, which contributes columns that never appear in the compared column list
+PASS every ColumnDef carries only colname/typeName/is_local/constraints — no COLLATE, STORAGE, COMPRESSION, IDENTITY, or GENERATED clause beside the type
+PASS every column and table constraint carries only its declared fields — no NO INHERIT, DEFERRABLE, INITIALLY DEFERRED, or NOT VALID attribute
+PASS every CREATE INDEX carries only idxname/relation/accessMethod/indexParams — no CONCURRENTLY, IF NOT EXISTS, TABLESPACE, WITH options, UNIQUE, WHERE, or INCLUDE
+PASS every index key is a plain column in default sort order — no DESC, NULLS FIRST/LAST, operator class, collation, or expression
+PASS the three trigger names are exactly profiles_set_updated_at, captures_set_updated_at, on_auth_user_created, and no trigger carries REFERENCING transition tables, OR REPLACE, WHEN, UPDATE OF, args, or CONSTRAINT
+PASS every CREATE FUNCTION carries only funcname/returnType/options — no OR REPLACE, parameter list, or SQL-standard body
+PASS every GRANT is an object-level, RESTRICT-behaviour grant of whole-table privileges — no GRANTED BY grantor and no WITH GRANT OPTION field at all
+PASS every ALTER TABLE targets a plain table by name — no ONLY, no IF EXISTS, no non-table objtype — and each command carries only its subtype
+PASS every policy carries only its name/table/command/permissiveness/roles/predicates, and all 17 are PERMISSIVE — a RESTRICTIVE policy inverts how the policy set combines
+PASS the bucket INSERT carries only relation/cols/selectStmt/override, with OVERRIDING unset and a bare VALUES source — no WITH clause, ON CONFLICT, or RETURNING
 -- public.profiles --
 PASS profiles columns are exactly (id, display_name, locale, created_at, updated_at)
 PASS profiles.id uuid PRIMARY KEY
@@ -83,7 +97,7 @@ PASS public.transcripts select: one permissive policy TO authenticated, (select 
 PASS public.transcripts insert: one permissive policy TO authenticated, (select auth.uid()) = user_id on WITH CHECK
 PASS public.transcripts update: one permissive policy TO authenticated, (select auth.uid()) = user_id on USING and WITH CHECK
 PASS public.transcripts delete: one permissive policy TO authenticated, (select auth.uid()) = user_id
-PASS the 13th public policy is the provisioning path: INSERT TO postgres WITH CHECK (true) on profiles only
+PASS the 13th public policy is the provisioning path: one PERMISSIVE INSERT TO postgres WITH CHECK (true) on profiles only
 PASS no policy anywhere names anon or PUBLIC
 -- profiles provisioning --
 PASS handle_new_user: returns trigger, plpgsql, SECURITY DEFINER, search_path pinned to ''
@@ -97,5 +111,5 @@ PASS storage.objects update: one policy TO authenticated, bucket-pinned and {use
 PASS storage.objects delete: one policy TO authenticated, bucket-pinned and {user_id}/-scoped
 PASS storage.objects has exactly those four policies and no table-level ALTER (platform-managed table)
 
-RESULT: 78 assertions, 78 PASS, 0 FAIL, parse failures 0
+RESULT: 91 assertions, 91 PASS, 0 FAIL, parse failures 0
 --- exit code: 0 (0 = every assertion passed) ---

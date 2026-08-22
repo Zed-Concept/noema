@@ -25,7 +25,15 @@ Time: <duration>
 Ran all test suites.
 --- exit code: 0 ---
 
-$ npx prettier --check .
+$ prettier --check .   # pinned local binary, in a clean checkout-index of the staged tree
+# Normalization (adopted from ../004b-schema-rls-live/capture.sh, which already
+# measured it this way): the check runs against exactly the staged tree (git
+# checkout-index into scratch), because prettier walks untracked working-copy
+# files and does not read nested ignore rules — the owner's machine-local
+# supabase/.temp CLI residue (untracked, ignored by supabase/.gitignore, and
+# left by the 2026-08-20 owner apply session) is otherwise flagged, reddening
+# this step over machine state rather than repo state. CI checks out only the
+# tracked tree, so this measures what the CI step measures.
 Checking formatting...
 All matched files use Prettier code style!
 --- exit code: 0 ---

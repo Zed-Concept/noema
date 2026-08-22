@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Regenerates this directory's OFFLINE artifacts. Gated (byte-stable at the
 # committed head, normalization stated in README.md): types-shape.txt,
-# redaction-control.txt, gates.txt, secret-scan.txt, inventory.txt.
+# redaction-control.txt, settings-preflight-control.txt, gates.txt,
+# secret-scan.txt, inventory.txt.
 # Run-varying (fields named in README.md): environment.txt. The three live
 # artifacts (anon-probes.txt, auth-probes.txt, redaction-gate.txt) are NOT
 # touched here — live-probes.sh produced them once against staging and the
@@ -9,7 +10,8 @@
 #
 # Fail closed (house rule): this script exits 1 — after writing the
 # transcript that shows why — on a types-shape extraction failure, a
-# redaction positive control that fails to go red, any nonzero CI-step
+# redaction positive control that fails to go red, an auth-settings preflight
+# control whose cases do not behave exactly as pinned, any nonzero CI-step
 # exit, a wrong inventory, a secret-scan match against the index, or a
 # broken positive control. A green artifact set from a red run cannot
 # exist.
@@ -58,6 +60,24 @@ fi
 if bash "$evdir/live-probes.sh" --control "$outdir" >/dev/null 2>&1; then rc_exit=0; else rc_exit=$?; fi
 if [ "$rc_exit" -ne 0 ]; then
   echo "FAIL CLOSED: redaction positive control did not prove the red path (exit $rc_exit) — see $outdir/redaction-control.txt" >&2
+  exit 1
+fi
+
+# --- settings-preflight-control.txt — REVIEW-015 finding 2 control: the
+# auth-settings preflight in rls-probes.mjs must abort the run, before any
+# probe, on every unusable /auth/v1/settings response — and must still accept
+# a well-formed one. Drives the real child against a loopback HTTP server
+# (127.0.0.1, ephemeral port, synthetic key; no Supabase project, credential,
+# or network host is contacted). Deterministic by construction, so it is
+# gated.
+if node "$evdir/settings-control.mjs" > "$outdir/settings-preflight-control.txt" 2>&1; then
+  sc_exit=0
+else
+  sc_exit=$?
+fi
+echo "--- exit code: $sc_exit (0 = every case behaved exactly as pinned) ---" >> "$outdir/settings-preflight-control.txt"
+if [ "$sc_exit" -ne 0 ]; then
+  echo "FAIL CLOSED: the auth-settings preflight control did not behave as pinned (exit $sc_exit) — see $outdir/settings-preflight-control.txt" >&2
   exit 1
 fi
 
@@ -171,4 +191,4 @@ if [ "$scan_violations" -ne 0 ]; then
   exit 1
 fi
 
-echo "wrote types-shape.txt, redaction-control.txt, gates.txt, inventory.txt, secret-scan.txt, environment.txt to $outdir"
+echo "wrote types-shape.txt, redaction-control.txt, settings-preflight-control.txt, gates.txt, inventory.txt, secret-scan.txt, environment.txt to $outdir"

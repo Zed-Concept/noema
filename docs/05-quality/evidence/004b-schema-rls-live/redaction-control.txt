@@ -6,9 +6,12 @@
 # (header + complete child stdout/stderr + exit trailer), which
 # redaction-gate.mjs then scans on exact file bytes. Synthetic env only:
 # the URL is https://127.0.0.1:9 (instant refusal — no network, no DNS),
-# so every probe fails and nothing real is contacted or registered.
+# so the auth-settings preflight fails closed and NO probe runs at all
+# (REVIEW-015 finding 2) — the leak hook fires before it, which is why
+# this control still exercises the class it was built for. Nothing real
+# is contacted or registered.
 
-child exit code: 1 (1 required: probes red under synthetic env; the in-process gate stays green — the leak bypassed its buffer, which is the defect class under test)
+child exit code: 4 (4 required: the auth-settings preflight fails closed under the synthetic env before any probe runs — REVIEW-015 finding 2; the in-process gate stays green because the leak bypassed its buffer, which is the defect class under test)
 raw synthetic key lines in the pre-gate transcript bytes: 1 (>= 1 required — the leak really reached the committed stream)
 gate report (bytes/sha256 lines omitted — scratch content varies run to run):
 file: <scratch control transcript>
@@ -18,4 +21,4 @@ residual registered-value classes: 1 (occurrences: 1)
 verdict: RED — residual secret bytes in the exact transcript file — transcript deleted (exit 1)
 post-gate scratch transcript still exists: no (no required — the residual-match red path deletes the file)
 
---- enforced: child exit 1, leak present pre-gate, gate RED (exit 1), transcript deleted — or this control exits 1 ---
+--- enforced: child exit 4, leak present pre-gate, gate RED (exit 1), transcript deleted — or this control exits 1 ---

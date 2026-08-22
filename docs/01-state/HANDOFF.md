@@ -1,3 +1,236 @@
+## 2026-08-22 — feat/schema-rls-v1 (CTRL-004 Unit C, fix cycle 4 — REVIEW-015)
+
+**Controller:** CTRL-004 Schema and RLS v1. **Builder:** Claude Code, same
+builder and branch per ruling 5's fix-loop class, fresh session. **Reviewer
+of record:** Codex (Codex Sol / Ultra, fresh session); **advisory reviewer**
+DeepSeek V4 Pro per the LOCK. **Fix-cycle base:**
+`f994f8daf183d4f1dfa804cca810435a3934ade3` (the dispatch-named origin tip),
+fetched and confirmed equal to local HEAD and `origin/feat/schema-rls-v1`
+before any work (learning 6); clean tree. **Standing authorization**
+restated in the dispatch (ruling 7): the 2026-08-19 RED-lane owner approval
+covers exactly this unit's schema/RLS scope. The four applied migrations,
+`src/lib/database.types.ts`, every ADR, every `REVIEW-*.md`, both
+`roles-acl.*` files, and all three committed live transcripts
+(`anon-probes.txt`, `auth-probes.txt`, `redaction-gate.txt`) are untouched —
+verified by an empty `git diff --cached` over exactly those paths.
+**LOCK:** `Status: REVIEW` throughout; status-line suffix only.
+**.env:** presence checked by name only (`.env` and `.env.example` present);
+no value read, and no credential was needed — this cycle ran no live probe.
+
+**⚠ Model seat (ruling 4 / learning 3).** This cycle ran as **Opus 5 \[1m]**,
+the owner-ruled temporary substitution for Fable 5. This session's
+configuration reads model `opus[1m]`, **effort `max`** — ruling 5's tier for
+review-fix loops. One seat for the whole cycle; no mid-cycle change.
+
+**Disclosure (ruling 6):** workflows run: **0**; subagent fan-out: **none**.
+Every change, reproduction, and verification below was made directly in this
+session.
+
+**NO LIVE RUN THIS CYCLE** (controller ruling): no signup, no namespace, no
+toggle round, no Supabase request of any kind. Both new controls are offline
+by construction — the neighbor battery mutates scratch copies of the
+migration files, and the settings-preflight control drives the real probe
+child against a loopback HTTP server on `127.0.0.1`. No production access.
+
+**What I changed — exactly the two dispatched items**
+
+**A. In-class false greens, closed at the AST cause, and the claim inverted.**
+
+- **Reproduced first, on the committed oracle.** Baseline at the fix-cycle
+  base: 78 assertions, 78 PASS, exit 0. All six REVIEW-015 neighbors then
+  reproduced as false greens — each on a fresh scratch copy, each returning
+  exit 0 and 78/78. My reproduction harness *fails* a scenario whose
+  mutation leaves the file set byte-identical, so a no-op cannot be reported
+  as a reproduction; that check caught one of my own malformed mutations
+  (a policy name I had wrong) before it became a false claim.
+- **Audited every named class for the same defect shape**, in two rounds —
+  operator substitution, predicate-shape variation, and
+  equivalent-looking-but-different node forms. **35 distinct false greens**
+  in total, well beyond the six reported: `IS DISTINCT FROM` on all four
+  storage predicate sites and `IS NOT DISTINCT FROM` besides; `COLLATE`,
+  `STORAGE EXTERNAL`, `COMPRESSION` beside an unchanged type name;
+  `UNLOGGED`; table `WITH` options; CHECK `NO INHERIT`; index `DESC`,
+  `NULLS FIRST`, an operator class, `WITH` options, `CONCURRENTLY`,
+  `TABLESPACE`, `IF NOT EXISTS`; renamed triggers; trigger `REFERENCING`
+  and `CREATE OR REPLACE`; function `CREATE OR REPLACE`; `GRANTED BY`;
+  `ALTER TABLE ONLY` and `IF EXISTS`; `OVERRIDING USER VALUE`; a renamed
+  migration filename; a fifth non-`.sql` file in the directory.
+- **Two structural fixes, not 35 patches.** (1) A shared `opExpr()` helper
+  compares the A_Expr **kind** as well as the operator name, and every
+  operator site now routes through it. This is the exact cause REVIEW-015
+  named and the Duplicated-Code smell it flagged: libpg_query names
+  `IS DISTINCT FROM`, `IS NOT DISTINCT FROM`, `= ANY (…)` and `= ALL (…)`
+  **all** `=`, so name-only comparison accepted four predicates, the first
+  being the exact negation of the intended one — `isOwnPredicate()` checked
+  the kind, the duplicated storage helpers did not. (2) Every node whose
+  shape a class claims to pin is compared against the exact key set the
+  committed migrations produce under the pinned parser (`onlyKeys()`), so
+  an unaccounted-for grammar clause rejects instead of riding along unread.
+  This generalizes the `isBareSelect` technique already in the file.
+- **Result:** 78 → **91 assertions, 91 PASS**, exit 0, on the unchanged
+  migrations. Both audit rounds re-run against the fixed oracle: **0 false
+  greens of 35**, every one rejected with a named FAIL.
+- **The claim is now derived from the battery, not asserted beside it.**
+  Every scenario carries the enumerated class it demonstrates. `capture.sh`
+  computes the set of demonstrated classes from those tags, parses the class
+  list back out of `README.md`, and **exits 1 unless the two sets are
+  identical in both directions** — the same technique it already used for
+  the scenario count, and the cross-check prints both lists into the
+  artifact. A class that cannot be demonstrated is removed from the claim
+  rather than defended in prose. Two further fail-closed checks bind it:
+  every scenario must carry a class tag (else the comparison would run over
+  a subset and still report a match), and the run count must equal the
+  artifact's own `scenario:` lines. Battery: **32 → 55 permanent scenarios
+  in seven groups, 55/55 discriminating, 12/12 classes demonstrated.** The
+  bounded-claim wording is unchanged and is now self-proving.
+- I verified the mechanism actually bites rather than trusting it: the first
+  full `capture.sh` run **failed closed** on two of my own new scenarios
+  whose expected-FAIL string was a mid-string fragment rather than a prefix
+  of the assertion text. That is the gate doing its job; both were corrected.
+
+**B. Fail-open settings preflight, closed — and the claim moved onto the
+evidence that actually carries it.**
+
+- **The producer now fails closed.** `readAuthSettings()` classifies the
+  response and `requireUsableAuthSettings()` aborts the run at **exit 4**,
+  in **both** modes, **before any probe runs**, on any non-200 status, an
+  unparseable body, or a non-boolean `disable_signup`/`mailer_autoconfirm`.
+  Exit 4 is deliberately distinct from 3: 3 is a recorded, legitimate reason
+  not to run the authenticated path; 4 is the run being unable to read the
+  config it depends on. The transcript still records the measured line and
+  the exact reason, because an aborted run must say why.
+- **Permanent control:** new `settings-control.mjs` →
+  `settings-preflight-control.txt` (gated). Six cases drive the real
+  `rls-probes.mjs --anon` against a loopback HTTP server controlling the
+  `/auth/v1/settings` response: five negative controls — **unreachable
+  (`HTTP 0`, the exact shape the committed `auth-probes.txt` recorded)**,
+  HTTP 503, unparseable body, `{}`, and null flags — each required to abort
+  at exit 4 with its exact recorded reason and **zero probe `PASS` lines**;
+  plus one **positive control** (well-formed booleans) required to be
+  ACCEPTED, without which "always aborts" would be indistinguishable from
+  "aborts correctly". All six behaved exactly as pinned. Loopback and a
+  synthetic key only: no Supabase project, credential, or network host is
+  contacted.
+- **The claim is narrowed, and now names its real support.** 004b claim 22
+  states plainly that the authenticated transcript's settings line is **not**
+  evidence: it records `HTTP 0 … mailer_autoconfirm=undefined`, was captured
+  under the defective check, and nothing rests on it. What establishes that
+  `mailer_autoconfirm` was true for that run is behavioural — **46
+  authenticated probes obtained and used real sessions**, which the
+  publishable-key signup path cannot produce while confirmation is required:
+  signup returns no `access_token`, the password-grant fallback is refused
+  (`email_not_confirmed`), and the run stops at exit 3 as NOT RUN. Stated as
+  the bounded inference it is: it bounds the toggle **at run time** and says
+  nothing about its present value. Claim 23 covers the fail-closed preflight;
+  **claim 24 discloses** that both committed transcripts were produced by the
+  pre-fix producer and that a re-run under the current one would have aborted
+  at the auth transcript's recorded `HTTP 0`. The transcripts were **not**
+  regenerated, per dispatch.
+- **Two consequences I am flagging rather than burying.** (1) The exit
+  trailer `live-probes.sh` writes now names code 4, so it no longer matches
+  the trailer inside the committed transcripts — an expected, disclosed
+  divergence of exactly the kind claim 24 records, not a silent drift.
+  (2) Under the synthetic env the redaction positive control's child now
+  exits **4** instead of 1, because the preflight fires before any probe. Its
+  expectation was updated to 4 and its prose corrected. The class it tests is
+  unchanged and arguably sharper: the leak hook fires *before* the preflight,
+  so a secret still reaches the committed stream by a path the in-process
+  buffer gate cannot see, and the file-byte gate must still catch it — it
+  does, and the transcript is still deleted.
+
+**C. One in-scope consequence of regenerating `gates.txt`, surfaced and
+resolved rather than absorbed.**
+
+The battery change forces `004a/capture.sh` to regenerate its whole gated
+set, and that regeneration turned the 004a format step **red**:
+`[warn] supabase/.temp/linked-project.json`, exit 1. It is machine state,
+not repo state — `supabase/.temp` is untracked (`git ls-files` returns 0
+files), ignored by `supabase/.gitignore:3`, and left by the owner's
+2026-08-20 apply session; prettier walks untracked working-copy files and
+does not read nested ignore rules. **004b, measuring the staged tree at this
+same head, is green**, so the tracked tree — the only thing CI checks out —
+is clean.
+
+I could not ship it as-is: 004a's `gates.txt` would record exit 1 while its
+claim 11 says all four steps exit 0, which is exactly the claim-versus-
+artifact mismatch this review chain exists to stop. Nor is 004a's capture
+fail-closed on gate steps (it accumulates no violations there), so a red
+step would have silently ridden inside a green artifact set. So I adopted
+the normalization **004b already uses and that has already been through
+review**: run the pinned local prettier against a clean
+`git checkout-index` of the staged tree. `gates` is named in this cycle's
+touch-set; the two suites now measure the same thing, and both measure what
+CI measures. Reported, not acted on: 004a's gate step remains fail-open on a
+nonzero exit — that is the already-backlogged gate-machinery chore, and I
+left it there rather than widen this cycle.
+
+**Verification — every PASS names its artifact**
+
+| Check | Class | Evidence |
+| --- | --- | --- |
+| Origin tip = dispatch-named `f994f8d` before any work | PASS | fresh `git fetch`; `origin/feat/schema-rls-v1` = local HEAD = the named SHA; clean tree |
+| REVIEW-015 finding 1 reproduced on the committed oracle | PASS | six neighbors, each exit 0 / 78-78 on the pre-fix oracle, no-op-guarded |
+| Full in-class audit of all 12 named classes | PASS | 35 false greens found across two rounds |
+| Fixed oracle on the unchanged migrations | PASS | `sql-assertions.txt` — 91 assertions, 91 PASS, 0 FAIL, 0 parse failures, exit 0 |
+| All 35 audited neighbors now rejected | PASS | both audit rounds re-run against the fixed oracle: 0 false greens, 35 rejections |
+| Permanent battery discriminates | PASS | `assertions-negative-control.txt` — 55 scenarios, 55 exit-1 with named FAIL, 55 class tags |
+| Named-class list derived from the battery | PASS | same artifact, class cross-check: 12 demonstrated = 12 claimed, both lists printed, identical |
+| Cross-check actually fails closed | PASS | demonstrated in-cycle — `capture.sh` exited 1 on two malformed expected-FAIL strings before they could ship |
+| Settings preflight fails closed, both modes, before any probe | PASS | `settings-preflight-control.txt` — 5 negative cases at exit 4 with exact reasons, 0 probe PASS lines |
+| Preflight still accepts a well-formed response | PASS | same artifact, `well-formed` positive control: ACCEPTED, exit 0 |
+| Redaction file-byte control still red on a planted leak | PASS | `redaction-control.txt` — child exit 4, leak present pre-gate, gate RED, transcript deleted |
+| 004a byte stability | PASS | `stability.txt` — 6 gated artifacts × 2 runs, differing 0, exit 0 |
+| 004b byte stability | PASS | `stability.txt` — 6 gated artifacts × 2 runs, differing 0, exit 0 |
+| Four non-install repo gates, both suites | PASS **after the 004a format-step normalization above** | `gates.txt` in each — typecheck, lint, jest, format:check all exit 0, zero dependency delta |
+| 004a format step before that normalization | FAIL pre-existing (machine state, not repo state) | `[warn] supabase/.temp/linked-project.json`, exit 1 — untracked, `supabase/.gitignore`-ignored owner residue; 004b was green on the staged tree at the same head |
+| Secret-shape scans, both suites | PASS | `secret-scan.txt` in each — 0 files per pattern, every positive control matched |
+| Protected/immutable boundaries | PASS | empty `git diff --cached` over migrations, `database.types.ts`, ADRs, `REVIEW-*.md`, `roles-acl.*`, and all three live transcripts |
+| Whitespace | PASS | `git diff --cached --check` returned 0 with no diagnostics |
+| Capture fixed point (003a/004a discipline) | PASS | after staging every change, both captures re-run and `git diff --name-only` is empty — no artifact moves once the index is settled |
+| Live probes / staging / toggle / users | NOT RUN — dispatch | no live run this cycle by controller ruling; no request left the machine |
+| Post-re-enable `mailer_autoconfirm=false` | NOT RUN — unbound | controller-restated owner fact; no artifact in this directory binds it, and 004b now says so |
+| `npm ci` | NOT RUN with reason | no package or lockfile delta (probe in both `gates.txt`) |
+| Branch CI | NOT RUN | no `pull_request` event at this head |
+| `supabase db lint` / local stack | NOT RUN | needs Docker and a live database; unchanged posture |
+
+**Adjacent findings — reported, not acted on (dispatch exclusion)**
+
+- **REVIEW-015 finding 3 (low, non-verdict-driving) is untouched by design.**
+  The dispatch scopes exactly two items and instructs me to report adjacent
+  findings rather than act. So: the `USERS` comment in `rls-probes.mjs` still
+  names `ctrl004e-*` where the last *historical* namespace should be
+  `ctrl004d-*` (the live two-user array and the committed identifiers are
+  correctly `ctrl004e-*` — this is prose, not behaviour), and the
+  fix-cycle-3 HANDOFF's literal "occurs nowhere" grep claim remains false
+  against the 004b README's own quoted history. Both need one line each;
+  neither is in this cycle's authorized touch-set. **REVIEW-013 finding 4**
+  (historical LOCK `11/11 denial`) likewise remains controller-owned.
+- The oracle's node-form pinning is tied to the exact key sets
+  `libpg-query@17.7.4` emits. That is deliberate — the parser is exactly
+  pinned, and the file already pins parser-specific encodings elsewhere —
+  but a future parser bump is now a real maintenance event, and the battery
+  is what will surface it.
+
+**Touch-set:** 20 files, +1516/-144, all inside the authorized set. Nine are
+hand-edited sources — `004a-schema-rls/` (`verify-migrations.mjs`,
+`capture.sh`, `README.md`) and `004b-schema-rls-live/` (`rls-probes.mjs`,
+`live-probes.sh`, `capture.sh`, `stability.sh`, `README.md`, plus the new
+`settings-control.mjs`). Eight are their regenerated artifacts
+(`sql-assertions.txt`, `assertions-negative-control.txt`, `gates.txt`, and
+the new `settings-preflight-control.txt`; `redaction-control.txt`,
+`stability.txt`, and both `environment.txt`). Three are state:
+this HANDOFF block, the LOCK status-line suffix, and the PROJECT-STATE
+Active-work row. 004a's `stability.txt` does not appear because it
+regenerated byte-identically — its gated set was already six and its names
+did not change (learning 9: no hunk is manufactured for a byte-identical
+regeneration). `environment.txt` in both suites is run-varying.
+
+**Next step:** re-review by the reviewer of record against REVIEW-015
+findings 1 and 2. Finding 3 and REVIEW-013 finding 4 are deliberately open
+and controller-owned. LOCK stays `REVIEW`; MERGED is controller-only.
+
+---
+
 ## 2026-08-22 — feat/schema-rls-v1 (REVIEW-015 fix-cycle-3 re-review)
 
 **Controller:** CTRL-004 Schema and RLS v1. **Reviewer of record:** Codex Sol,

@@ -15,7 +15,7 @@
 set -u
 cd "$(git rev-parse --show-toplevel)"
 dir="docs/05-quality/evidence/004b-schema-rls-live"
-gated="types-shape.txt redaction-control.txt gates.txt inventory.txt secret-scan.txt"
+gated="types-shape.txt redaction-control.txt settings-preflight-control.txt gates.txt inventory.txt secret-scan.txt"
 
 for f in $gated; do
   [ -f "$dir/$f" ] || {
@@ -43,7 +43,7 @@ for run in 1 2; do
   rm -rf "$out"
 done
 
-echo "gated artifacts: 5; runs: 2; comparisons differing: $differing"
+echo "gated artifacts: 6; runs: 2; comparisons differing: $differing"
 if [ "$differing" -eq 0 ]; then
   echo "gate: PASS (exit 0)"
   exit 0

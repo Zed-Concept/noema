@@ -138,8 +138,21 @@ and must not be committed.
    (ruling 10; transcripts held by the controller).
 2. Staging email confirmation is a dashboard toggle the owner has moved
    several times, and **the committed transcripts prove only their own
-   run-time state** (each records the `mailer_autoconfirm` it ran under —
-   `true` for the committed authenticated runs). Sequence on the record:
+   run-time state.** **What each transcript's settings line is worth
+   differs, and the difference is load-bearing (REVIEW-015 finding 2).**
+   `anon-probes.txt` records `HTTP 200 … mailer_autoconfirm=true`: a real
+   measurement. `auth-probes.txt` records `HTTP 0 … disable_signup=undefined
+   mailer_autoconfirm=undefined` — the settings request **failed**, and the
+   producer of the day converted that failure into undefined fields without
+   failing the run, so the authenticated transcript carries **no measurement
+   of the toggle at all**. It was captured under the defective check and is
+   disclosed as such; no statement in this directory rests on that line.
+   **What actually establishes that `mailer_autoconfirm` was true for the
+   authenticated run is claim 22: 46 authenticated probes obtained and used
+   real sessions**, which the publishable-key signup path cannot produce
+   while email confirmation is required — signup returns a user with no
+   session, every subsequent probe is unauthenticated, and the run exits 3
+   as NOT RUN. Sequence on the record:
    initially required (`mailer_autoconfirm=false`, the dispatch's NOT RUN
    contingency) → owner-disabled for the Phase B run (2026-08-20) →
    owner-re-enabled after that run (recorded in the REVIEW-011 review
@@ -147,9 +160,12 @@ and must not be committed.
    → owner-re-enabled at that cycle's close → owner-disabled again, on
    request, for the fix-cycle-2 run (2026-08-20) → re-enabled at that
    cycle's close → **owner-disabled again for the fix-cycle-3 `ctrl004e-*`
-   run (2026-08-20), measured `mailer_autoconfirm=true` by the builder
-   before the run rather than assumed, and owner-re-enabled at this cycle's
-   close, measured back to `mailer_autoconfirm=false` after.** **The newest
+   run (2026-08-20), and owner-re-enabled at this cycle's close.** The
+   pre-run `true` for that run is measured — by `anon-probes.txt`, which ran
+   immediately before it. The post-re-enable `false` is a
+   controller-restated owner/builder fact with **no artifact in this
+   directory binding it**; fix cycle 4 did not run live, so it remains
+   unbound here. **The newest
    HANDOFF block is the current-state record of this toggle; nothing in this
    directory claims its present value.**
 3. The `roles-acl.sql` measurement was owner-executed in the staging SQL
@@ -232,7 +248,9 @@ lockfile (`npm ci` has run); it fetches nothing.
 | `anon-probes.txt` | `live-probes.sh` → `rls-probes.mjs --anon` | run-varying, captured once (003a connectivity precedent: the committed transcript is the evidence boundary) | varying fields: run-date line, GoTrue version string, response timestamps. Redaction placeholders (`<staging-url>`, `<staging-host>`, `<publishable-key>`, …) per the section above. The exact denial shapes are the recorded contract. Its summary line names the exact subset — **9 denial/invisibility probes (6 REST + 3 storage) plus 2 service-context probes** (auth-health reachability, auth-settings record), which prove that the denials are policy rather than outage and record the run-time config; totals are never labeled denials (REVIEW-012 finding 5). File bytes gated post-write by `redaction-gate.mjs` |
 | `auth-probes.txt` | `live-probes.sh` → `rls-probes.mjs --auth` | run-varying, captured once | varying fields additionally: user/row/object UUIDs, timestamps. Response bodies over 400 chars truncated with an explicit `…(truncated)` marker; auth-endpoint responses reduced by design (never raw). Re-run precondition: owner cleanup above. File bytes gated post-write by `redaction-gate.mjs` |
 | `redaction-gate.txt` | `live-probes.sh` → `redaction-gate.mjs` | run-varying, captured once (produced with the live transcripts it scans) | per transcript: byte count, sha256 (binds committed bytes to scanned bytes), distinct registered values scanned, JWT-sweep and residual counts, verdict, gate exit. Raw values never printed |
-| `redaction-control.txt` | `capture.sh` → `live-probes.sh --control` | gated | the finding 3 positive control: the real `run_mode` + gate pipeline with synthetic values only (`https://127.0.0.1:9`, instant refusal — no network, no DNS) and the leak hook enabled; proves child exit 1, raw synthetic key present pre-gate, gate RED, transcript deleted. Deterministic lines only (bytes/sha256 of the scratch file omitted); the synthetic key prefix appears only defanged |
+| `redaction-control.txt` | `capture.sh` → `live-probes.sh --control` | gated | the finding 3 positive control: the real `run_mode` + gate pipeline with synthetic values only (`https://127.0.0.1:9`, instant refusal — no network, no DNS) and the leak hook enabled; proves child exit 4, raw synthetic key present pre-gate, gate RED, transcript deleted. Child exit is 4 rather than the former 1 because the auth-settings preflight now fails closed under the synthetic URL before any probe runs (REVIEW-015 finding 2); the leak hook fires ahead of it, so the class under test — a secret reaching the committed stream by a path the in-process buffer gate cannot see — is exercised unchanged. Deterministic lines only (bytes/sha256 of the scratch file omitted); the synthetic key prefix appears only defanged |
+| `settings-preflight-control.txt` | `capture.sh` → `settings-control.mjs` | gated | the REVIEW-015 finding 2 control: six cases drive the real `rls-probes.mjs --anon` against a loopback HTTP server that controls the `/auth/v1/settings` response. Five negative controls — unreachable (`HTTP 0`, the exact shape the committed `auth-probes.txt` recorded), HTTP 503, unparseable body, `{}`, and null flags — each must abort at exit 4 with its exact recorded reason and emit zero probe `PASS` lines; one positive control (well-formed booleans) must be ACCEPTED, without which "always aborts" would be indistinguishable from "aborts correctly". Synthetic key, `127.0.0.1` only: no Supabase project, credential, or network host is contacted. Deterministic — the ephemeral port is redaction-registered by the child, so it never reaches the output, and no timing or path is printed |
+| `settings-control.mjs` | authored control harness | producer (not an output) | owns the loopback server and the six-case matrix behind `settings-preflight-control.txt`; run by `capture.sh`, never by a live run |
 | `roles-acl.sql` | authored probe, owner-executed (ruling 10) | producer (not an output) | single read-only SELECT over `pg_catalog`/`information_schema` — role attributes, effective table privileges, raw ACL entries, PUBLIC grants, RLS flags for the three v1 tables. Run in the staging SQL editor by the owner; output committed verbatim as `roles-acl.txt` |
 | `types-shape.txt` | `capture.sh` → `types-shape.mjs` | gated | deterministic extraction (sorted tables, sorted columns) from the one committed types file; fail-closed on structure drift |
 | `gates.txt` | `capture.sh` | gated | the four non-install CI steps at this head plus the no-dependency-delta probe (pinned to the Phase B base SHA, package files only). jest `Time:` masked, per-suite duration suffixes stripped, `env:` lines dropped (Expo CLI prints them only when a local `.env` exists — machine state, not repo state). The format check runs the pinned local prettier against a clean `git checkout-index` of the staged tree: prettier walks untracked working-copy files and does not read nested ignore rules, so the owner's machine-local `supabase/.temp` CLI residue (untracked, ignored by `supabase/.gitignore`) would otherwise be flagged — CI checks out only the tracked tree, and this measures exactly that. Fail-closed on any nonzero step |
@@ -242,7 +260,8 @@ lockfile (`npm ci` has run); it fetches nothing.
 | `stability.txt` | `stability.sh` | not gated | a gate cannot contain a run of itself (002d precedent); exit status is its contract — 0 all-match, 1 otherwise |
 
 `capture.sh` **fails closed**: exit 1 after writing the transcript that
-shows why, on a types-shape extraction failure, a redaction positive
+shows why, on a types-shape extraction failure, an auth-settings preflight
+control whose cases do not behave exactly as pinned, a redaction positive
 control that fails to prove the red path, any nonzero CI-step exit, a
 nonzero dependency delta, a wrong inventory, a secret-scan match, or a
 broken positive control. `rls-probes.mjs` fails closed on its in-process
@@ -269,13 +288,16 @@ cannot exist.
 | 12 | CI itself on this branch | NOT RUN — no `pull_request` event yet | — |
 | 13 | No credential shape exists anywhere in the index (six patterns, each with a matching positive control) | PASS | `secret-scan.txt` |
 | 14 | Redaction totality over both live transcripts: zero residual registered values and zero JWT shapes **in the exact committed file bytes** (post-write, pre-commit; full both-mode ledger), with sha256 binding the committed bytes to the scanned bytes; the residual-match red path (direct-child-stdout leakage → RED, transcript unlinked) is proven by the committed planted-synthetic-key control | PASS — each committed transcript carries a GREEN sha256 binding for exactly its bytes (the in-process buffer gate additionally ran, first line). The gate's contract is its exit status; deletion is the residual-match path only, and the ledger-failure paths return 1 without unlinking | `redaction-gate.txt` (sha256 per transcript) + `redaction-control.txt` (positive control) + the in-process gate line in each transcript |
-| 15 | The five gated artifacts regenerate byte-for-byte (two fresh capture runs, locale pinned) | PASS | `stability.txt` |
+| 15 | The six gated artifacts regenerate byte-for-byte (two fresh capture runs, locale pinned) | PASS | `stability.txt` |
 | 16 | `supabase db lint` / local-stack validation of the migration set | NOT RUN — requires Docker and a local database; unchanged Phase A posture | — |
 | 17 | The owner's `db push` / `types:gen` transcripts | NOT RUN here — owner-executed (ruling 10), held by the controller; corroborated indirectly by every live claim above (the applied schema demonstrably exists and behaves exactly as authored) | — |
 | 18 | The **current table-level** staging role/ACL/RLS posture: `postgres` `rolbypassrls=t` (`rolsuper=f`); `service_role` `rolbypassrls=t` with zero table-level CRUD on the three tables; `anon` zero table-level CRUD; `authenticated` exactly the authored table-level CRUD; no current PUBLIC entry in the raw table ACL; `relrowsecurity=t` and `relforcerowsecurity=t` on all three; the SQL-editor session executes as `postgres`; plus the platform-default non-CRUD ACL entries (adjacent observation above). Scope is exactly the grid — see the measurement-boundary paragraph | PASS (measured, at that boundary) — owner-executed probe, captured once | `roles-acl.txt` (verbatim owner paste; probe: `roles-acl.sql`) |
 | 19 | Dashboard tooling *exercised end to end* — Table Editor sessions, data-only dumps, and their execution identities | NOT RUN — only the SQL editor's own `current_user` was measured (claim 18); no Table Editor session, dump, or other tooling run was executed or transcribed. The OPERATIONS.md operator expectation is written as an explicitly-labeled inference from the measured `BYPASSRLS` attribute, never as a transcribed result | — |
 | 20 | The applied `public.handle_new_user` function's owner (the role a SECURITY DEFINER call executes as) | NOT RUN — `roles-acl.sql` does not read `pg_proc.proowner`; PostgreSQL executes a SECURITY DEFINER function with its owner's privileges, so that owner is a required link in any causal claim about the provisioning path, and no artifact here establishes it | — |
 | 21 | Column-level privileges on the three v1 tables | NOT RUN — PostgreSQL exposes column privileges separately from table privileges, and the probe reads none of `pg_attribute.attacl`, `has_any_column_privilege`, or `information_schema.column_privileges`. Every privilege statement in this directory is therefore table-level only | — |
+| 22 | **What establishes that the authenticated run had `mailer_autoconfirm` true.** Not the preflight line: `auth-probes.txt` records `HTTP 0 … mailer_autoconfirm=undefined`, a settings request that failed and was recorded under the defective check (REVIEW-015 finding 2), and nothing here rests on it. The load-bearing evidence is behavioural — **46 authenticated probes obtained and used real sessions.** The publishable-key signup path is the only authorized user-creation path, and it yields a session in exactly one way while confirmation is required: it does not. `POST /auth/v1/signup` returns an `access_token` only when the project auto-confirms; otherwise `obtainSession()` falls back to `POST /auth/v1/token?grant_type=password`, which an unconfirmed address refuses (`email_not_confirmed`), the refusal shape is recorded, `authMode()` finds no token for at least one user, and the run stops at exit 3 with the authenticated probes NOT RUN. Sessions that performed owner CRUD, cross-user denial, and storage scoping across all three tables therefore cannot coexist with confirmation being required. This is an inference from measured behaviour, and is stated as one — it bounds the toggle at run time, and says nothing about its present value | PASS (behavioural inference, bounded as stated) — the preflight line is disclosed as unusable, not quoted as evidence | `auth-probes.txt` (46 PASS, the signup + session sections) |
+| 23 | The auth-settings preflight fails closed: any `/auth/v1/settings` response that is not HTTP 200 with a parseable body carrying boolean `disable_signup` and `mailer_autoconfirm` aborts the run at exit 4 **before any probe runs**, in both modes, and still ACCEPTS a well-formed response | PASS | `settings-preflight-control.txt` (5 negative + 1 positive case, all exactly as pinned) |
+| 24 | That the committed live transcripts were produced by the pre-fix producer | disclosed, not claimed — `auth-probes.txt` and `anon-probes.txt` were captured in fix cycle 3, before claim 23's preflight existed, and fix cycle 4 ran no live probes by dispatch. A re-run under the current producer would have aborted at the auth transcript's recorded `HTTP 0`. The transcripts are retained as the fix-cycle-3 evidence boundary with that provenance stated; they are not re-labeled as if the preflight had gated them | — |
 
 ## Re-running
 
@@ -284,9 +306,12 @@ discipline) head, with dependencies already materialized per the committed
 lockfile:
 
 - `bash docs/05-quality/evidence/004b-schema-rls-live/capture.sh` —
-  regenerates the five gated artifacts and `environment.txt` (runs the four
-  CI steps and the redaction positive control; a couple of minutes). Exit
-  1 = fail closed.
+  regenerates the six gated artifacts and `environment.txt` (runs the four
+  CI steps, the redaction positive control, and the six-case auth-settings
+  preflight control; a couple of minutes). Exit 1 = fail closed.
+- `node docs/05-quality/evidence/004b-schema-rls-live/settings-control.mjs` —
+  the preflight control alone (loopback only; seconds). Exit 0/1 is its
+  contract.
 - `bash docs/05-quality/evidence/004b-schema-rls-live/stability.sh` — the
   byte-stability proof: two fresh captures into scratch, compared against
   the committed copies. Exit 0/1 is the contract.

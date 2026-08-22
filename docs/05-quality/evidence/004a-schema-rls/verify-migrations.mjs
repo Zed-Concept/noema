@@ -16,6 +16,23 @@
 // proves"; the permanent battery that proves each enumerated class actually
 // discriminates is assertions-negative-control.txt.
 //
+// IN-CLASS DISCRIMINATION (REVIEW-015 finding 1). Naming a class is not
+// pinning it: the previous revision listed properties the assertions did not
+// actually compare, so parse-valid neighbors changed a named property and
+// still ran green. Two structural rules close that gap and are the reason
+// this file no longer enumerates "and also not X" field by field:
+//   1. Operator comparisons go through opExpr(), which compares the A_Expr
+//      KIND as well as the operator name. Four different predicates share
+//      the name '=' (see opExpr), one of them its exact negation.
+//   2. Every node whose shape a class claims to pin is compared against the
+//      exact key set the committed set produces under the pinned parser
+//      (onlyKeys), so any grammar clause the class does not account for
+//      makes the node reject instead of riding along unread.
+// Every class named in README.md's "What the oracle proves" list is required
+// by capture.sh to carry at least one permanent scenario in
+// assertions-negative-control.txt, and capture.sh fails closed if that list
+// and the battery's class tags disagree.
+//
 // Absence is pinned as well as presence within those classes (REVIEW-012
 // finding 2, extended by REVIEW-013 finding 2): every column's
 // constraint-type multiset is compared exactly (a DEFAULT added to a column
@@ -53,13 +70,43 @@ const { parse } = require('libpg-query');
 const parserVersion = require('libpg-query/package.json').version;
 
 const migrationsDir = process.env.MIGRATIONS_DIR ?? 'supabase/migrations';
-const files = fs
-  .readdirSync(migrationsDir)
-  .filter((f) => f.endsWith('.sql'))
-  .sort();
+// The whole directory listing, not just what this oracle chooses to parse: a
+// file the oracle filters out is still a file in the migration directory, and
+// the set-shape class claims to pin the set.
+const dirEntries = fs.readdirSync(migrationsDir).sort();
+const files = dirEntries.filter((f) => f.endsWith('.sql'));
 
 // --- tiny AST helpers -------------------------------------------------------
 const sval = (x) => x?.String?.sval;
+// Node-form pinning. A class that names a property but reads only the field
+// carrying it accepts every OTHER grammar clause the same node can hold —
+// a `LIKE` table element that is not a ColumnDef and so vanishes from the
+// column list; COLLATE / STORAGE / COMPRESSION riding beside typeName;
+// DESC / opclass inside an IndexElem; TABLESPACE / CONCURRENTLY / IF NOT
+// EXISTS beside an index key list; REFERENCING / OR REPLACE on a trigger;
+// GRANTED BY on a grant; ONLY on an ALTER TABLE; OVERRIDING on an INSERT
+// (REVIEW-015 finding 1). Instead of chasing each field as it is found,
+// every such node is compared against the exact key set the committed
+// migrations produce under the pinned parser: anything else makes it
+// reject. This is the isBareSelect technique below, generalized.
+const onlyKeys = (node, allowed) =>
+  !!node && Object.keys(node).every((k) => allowed.includes(k));
+// Exactly the binary operator `op` — the A_Expr KIND as well as the operator
+// name. The kind check is the load-bearing half: libpg_query represents
+//   a IS DISTINCT FROM b      as AEXPR_DISTINCT
+//   a IS NOT DISTINCT FROM b  as AEXPR_NOT_DISTINCT
+//   a = ANY (...)             as AEXPR_OP_ANY
+//   a = ALL (...)             as AEXPR_OP_ALL
+// and ALL FOUR retain the operator name '='. Comparing the name alone
+// therefore accepts four different predicates, the first of which is the
+// exact negation of the intended one. isOwnPredicate() checked the kind but
+// the duplicated storage helpers did not, so a storage folder-owner equality
+// could be reversed while this oracle still printed its `{user_id}/-scoped`
+// PASS (REVIEW-015 finding 1). One helper now serves every operator site.
+const opExpr = (expr, op) => {
+  const ae = expr?.A_Expr;
+  return ae && ae.kind === 'AEXPR_OP' && ae.name.map(sval).join('') === op ? ae : null;
+};
 // Exact type: a typmod (timestamptz(3)) or array bounds (text[]) neighbor
 // yields a marked string that equals no expected plain name.
 const typeOf = (cd) =>
@@ -149,22 +196,22 @@ function isColRef(node, name) {
 }
 // (select auth.uid()) = <col>, either operand order
 function isOwnPredicate(expr, col) {
-  const ae = expr?.A_Expr;
-  if (!ae || ae.kind !== 'AEXPR_OP' || ae.name.map(sval).join('') !== '=') return false;
+  const ae = opExpr(expr, '=');
+  if (!ae) return false;
   return (
     (isSelectAuthUid(ae.lexpr) && isColRef(ae.rexpr, col)) ||
     (isSelectAuthUid(ae.rexpr) && isColRef(ae.lexpr, col))
   );
 }
 function isBucketEq(expr) {
-  const ae = expr?.A_Expr;
-  if (!ae || ae.name.map(sval).join('') !== '=') return false;
+  const ae = opExpr(expr, '=');
+  if (!ae) return false;
   return isColRef(ae.lexpr, 'bucket_id') && ae.rexpr?.A_Const?.sval?.sval === 'captures-audio';
 }
 // (storage.foldername(name))[1] = (select auth.uid()::text)
 function isFolderEq(expr) {
-  const ae = expr?.A_Expr;
-  if (!ae || ae.name.map(sval).join('') !== '=') return false;
+  const ae = opExpr(expr, '=');
+  if (!ae) return false;
   const ind = ae.lexpr?.A_Indirection;
   const fc = ind?.arg?.FuncCall;
   const fnames = (fc?.funcname ?? []).map((f) => f.String.sval).join('.');
@@ -178,6 +225,25 @@ function isStoragePredicate(expr) {
   return isBucketEq(be.args[0]) && isFolderEq(be.args[1]);
 }
 const roleNames = (p) => (p.roles ?? []).map((r) => r.RoleSpec?.rolename ?? r.RoleSpec?.roletype);
+// `set search_path = ''` exactly: a plain value assignment with ONE argument,
+// the empty string. Only args[0] was read before, so `set search_path = '',
+// public` — which puts public back on the resolution path inside a SECURITY
+// DEFINER function, defeating the reason the pin exists — ran green
+// (REVIEW-015 finding 1). SET DEFAULT / FROM CURRENT carry no args and fail
+// the length test.
+const isEmptySearchPath = (sp) =>
+  !!sp &&
+  onlyKeys(sp, ['kind', 'name', 'args']) &&
+  sp.kind === 'VAR_SET_VALUE' &&
+  sp.name === 'search_path' &&
+  (sp.args ?? []).length === 1 &&
+  sp.args[0]?.A_Const?.sval?.sval === '';
+// A plain, non-inheriting, permanent relation reference: `ONLY t` and an
+// UNLOGGED/TEMP table are different objects wearing the same name.
+const isPlainRel = (r) =>
+  onlyKeys(r, ['schemaname', 'relname', 'inh', 'relpersistence', 'location']) &&
+  r.inh === true &&
+  r.relpersistence === 'p';
 
 // --- parse ------------------------------------------------------------------
 const stmts = [];
@@ -218,13 +284,24 @@ const policies = byType('CreatePolicyStmt');
 const polFor = (t, op) => policies.filter((p) => rel(p.table) === t && p.cmd_name === op);
 
 console.log('-- statement inventory --');
+// Whole filenames, not accepted suffixes: the timestamp prefix IS the apply
+// order and the migration identity Supabase records, so a renamed prefix is a
+// different migration set. Suffix tests accepted any prefix (REVIEW-015
+// finding 1). The directory listing is compared too — a fifth file the .sql
+// filter drops is still a file in the set this class claims to pin.
+const EXPECTED_FILES = [
+  '20260820100000_v1_core_schema.sql',
+  '20260820100100_v1_rls_policies.sql',
+  '20260820100200_v1_profile_provisioning.sql',
+  '20260820100300_v1_storage_captures_audio.sql',
+];
 assert(
-  'migration files are exactly the four v1 files, in apply order',
-  files.length === 4 &&
-    files[0].endsWith('_v1_core_schema.sql') &&
-    files[1].endsWith('_v1_rls_policies.sql') &&
-    files[2].endsWith('_v1_profile_provisioning.sql') &&
-    files[3].endsWith('_v1_storage_captures_audio.sql'),
+  `migration files are exactly the four v1 files, whole filenames, in apply order: ${EXPECTED_FILES.join(', ')}`,
+  files.join(',') === EXPECTED_FILES.join(','),
+);
+assert(
+  'the migrations directory holds exactly those four files and nothing else — a non-.sql sibling cannot hide behind the parser filter',
+  dirEntries.join(',') === EXPECTED_FILES.join(','),
 );
 assert(
   'statement counts per file are exactly 9, 21, 3, 5 (38 total — appended statements cannot hide)',
@@ -267,6 +344,181 @@ assert(
     .sort()
     .join(',') === 'public.handle_new_user,public.set_updated_at',
 );
+
+console.log('-- node-form pinning: no unlisted grammar clause rides along --');
+// One assertion per node type a named class claims to pin. Each compares the
+// node's key set against exactly what the committed migrations produce under
+// the pinned parser, so a clause the class never accounted for rejects
+// instead of passing unread (REVIEW-015 finding 1). Scalar fields whose
+// default value is itself meaningful (relation persistence, inheritance,
+// INSERT override, grant target/behavior) are pinned by value alongside.
+{
+  const every = (arr, fn) => arr.length > 0 && arr.every(fn);
+  assert(
+    'CREATE TABLE nodes carry only relation/tableElts/oncommit — no WITH options, USING method, INHERITS, PARTITION BY, OF type, TABLESPACE, or IF NOT EXISTS; every table is permanent and non-inheriting',
+    every(
+      byType('CreateStmt'),
+      (n) =>
+        onlyKeys(n, ['relation', 'tableElts', 'oncommit']) &&
+        n.oncommit === 'ONCOMMIT_NOOP' &&
+        isPlainRel(n.relation),
+    ),
+  );
+  assert(
+    'every table element is a ColumnDef or a Constraint — no LIKE source table, which contributes columns that never appear in the compared column list',
+    every(byType('CreateStmt'), (n) =>
+      (n.tableElts ?? []).every((e) => onlyKeys(e, ['ColumnDef']) || onlyKeys(e, ['Constraint'])),
+    ),
+  );
+  assert(
+    'every ColumnDef carries only colname/typeName/is_local/constraints — no COLLATE, STORAGE, COMPRESSION, IDENTITY, or GENERATED clause beside the type',
+    every(byType('CreateStmt'), (n) =>
+      (n.tableElts ?? [])
+        .filter((e) => e.ColumnDef)
+        .every(
+          (e) =>
+            onlyKeys(e.ColumnDef, ['colname', 'typeName', 'is_local', 'constraints', 'location']) &&
+            e.ColumnDef.is_local === true &&
+            onlyKeys(e.ColumnDef.typeName, [
+              'names',
+              'typemod',
+              'location',
+              'typmods',
+              'arrayBounds',
+            ]),
+        ),
+    ),
+  );
+  assert(
+    'every column and table constraint carries only its declared fields — no NO INHERIT, DEFERRABLE, INITIALLY DEFERRED, or NOT VALID attribute',
+    every(byType('CreateStmt'), (n) =>
+      (n.tableElts ?? [])
+        .flatMap((e) => (e.ColumnDef ? (e.ColumnDef.constraints ?? []) : e.Constraint ? [e] : []))
+        .every((c) =>
+          onlyKeys(c.Constraint, [
+            'contype',
+            'conname',
+            'location',
+            'raw_expr',
+            'initially_valid',
+            'keys',
+            'pktable',
+            'fk_attrs',
+            'pk_attrs',
+            'fk_matchtype',
+            'fk_upd_action',
+            'fk_del_action',
+          ]),
+        ),
+    ),
+  );
+  assert(
+    'every CREATE INDEX carries only idxname/relation/accessMethod/indexParams — no CONCURRENTLY, IF NOT EXISTS, TABLESPACE, WITH options, UNIQUE, WHERE, or INCLUDE',
+    every(
+      byType('IndexStmt'),
+      (n) =>
+        onlyKeys(n, ['idxname', 'relation', 'accessMethod', 'indexParams']) &&
+        isPlainRel(n.relation),
+    ),
+  );
+  assert(
+    'every index key is a plain column in default sort order — no DESC, NULLS FIRST/LAST, operator class, collation, or expression',
+    every(byType('IndexStmt'), (n) =>
+      (n.indexParams ?? []).every(
+        (p) =>
+          onlyKeys(p, ['IndexElem']) &&
+          onlyKeys(p.IndexElem, ['name', 'ordering', 'nulls_ordering']) &&
+          typeof p.IndexElem.name === 'string' &&
+          p.IndexElem.ordering === 'SORTBY_DEFAULT' &&
+          p.IndexElem.nulls_ordering === 'SORTBY_NULLS_DEFAULT',
+      ),
+    ),
+  );
+  assert(
+    'the three trigger names are exactly profiles_set_updated_at, captures_set_updated_at, on_auth_user_created, and no trigger carries REFERENCING transition tables, OR REPLACE, WHEN, UPDATE OF, args, or CONSTRAINT',
+    byType('CreateTrigStmt')
+      .map((t) => t.trigname)
+      .sort()
+      .join(',') === 'captures_set_updated_at,on_auth_user_created,profiles_set_updated_at' &&
+      every(
+        byType('CreateTrigStmt'),
+        (t) =>
+          onlyKeys(t, ['trigname', 'relation', 'funcname', 'row', 'timing', 'events']) &&
+          isPlainRel(t.relation),
+      ),
+  );
+  assert(
+    'every CREATE FUNCTION carries only funcname/returnType/options — no OR REPLACE, parameter list, or SQL-standard body',
+    every(byType('CreateFunctionStmt'), (n) =>
+      onlyKeys(n, ['funcname', 'returnType', 'options']),
+    ),
+  );
+  assert(
+    'every GRANT is an object-level, RESTRICT-behaviour grant of whole-table privileges — no GRANTED BY grantor and no WITH GRANT OPTION field at all',
+    every(
+      byType('GrantStmt'),
+      (g) =>
+        onlyKeys(g, [
+          'is_grant',
+          'targtype',
+          'objtype',
+          'objects',
+          'privileges',
+          'grantees',
+          'behavior',
+        ]) &&
+        g.targtype === 'ACL_TARGET_OBJECT' &&
+        g.behavior === 'DROP_RESTRICT' &&
+        (g.objects ?? []).every((o) => onlyKeys(o, ['RangeVar']) && isPlainRel(o.RangeVar)) &&
+        (g.privileges ?? []).every(
+          (p) => onlyKeys(p, ['AccessPriv']) && onlyKeys(p.AccessPriv, ['priv_name']),
+        ),
+    ),
+  );
+  assert(
+    'every ALTER TABLE targets a plain table by name — no ONLY, no IF EXISTS, no non-table objtype — and each command carries only its subtype',
+    every(
+      byType('AlterTableStmt'),
+      (n) =>
+        onlyKeys(n, ['relation', 'cmds', 'objtype']) &&
+        n.objtype === 'OBJECT_TABLE' &&
+        isPlainRel(n.relation) &&
+        (n.cmds ?? []).every(
+          (c) => onlyKeys(c, ['AlterTableCmd']) && onlyKeys(c.AlterTableCmd, ['subtype', 'behavior']),
+        ),
+    ),
+  );
+  assert(
+    'every policy carries only its name/table/command/permissiveness/roles/predicates, and all 17 are PERMISSIVE — a RESTRICTIVE policy inverts how the policy set combines',
+    every(
+      policies,
+      (p) =>
+        onlyKeys(p, [
+          'policy_name',
+          'table',
+          'cmd_name',
+          'permissive',
+          'roles',
+          'qual',
+          'with_check',
+        ]) &&
+        p.permissive === true &&
+        onlyKeys(p.table, ['schemaname', 'relname', 'inh', 'relpersistence', 'location']) &&
+        p.table.inh === true,
+    ),
+  );
+  assert(
+    'the bucket INSERT carries only relation/cols/selectStmt/override, with OVERRIDING unset and a bare VALUES source — no WITH clause, ON CONFLICT, or RETURNING',
+    every(
+      byType('InsertStmt'),
+      (n) =>
+        onlyKeys(n, ['relation', 'cols', 'selectStmt', 'override']) &&
+        n.override === 'OVERRIDING_NOT_SET' &&
+        isPlainRel(n.relation) &&
+        onlyKeys(n.selectStmt?.SelectStmt, ['valuesLists', 'limitOption', 'op']),
+    ),
+  );
+}
 
 console.log('-- public.profiles --');
 assert(
@@ -378,7 +630,9 @@ assert(
 {
   const c = col('public.captures', 'duration_ms');
   const check = c ? cons(c, 'CONSTR_CHECK')[0] : undefined;
-  const ae = check?.raw_expr?.A_Expr;
+  // opExpr pins the kind as well as the name: `>= ANY (...)` and
+  // `>= ALL (...)` are also named '>=' (REVIEW-015 finding 1).
+  const ae = opExpr(check?.raw_expr, '>=');
   // Exact-value comparison (REVIEW-011 finding 2). libpg_query emits integer
   // constants protobuf-style — the inner value field is omitted when it is 0
   // (`{ival: {}}`), while -1/1/… carry `{ival: {ival: n}}` (the grammar folds
@@ -387,7 +641,6 @@ assert(
   const rhs = ae?.rexpr?.A_Const;
   const geZero =
     !!ae &&
-    ae.name.map(sval).join('') === '>=' &&
     isColRef(ae.lexpr, 'duration_ms') &&
     !!rhs &&
     'ival' in rhs &&
@@ -602,8 +855,7 @@ console.log('-- indexes and updated_at triggers --');
       !fn.returnType.setof &&
       defnames === 'language,set,as' &&
       opts.language?.String?.sval === 'plpgsql' &&
-      sp?.name === 'search_path' &&
-      sp?.args?.[0]?.A_Const?.sval?.sval === '',
+      isEmptySearchPath(sp),
   );
   assert(
     'set_updated_at body is exactly the updated_at reassignment plus return new — nothing else',
@@ -727,11 +979,16 @@ for (const [t, keyCol] of [
   const publicPolicies = policies.filter((p) => p.table.schemaname === 'public');
   const prov = publicPolicies.find((p) => roleNames(p).join(',') === 'postgres');
   assert(
-    'the 13th public policy is the provisioning path: INSERT TO postgres WITH CHECK (true) on profiles only',
+    'the 13th public policy is the provisioning path: one PERMISSIVE INSERT TO postgres WITH CHECK (true) on profiles only',
     publicPolicies.length === 13 &&
       !!prov &&
       rel(prov.table) === 'public.profiles' &&
       prov.cmd_name === 'insert' &&
+      // The only policy whose permissiveness was never compared. AS
+      // RESTRICTIVE here would stop admitting the provisioning insert and
+      // start constraining every other INSERT policy on the table
+      // (REVIEW-015 finding 1).
+      prov.permissive === true &&
       !prov.qual &&
       prov.with_check?.A_Const?.boolval?.boolval === true,
   );
@@ -761,8 +1018,7 @@ console.log('-- profiles provisioning --');
       defnames === 'language,security,set,as' &&
       opts.language?.String?.sval === 'plpgsql' &&
       opts.security?.Boolean?.boolval === true &&
-      sp?.name === 'search_path' &&
-      sp?.args?.[0]?.A_Const?.sval?.sval === '',
+      isEmptySearchPath(sp),
   );
   assert(
     'handle_new_user body is exactly the single schema-qualified profiles insert plus return new — nothing else runs as definer',

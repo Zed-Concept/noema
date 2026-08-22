@@ -1,12 +1,14 @@
 run 1: types-shape.txt identical
 run 1: redaction-control.txt identical
+run 1: settings-preflight-control.txt identical
 run 1: gates.txt identical
 run 1: inventory.txt identical
 run 1: secret-scan.txt identical
 run 2: types-shape.txt identical
 run 2: redaction-control.txt identical
+run 2: settings-preflight-control.txt identical
 run 2: gates.txt identical
 run 2: inventory.txt identical
 run 2: secret-scan.txt identical
-gated artifacts: 5; runs: 2; comparisons differing: 0
+gated artifacts: 6; runs: 2; comparisons differing: 0
 gate: PASS (exit 0)

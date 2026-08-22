@@ -40,8 +40,9 @@
 # Exit (default mode): the worst child/gate status — 0 all probes passed and
 # both gates green; 1 any probe failure, redaction trip, or gate red; 2 not
 # configured; 3 authenticated path NOT RUN (reason recorded in the
-# transcript; the anon evidence stands separately). --control mode: 0 the
-# control proved the red path exactly; 1 otherwise.
+# transcript; the anon evidence stands separately); 4 the auth-settings
+# preflight failed closed before any probe ran (REVIEW-015 finding 2).
+# --control mode: 0 the control proved the red path exactly; 1 otherwise.
 #
 # Usage, from the repo root:
 #   bash docs/05-quality/evidence/004b-schema-rls-live/live-probes.sh
@@ -77,7 +78,7 @@ run_mode() {
     echo "# ${outfile%.txt} — rls-probes.mjs $mode (redacted at source; file bytes gated post-write)"
     echo "# run date (UTC): $(date -u +%Y-%m-%d)"
     if node "$evdir/rls-probes.mjs" "$mode" 2>&1; then child=0; else child=$?; fi
-    echo "--- exit code: $child (0 pass; 1 fail/redaction-trip; 2 unconfigured; 3 auth path NOT RUN) ---"
+    echo "--- exit code: $child (0 pass; 1 fail/redaction-trip; 2 unconfigured; 3 auth path NOT RUN; 4 auth-settings preflight failed closed) ---"
   } > "$target_dir/$outfile"
   bump "$child"
 }
@@ -103,7 +104,13 @@ if [ "${1:-}" = "--control" ]; then
   fi
   if [ -f "$scratch/control-probe.txt" ]; then still=yes; else still=no; fi
   control_violations=0
-  [ "$child_exit" -eq 1 ] || control_violations=$((control_violations + 1))
+  # Since REVIEW-015 finding 2 the child aborts at the auth-settings preflight
+  # (exit 4) under this synthetic env, instead of running every probe red
+  # (exit 1). The defect class under test is unchanged and, if anything,
+  # sharper: the leak hook fires BEFORE the preflight, so a secret still
+  # reaches the committed stream through a path the in-process buffer gate
+  # cannot see, and the file-byte gate must still catch it.
+  [ "$child_exit" -eq 4 ] || control_violations=$((control_violations + 1))
   [ "${leak_lines:-0}" -ge 1 ] || control_violations=$((control_violations + 1))
   [ "$gate_exit" -eq 1 ] || control_violations=$((control_violations + 1))
   [ "$still" = "no" ] || control_violations=$((control_violations + 1))
@@ -116,9 +123,12 @@ if [ "${1:-}" = "--control" ]; then
     echo "# (header + complete child stdout/stderr + exit trailer), which"
     echo "# redaction-gate.mjs then scans on exact file bytes. Synthetic env only:"
     echo "# the URL is https://127.0.0.1:9 (instant refusal — no network, no DNS),"
-    echo "# so every probe fails and nothing real is contacted or registered."
+    echo "# so the auth-settings preflight fails closed and NO probe runs at all"
+    echo "# (REVIEW-015 finding 2) — the leak hook fires before it, which is why"
+    echo "# this control still exercises the class it was built for. Nothing real"
+    echo "# is contacted or registered."
     echo
-    echo "child exit code: $child_exit (1 required: probes red under synthetic env; the in-process gate stays green — the leak bypassed its buffer, which is the defect class under test)"
+    echo "child exit code: $child_exit (4 required: the auth-settings preflight fails closed under the synthetic env before any probe runs — REVIEW-015 finding 2; the in-process gate stays green because the leak bypassed its buffer, which is the defect class under test)"
     echo "raw synthetic key lines in the pre-gate transcript bytes: $leak_lines (>= 1 required — the leak really reached the committed stream)"
     echo "gate report (bytes/sha256 lines omitted — scratch content varies run to run):"
     printf '%s\n' "$gate_out" |
@@ -126,7 +136,7 @@ if [ "${1:-}" = "--control" ]; then
       sed 's/^file: .*/file: <scratch control transcript>/'
     echo "post-gate scratch transcript still exists: $still (no required — the residual-match red path deletes the file)"
     echo
-    echo "--- enforced: child exit 1, leak present pre-gate, gate RED (exit 1), transcript deleted — or this control exits 1 ---"
+    echo "--- enforced: child exit 4, leak present pre-gate, gate RED (exit 1), transcript deleted — or this control exits 1 ---"
   } > "$outdir/redaction-control.txt"
   echo "wrote $outdir/redaction-control.txt (violations: $control_violations)"
   [ "$control_violations" -eq 0 ] || exit 1

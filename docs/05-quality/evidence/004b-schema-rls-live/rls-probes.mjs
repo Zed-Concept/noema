@@ -59,7 +59,13 @@
  * 3 = (--auth only) no usable session was obtainable (e.g. email
  * confirmation required) — the authenticated probes are NOT RUN, the exact
  * refusal shapes are recorded, and the anon-denial evidence stands
- * separately.
+ * separately; 4 = the auth-settings preflight failed closed in either mode —
+ * /auth/v1/settings did not return HTTP 200 with a parseable body carrying
+ * boolean disable_signup and mailer_autoconfirm, so NO probe ran
+ * (REVIEW-015 finding 2; permanent control in settings-control.mjs). 3 and 4
+ * are deliberately distinct: 3 is a recorded, legitimate reason not to run
+ * the authenticated path, 4 is the run being unable to read the config it
+ * depends on.
  */
 import { randomBytes } from 'node:crypto';
 import { appendFileSync, readFileSync } from 'node:fs';
@@ -247,14 +253,55 @@ function anonInsertBody(table) {
 async function readAuthSettings() {
   const settings = await req('GET', '/auth/v1/settings');
   const sj = settings.json ?? {};
+  // Why each field is checked rather than just read (REVIEW-015 finding 2):
+  // req() turns a transport failure into status 0 with json undefined, so
+  // every field below became `undefined` and `disable_signup === true` was
+  // false — the run continued and reported 46 PASS / 0 FAIL / exit 0 while
+  // this measurement had not happened at all. The committed auth transcript
+  // records exactly that: `HTTP 0 ... mailer_autoconfirm=undefined`. A
+  // measurement that did not happen must not be able to green-light a run.
+  const usable =
+    settings.status === 200 &&
+    settings.json !== undefined &&
+    typeof sj.disable_signup === 'boolean' &&
+    typeof sj.mailer_autoconfirm === 'boolean';
+  const why =
+    settings.status !== 200
+      ? `settings request did not return HTTP 200 (got ${settings.status})`
+      : settings.json === undefined
+        ? 'settings response body was not parseable JSON'
+        : typeof sj.disable_signup !== 'boolean'
+          ? `disable_signup is not a boolean (${JSON.stringify(sj.disable_signup)})`
+          : typeof sj.mailer_autoconfirm !== 'boolean'
+            ? `mailer_autoconfirm is not a boolean (${JSON.stringify(sj.mailer_autoconfirm)})`
+            : '';
   return {
     settings,
+    usable,
+    why,
     line:
       `HTTP ${settings.status} disable_signup=${JSON.stringify(sj.disable_signup)} ` +
       `mailer_autoconfirm=${JSON.stringify(sj.mailer_autoconfirm)} ` +
       `external.email=${JSON.stringify(sj.external ? sj.external.email : undefined)}`,
     disableSignup: sj.disable_signup === true,
   };
+}
+
+// Fail-closed preflight, run in BOTH modes before any probe. Exit 4 is
+// distinct from 3 (auth path NOT RUN for a recorded, legitimate reason): 4
+// means the run could not establish the config it depends on, so nothing
+// downstream is entitled to a PASS label. The transcript still records the
+// measured line and the exact reason, because an aborted run must say why.
+function requireUsableAuthSettings(auth) {
+  out(`auth settings: ${auth.line}`);
+  if (auth.usable) return;
+  out();
+  out('RUN ABORTED — auth-settings preflight failed closed (REVIEW-015 finding 2).');
+  out(`reason: ${auth.why}`);
+  out('No probe ran. The signup/session path this run depends on could not be');
+  out('confirmed, and a run that cannot read its own preconditions must not');
+  out('report probe results as evidence of anything.');
+  finish(4);
 }
 
 // --- anon mode -----------------------------------------------------------------
@@ -276,6 +323,20 @@ async function anonMode() {
   out('# MAINTAIN/REFERENCES/TRIGGER/TRUNCATE, and column-level privileges are NOT');
   out('# RUN. The storage policies are TO authenticated only.');
   out();
+  // Preflight first — before any probe, so a run that cannot read its own
+  // preconditions produces no PASS labels at all (REVIEW-015 finding 2).
+  const auth = await readAuthSettings();
+  requireUsableAuthSettings(auth);
+  // Positive control hook: proves the preflight ACCEPTS a well-formed
+  // settings response rather than being unconditionally red. Set only by
+  // live-probes.sh --settings-control; a real run never sets it.
+  if (process.env.SETTINGS_PREFLIGHT_CONTROL === '1') {
+    out();
+    out('preflight-control: the settings preflight ACCEPTED this response and would');
+    out('have continued; stopping here so the control measures the preflight alone.');
+    finish(0);
+  }
+  out();
   const health = await req('GET', '/auth/v1/health');
   probe(
     'auth service reachable (service-context: proves denials below are policy, not outage)',
@@ -283,7 +344,6 @@ async function anonMode() {
     show(health),
     'context',
   );
-  const auth = await readAuthSettings();
   probe(
     'auth settings readable (service-context: records the config the authenticated path depends on)',
     auth.settings.status === 200,
@@ -395,8 +455,12 @@ async function authMode() {
   out('# owner-class cleanup). Auth responses are reduced summaries, never raw bodies;');
   out('# every issued token and generated password is redaction-registered.');
   out();
+  // Preflight first — before any probe. The committed auth transcript was
+  // produced before this existed and recorded `HTTP 0 ... undefined` while
+  // still reporting 46 PASS / exit 0; that run would abort here now
+  // (REVIEW-015 finding 2, disclosed in README.md claim 22).
   const auth = await readAuthSettings();
-  out(`auth settings: ${auth.line}`);
+  requireUsableAuthSettings(auth);
   out();
   if (auth.disableSignup) {
     out('AUTHENTICATED PROBES NOT RUN — staging auth config disables signups, so the');
