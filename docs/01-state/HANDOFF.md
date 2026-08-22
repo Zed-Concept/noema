@@ -1,3 +1,194 @@
+## 2026-08-23 — feat/schema-rls-v1 (REVIEW-017 fix-cycle-5 re-review)
+
+**Controller:** CTRL-004 Schema and RLS v1. **Reviewer of record:** Codex Sol,
+Ultra effort, fresh session. **Reviewed base:**
+`64c1ce603491fb2cb6e8b7b948a369731a436c7f`. **Target:**
+`5cab52a30b08eee597ef3ff85dbb333b78750c45`. **Prior records:** REVIEW-011,
+REVIEW-012, REVIEW-013, REVIEW-015, REVIEW-016 (FAIL); REVIEW-014 (advisory,
+SOUND, non-gating). **Verdict:** **FAIL.** **LOCK:** unchanged at
+`Status: REVIEW — fix cycle 5 complete, awaiting re-review`; MERGED remains
+controller-only.
+
+The dispatched Opus 5 / `max` substitution is accepted. The harness-fixed
+Fable 5 trailer is the known cosmetic artifact and is not a finding. The
+controller-authorized 004a `.temp` normalization and two historical
+transcript divergences remain accepted. The 004a nonzero-gate machinery chore
+is not widened. REVIEW-015 finding 3 and REVIEW-013 finding 4 remain excluded
+and controller-owned. The dispatch's stop rule is binding: any further
+in-class defect is remedied by removing the affected class, not extending the
+oracle again.
+
+**Ruling-6 disclosure.** One review workflow ran:
+`standards-spec-review`, with separate read-only Standards and Spec axes.
+Five read-only subagents covered those axes, exact-scope/integrity, the F2
+control, and an oracle-adversary lane. The oracle lane's final response was
+blocked by an output filter; its scratch evidence remained available and the
+main lane independently reran and owned the decisive countercontrol. No
+subagent edited the repository. Main-lane methods were fixed-range Noema
+governance review, offline Supabase/PostgreSQL security and evidence-boundary
+inspection, and a documentation-accuracy guard over the two reviewer records.
+
+### Scope and exact-head confirmation
+
+- Before substantive review, `git fetch origin` returned 0. Fresh local and
+  remote main equal the supplied base; local HEAD and
+  `origin/feat/schema-rls-v1` equal the target. The target's sole parent is
+  `877e80d53649c2f3d3bdfe90e8eb687d93188a6f`; both parent and base are
+  ancestors. The starting tree was clean.
+- Full range: seventeen linear commits, 50 files, +10584/-12. Fix cycle 5:
+  one commit, 14 files, +1332/-248. The corrected fix-cycle-4 count is 20
+  files, +1523/-144. Full and fix-cycle `git diff --check` returned 0.
+- The fix-cycle diff is empty for all four applied migrations,
+  `src/lib/database.types.ts`, ADRs, prior REVIEW records, `roles-acl.*`, and
+  all three protected live artifacts. The builder's HANDOFF was a top-only
+  insertion; LOCK stayed REVIEW.
+- No Supabase project was queried by the reviewer; no credential was read; no
+  live producer, user/toggle operation, migration apply, type generation,
+  push, PR, merge, deploy, or other outward-facing action occurred.
+
+### Findings
+
+1. **Medium — FAIL introduced by Unit C and retained after fix cycle 5;
+   verdict-driving.** A parse-valid neighbor remains green inside the named
+   `Functions` class. In a disposable exact-target migration copy I split the
+   first PL/pgSQL function across two `AS` items: the first ended after
+   `return new;`, and the second contained `end;`. Pinned
+   `libpg-query@17.7.4` accepted all four files, and the committed verifier
+   still returned process 0 with 91/91, including both the exact function-
+   options PASS and full-body PASS.
+
+   The verifier joins every `opts.as.List.items` string before comparing the
+   body and never pins the list to one item. The README expressly promises
+   parse-valid discrimination over the Functions class. PostgreSQL's semantic
+   layer rejects a second `AS` item for PL/pgSQL, so this is not an applied
+   migration defect or a runtime bypass; it is a named-class oracle defect.
+   **Binding remedy: remove `Functions` from the claimed class list. Do not
+   extend the oracle again.**
+
+2. **Medium — FAIL introduced by fix cycle 5; verdict-driving.** The
+   settings-preflight permanent control can green after a FAIL probe has run.
+   `settings-control.mjs` computes total probe lines but accepts each negative
+   case using only `probePassLines === 0`. In a disposable producer copy, one
+   failing `probe()` immediately before `finish(4)` made all 18 negative
+   children report `0 PASS, 1 FAIL` before abort; the full 24-case harness
+   still returned 0 with zero violations. The production preflight is correct
+   on direct inspection; its artifact does not prove claim 23's “before any
+   probe runs” boundary.
+
+3. **Medium — FAIL introduced by fix cycle 5; verdict-driving.** The
+   permanent containment matrix claims every control variable in both wrapper
+   modes, but does not run retired `SETTINGS_PREFLIGHT_CONTROL` under
+   `--control`. Reviewer-only variants support the implementation: both names
+   and both modes refuse at 5 before `.env`, output, or network fall-through.
+   AGENTS.md nevertheless requires the quantified PASS to be artifact-backed;
+   fresh reviewer testimony cannot replace that record.
+
+4. **Low — FAIL introduced or rendered inaccurate by fix cycle 5;
+   non-driving.** Evidence prose exceeds its measurement in five places:
+   the producers still contain the synthetic redaction hook and `--control`,
+   so “no test hook at all” is false; repository discovery runs before the
+   guard, so “before anything is read” is false; deleting the complete guard
+   yields three violations, while the claimed four comes from a `set -u`
+   broken-script mutant; the rerun section still says six cases instead of
+   24; and no permanent artifact records the asserted audit trail over all
+   twelve classes or the three equivalent green probes.
+
+### Disclosed unauthorized live run
+
+The builder's staging run remains **FAIL introduced by fix cycle 5**, as the
+controller adjudicated, and is non-disqualifying only because the controller
+said so. Repository-level verification found:
+
+- `anon-probes.txt` remains
+  `9ba3c2b58ac469d8bd8827bceb6dbf7821fbb7bade3a0f97ede2d2a41d0d643f`
+  and `auth-probes.txt` remains
+  `059edefac0eb3edbe2e2dd4d8b495973c8d55251cb1281edae8ebcc5d3ff0e34`;
+  both match unchanged GREEN bindings and parent blobs.
+- No evidence artifact derives from the run. Its exact fingerprints occur in
+  governance disclosure only, not the evidence subtree.
+- The installed guard blocks the disclosed ambient-variable fall-through
+  before `.env`, output, or network work. The incidental
+  `mailer_autoconfirm=false` observation supports no claim; claim 22 still
+  rests on the unchanged prior transcript's two sessions and 46 authenticated
+  PASS results.
+
+The `/tmp` output was deleted. Therefore the asserted eleven denials, two
+HTTP-400 signup failures, zero users/writes, and no toggle change are
+**UNVERIFIABLE FROM THE REPOSITORY**. The reviewer did not repeat the live run.
+
+### Verification and classifications
+
+- **PASS** — exact refs, sole parent, ancestry, linear range, clean starting
+  tree, stats, protected paths, append-only HANDOFF boundary, REVIEW LOCK, and
+  full/fix-cycle whitespace.
+- **PASS** — 004a baseline: fresh process 0, 91/91, zero parse failures, exact
+  bytes matching committed SHA-256
+  `4760a72ce18f54583a3900e3442e777b421cc2f8edc461e9696501db8f691275`.
+- **PASS at its exact cases** — 004a battery: 80 scenarios/tags, 80
+  exit-1/named-FAIL results, twelve unique labels matching in both directions,
+  exact bytes matching committed SHA-256
+  `4a69834efd9ec5fbe6b6fc8562e6ccf02bb804ccaa1648210fc431019ea67bba`.
+- **FAIL introduced by Unit C and retained** — genuine in-class
+  discrimination. The Functions countercontrol returns 91/91. Finding 1.
+- **PASS** — three correctly excluded spelling/type-equivalence probes at
+  their stated parser boundary; **unverified** — the claimed all-twelve-class
+  measurement trail. Finding 4.
+- **PASS** — 004a stability and 004b loopback-only stability: each six gated
+  artifacts x two captures, 12 identical, zero different, process 0.
+- **PASS on direct source inspection** — both-mode settings preflight, both
+  boolean guards, retired settings success hook removed, and ambient wrapper
+  containment before `.env`/output/network fall-through.
+- **PASS at exact cases / FAIL at claimed boundary** — the 24-case settings
+  artifact reproduces with zero violations but ignores FAIL probe lines and
+  omits one variable/mode pair. Findings 2–3.
+- **PASS** — auth-preflight, mailer-guard, and disable-signup-guard scratch
+  mutants reproduce 9, 6, and 6 violations. **FAIL** — full guard deletion
+  produces three, not the claimed four. Finding 4.
+- **PASS** — both suites' non-install typecheck/lint/Jest/format gates and
+  secret-shape scans reproduce byte-identically. No credential value was read
+  or printed.
+- **PASS for byte integrity / live behavior NOT RUN by reviewer** — protected
+  anon/auth transcripts and redaction gate remain unchanged and bound.
+- **FAIL introduced by fix cycle 5, controller-adjudicated non-disqualifying**
+  — the unauthorized live run. Deleted-output/external effects remain
+  unverifiable.
+- **NOT RUN with reason** — `npm ci`: no package or lockfile delta.
+- **NOT RUN** — branch CI: no PR and no workflow run at target SHA.
+- **NOT RUN with reason** — `supabase db lint` / local stack: requires Docker
+  and a local database; outside this focused cycle.
+- **NOT RUN by reviewer / prohibited** — authorized live probes, current
+  toggle measurement, owner apply/types/ACL actions, production access, push,
+  PR, merge, deploy, or any other outward-facing action.
+
+### Standards and Spec axes
+
+**Standards: 3 findings, worst medium.** The settings control violates the
+artifact/PASS rule by ignoring FAIL probes and by omitting one quantified
+variable/mode combination; the evidence record also contains literal
+boundary inaccuracies. A judgment-call Duplicated Code smell remains in the
+manually repeated control-variable manifest, but it has not drifted and is not
+a separate finding.
+
+**Spec: 3 findings, worst medium.** F2's no-probe proof is partial; the no-hook
+and pre-read phrases overstate the implementation; F1's claimed all-class
+measurement lacks a permanent trail. Scope, protected paths, and exact F3
+arithmetic otherwise match the dispatch.
+
+### Disposition and next step
+
+REVIEW-016 F1 is not cleared; its binding remedy is removal of the affected
+`Functions` class. REVIEW-016 F2 is partly corrected in source but not cleared
+in permanent evidence. REVIEW-016 F3 is cleared. The unauthorized live run
+remains the controller-recorded governance FAIL. Full rationale and evidence
+are in `docs/04-reviews/REVIEW-017.md`.
+
+Reviewer write set: exactly `docs/04-reviews/REVIEW-017.md` and this top-
+inserted HANDOFF block, committed locally and not pushed. The LOCK remains
+REVIEW; the controller decides any removal dispatch, advisory routing, and
+owner merge.
+
+---
+
 ## 2026-08-23 — feat/schema-rls-v1 (CTRL-004 Unit C, fix cycle 5 — REVIEW-016)
 
 **Controller:** CTRL-004 Schema and RLS v1. **Builder:** Claude Code, same
