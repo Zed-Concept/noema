@@ -68,10 +68,16 @@ fi
 # preflight in rls-probes.mjs must abort the run, before any probe, on every
 # unusable /auth/v1/settings response — in BOTH production modes — and a
 # well-formed response must still let the run continue into probes. Section 2:
-# live-probes.sh must refuse to start, before anything is read or written, when
-# a control variable is present in its inherited environment, in both of its
-# modes, and must still admit a clean environment. Neither producer carries a
-# test hook: every case drives a real entry point with no control variable set,
+# live-probes.sh must refuse to start — before any .env/credential read, any
+# write, or any network contact; its own directory resolution and git rev-parse
+# do precede the guard — when a control variable is present in its inherited
+# environment, and must still admit a clean environment. Three variable/mode
+# pairs are run, not every pair: the retired SETTINGS_PREFLIGHT_CONTROL under
+# --control is not exercised (REVIEW-017 findings 3 and 4). Neither producer
+# carries a settings-preflight success hook; the contained synthetic redaction
+# hook and live-probes.sh --control do remain, and section 2 is what shows an
+# ambient control variable cannot switch a production run. Every case drives a
+# real entry point with no control variable set,
 # against a loopback HTTP server (127.0.0.1, ephemeral port, synthetic key; no
 # Supabase project, credential, or network host is contacted, and the children
 # read their URL and key from the environment, never from .env). Deterministic

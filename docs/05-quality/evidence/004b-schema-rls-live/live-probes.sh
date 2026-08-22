@@ -36,16 +36,23 @@
 # production run: the retired SETTINGS_PREFLIGHT_CONTROL made the child exit 0
 # after the auth-settings preflight with zero probes, and this script would
 # have committed that transcript and stayed green if the auth child passed. So
-# before anything else runs, every control variable this suite defines is
-# checked against the INHERITED environment and the run is REFUSED — exit 5,
-# nothing read, nothing written, no network touched. It aborts rather than
-# clearing the variable and continuing, because an ambient control variable
-# means this is not the environment the evidence claims to have been produced
-# in, and that fact must surface rather than be tidied away. The check covers
-# --control mode too (which sets its own leak flag AFTER this point), so it is
-# not a mode-specific courtesy. The permanent proof that it aborts, and that
-# it still admits a clean environment, is section 2 of
-# settings-preflight-control.txt.
+# before any .env or credential is read, before any scratch or output byte is
+# written, and before any network contact, every control variable this suite
+# defines is checked against the INHERITED environment and the run is
+# REFUSED — exit 5. Two things do precede the guard and are not covered by
+# that statement: this script resolves its own directory and runs
+# `git rev-parse --show-toplevel` to cd to the repo root (REVIEW-017
+# finding 4). It aborts rather than clearing the variable and continuing,
+# because an ambient control variable means this is not the environment the
+# evidence claims to have been produced in, and that fact must surface rather
+# than be tidied away. The check itself is written to cover --control mode too
+# (which sets its own leak flag AFTER this point), so it is not a
+# mode-specific courtesy. What is PROVEN, in section 2 of
+# settings-preflight-control.txt, is narrower than what the check is written
+# to do: three variable/mode pairs abort and a clean environment is still
+# admitted. SETTINGS_PREFLIGHT_CONTROL under --control is not among the pairs
+# run, so no claim here quantifies over every variable in both modes
+# (REVIEW-017 finding 3).
 #
 # --control mode (the finding 3 positive control, run by capture.sh): the
 # same run_mode + gate pipeline against synthetic values only — the URL is
@@ -61,8 +68,9 @@
 # transcript; the anon evidence stands separately); 4 the auth-settings
 # preflight failed closed before any probe ran (REVIEW-015 finding 2); 5 a
 # control variable was present in the inherited environment and the run was
-# refused before anything was read, written, or contacted (REVIEW-016
-# finding 2 — this code is returned in both modes).
+# refused before any credential or .env read, any write, or any network
+# contact — repository discovery precedes it (REVIEW-016 finding 2,
+# REVIEW-017 finding 4 — this code is returned in both modes).
 # --control mode: 0 the control proved the red path exactly; 1 otherwise.
 #
 # Usage, from the repo root:
@@ -74,7 +82,9 @@ export LANG=C
 evdir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$(git rev-parse --show-toplevel)"
 
-# --- control-variable containment: refuse before doing anything at all -------
+# --- control-variable containment: refuse before any .env/credential read, ---
+# --- any write, and any network contact. The directory resolution and the ----
+# --- git rev-parse above already ran (REVIEW-017 finding 4) ------------------
 # Every environment variable this evidence suite gives special meaning. A name
 # retired from the producers stays on this list: a stale ambient value must
 # still surface as a refusal rather than pass unnoticed (REVIEW-016 finding 2).
@@ -87,8 +97,10 @@ done
 if [ -n "$control_present" ]; then
   echo "REFUSED: control variable(s) present in the inherited environment:${control_present}." >&2
   echo "A control variable is an ambient switch on a production run, so the run is" >&2
-  echo "refused rather than silently continued or silently cleared. Nothing was" >&2
-  echo "read, written, or contacted (REVIEW-016 finding 2)." >&2
+  echo "refused rather than silently continued or silently cleared. No .env or" >&2
+  echo "credential was read, nothing was written, and no network host was" >&2
+  echo "contacted (REVIEW-016 finding 2; repository discovery precedes this" >&2
+  echo "check — REVIEW-017 finding 4)." >&2
   exit 5
 fi
 

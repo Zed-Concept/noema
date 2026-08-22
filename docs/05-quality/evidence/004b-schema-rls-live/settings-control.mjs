@@ -8,8 +8,13 @@
  *              in BOTH production modes, and still lets a well-formed response
  *              through (REVIEW-015 finding 2, REVIEW-016 finding 2).
  *   section 2  live-probes.sh refuses to start when a control variable is
- *              present in its inherited environment, in both of its modes,
- *              and still admits a clean environment (REVIEW-016 finding 2).
+ *              present in its inherited environment, and still admits a clean
+ *              environment (REVIEW-016 finding 2). Three variable/mode pairs
+ *              are run: REDACTION_CONTROL_LEAK in the default and --control
+ *              modes, and the retired SETTINGS_PREFLIGHT_CONTROL in the
+ *              default mode. The retired name under --control is NOT
+ *              exercised, so nothing here is entitled to say "every control
+ *              variable in both modes" (REVIEW-017 finding 3).
  *
  * WHAT WENT WRONG, TWICE.
  *
@@ -32,7 +37,13 @@
  * on `disable_signup` before `mailer_autoconfirm` was ever read: removing the
  * auth-mode preflight, or the mailer guard, left every case green.
  *
- * HOW THIS VERSION AVOIDS BOTH. There is no test hook in the producers at all.
+ * HOW THIS VERSION AVOIDS BOTH. The settings-preflight success hook is gone —
+ * no seam in either producer can make the preflight report success. That is
+ * narrower than "no test hook at all", which would be false: rls-probes.mjs
+ * still carries the contained synthetic REDACTION_CONTROL_LEAK hook and
+ * live-probes.sh still has its --control mode, and both are refused on a
+ * default production run when the variable is ambient (section 2, and
+ * REVIEW-017 finding 4).
  * Every case below spawns the REAL `rls-probes.mjs --anon` and the REAL
  * `rls-probes.mjs --auth`, with no control variable set, against a loopback
  * HTTP server whose /auth/v1/settings response this file controls and which
@@ -218,9 +229,14 @@ for (const c of CASES) {
     const probePassLines = (text.match(/^PASS {2}/gm) ?? []).length;
     const probeLines = (text.match(/^(PASS|FAIL) {2}/gm) ?? []).length;
     const expectExit = c.positive ? c.expectExit[mode] : 4;
-    // A negative case must abort with zero probe PASS. The positive case must
-    // NOT abort and must have run probes — that is what "continued" means.
-    const shapeOk = c.positive ? !aborted && probeLines > 0 : aborted && probePassLines === 0;
+    // A negative case must abort having emitted NO probe line of any
+    // classification (REVIEW-017 finding 2: accepting on zero PASS lines let a
+    // FAIL probe run before the abort and still green). probe() in
+    // rls-probes.mjs emits exactly one `PASS  `/`FAIL  ` line per probe, so
+    // zero such lines is what "before any probe runs" means here. The positive
+    // case must NOT abort and must have run probes — that is what "continued"
+    // means.
+    const shapeOk = c.positive ? !aborted && probeLines > 0 : aborted && probeLines === 0;
     const ok = code === expectExit && reasonOk && shapeOk;
     if (!ok) violations += 1;
     rows.push({ c, mode, code, expectExit, aborted, reasonOk, probePassLines, probeLines, ok });
@@ -292,8 +308,11 @@ for (const w of WRAPPER_CASES) {
 rmSync(scratch, { recursive: true, force: true });
 
 console.log('# Live-probe fail-closed controls — permanent (REVIEW-015 finding 2,');
-console.log('# REVIEW-016 finding 2). No test hook exists in either producer: every case');
-console.log('# below drives the REAL production entry points with no control variable set.');
+console.log('# REVIEW-016 finding 2, REVIEW-017 findings 2 and 4). The settings-preflight');
+console.log('# success hook is gone from both producers; the contained synthetic redaction');
+console.log('# hook and live-probes.sh --control remain, and section 2 is what shows an');
+console.log('# ambient control variable cannot switch a production run. Every case below');
+console.log('# drives the REAL production entry points with no control variable set.');
 console.log('# Loopback only — 127.0.0.1 on an ephemeral port, 127.0.0.1:9 for the');
 console.log('# unreachable case, a runtime-assembled synthetic key, and children that read');
 console.log('# their URL and key from the environment and never from .env. No Supabase');
@@ -318,7 +337,10 @@ for (const r of rows) {
   );
   if (!r.c.positive) {
     console.log(`recorded reason matches "${r.c.reason}": ${r.reasonOk ? 'yes' : 'no'} (yes required)`);
-    console.log(`probe PASS lines emitted: ${r.probePassLines} (0 required)`);
+    console.log(
+      `probe lines emitted, PASS or FAIL: ${r.probeLines} (0 required — ` +
+        `${r.probePassLines} of them PASS)`,
+    );
   } else {
     console.log(`probe lines emitted after the preflight: ${r.probeLines} (> 0 required — this is what "continued" means)`);
   }
@@ -342,7 +364,7 @@ for (const r of wrapperRows) {
   console.log(
     r.w.expectFile
       ? `run completed and wrote ${r.w.expectFile}: ${r.fileOk ? 'yes' : 'no'} (yes required)`
-      : `handed output directory left untouched: ${r.fileOk ? 'yes' : 'no'} (yes required — the refusal precedes every read and write)`,
+      : `handed output directory left untouched: ${r.fileOk ? 'yes' : 'no'} (yes required — the refusal precedes every .env/credential read, every write, and any network contact; it does NOT precede the wrapper's own directory resolution and git rev-parse — REVIEW-017 finding 4)`,
   );
   console.log(`case verdict: ${r.ok ? 'as pinned' : 'VIOLATION'}`);
 }
@@ -353,8 +375,11 @@ console.log(`section 2 cases run: ${wrapperRows.length} (3 refusals + 1 positive
 console.log(`violations: ${violations} (0 required)`);
 console.log('--- enforced: every preflight case exits exactly as pinned; the nine red');
 console.log('--- paths abort in both modes with their exact recorded reason and emit no');
-console.log('--- probe PASS; the well-formed case continues into probes in both modes;');
-console.log('--- the wrapper refuses every ambient control variable in both of its modes');
-console.log('--- without touching the output directory, and still admits a clean');
+console.log('--- probe line of ANY classification, PASS or FAIL (REVIEW-017 finding 2);');
+console.log('--- the well-formed case continues into probes in both modes; the wrapper');
+console.log('--- refuses the ambient control variables in the three variable/mode pairs');
+console.log('--- run above — not every pair: SETTINGS_PREFLIGHT_CONTROL under --control');
+console.log('--- is NOT exercised here (REVIEW-017 finding 3) — without touching the');
+console.log('--- output directory, and still admits a clean');
 console.log('--- environment — or capture.sh exits 1 (fail closed) ---');
 process.exit(violations === 0 ? 0 : 1);

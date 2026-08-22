@@ -148,11 +148,6 @@ control_classes=""
   run_scenario "Foreign keys" "composite FK narrowed to capture_id only (user_id consistency lost)" \
     "user_id-consistency guarantee: composite FK (capture_id, user_id) -> public.captures (id, user_id) ON DELETE CASCADE"
 
-  fresh
-  sed "s/security definer/security invoker/" "$PROV" > "$scratch/t" && mv "$scratch/t" "$PROV"
-  run_scenario "Functions" "provisioning function demoted to SECURITY INVOKER" \
-    "handle_new_user: returns trigger, plpgsql, SECURITY DEFINER, search_path pinned to ''"
-
   echo
   echo "== group 2: append-class mutations (audit workflow findings) =="
 
@@ -247,18 +242,6 @@ control_classes=""
     "$CORE"
   run_scenario "Triggers" "profiles updated_at trigger given a WHEN clause (conditional maintenance)" \
     "BEFORE UPDATE row triggers run set_updated_at on exactly profiles and captures (transcripts has no updated_at) — unconditional: no WHEN clause and no UPDATE OF column list"
-
-  fresh
-  perl -0777 -pi -e 's/create function public\.set_updated_at\(\)\nreturns trigger\nlanguage plpgsql\nset search_path = \x27\x27/create function public.set_updated_at()\nreturns trigger\nlanguage plpgsql\nset search_path = \x27\x27\nset statement_timeout = \x275s\x27/' \
-    "$CORE"
-  run_scenario "Functions" "set_updated_at given an extra SET (statement_timeout) beyond the pinned search_path" \
-    "set_updated_at: returns trigger, plpgsql, SECURITY INVOKER, search_path pinned to ''"
-
-  fresh
-  perl -0777 -pi -e 's/create function public\.set_updated_at\(\)\nreturns trigger\nlanguage plpgsql\n/create function public.set_updated_at()\nreturns trigger\nlanguage plpgsql\nstrict\n/' \
-    "$CORE"
-  run_scenario "Functions" "set_updated_at declared STRICT (null-input behavior changed)" \
-    "set_updated_at: returns trigger, plpgsql, SECURITY INVOKER, search_path pinned to ''"
 
   fresh
   perl -0777 -pi -e 's/  created_at timestamptz not null default now\(\),\n  updated_at timestamptz not null default now\(\)\n\);/  created_at timestamptz(3) not null default now(),\n  updated_at timestamptz not null default now()\n);/' \
@@ -415,24 +398,6 @@ control_classes=""
     "the three trigger names are exactly profiles_set_updated_at, captures_set_updated_at, on_auth_user_created"
 
   fresh
-  sed "s/set search_path = ''/set search_path = '', public/" "$CORE" > "$scratch/t" \
-    && mv "$scratch/t" "$CORE"
-  run_scenario "Functions" "set_updated_at search_path widened to '', public (only the first argument was compared)" \
-    "set_updated_at: returns trigger, plpgsql, SECURITY INVOKER, search_path pinned to ''"
-
-  fresh
-  sed "s/set search_path = ''/set search_path = '', public/" "$PROV" > "$scratch/t" \
-    && mv "$scratch/t" "$PROV"
-  run_scenario "Functions" "handle_new_user search_path widened to '', public — public resolvable again inside the SECURITY DEFINER body" \
-    "handle_new_user: returns trigger, plpgsql, SECURITY DEFINER, search_path pinned to ''"
-
-  fresh
-  sed 's/create function public.handle_new_user()/create or replace function public.handle_new_user()/' \
-    "$PROV" > "$scratch/t" && mv "$scratch/t" "$PROV"
-  run_scenario "Functions" "handle_new_user made CREATE OR REPLACE (silently redefines an existing definer function)" \
-    "every CREATE FUNCTION carries only funcname/returnType/options"
-
-  fresh
   sed 's/on table public.profiles to authenticated;/on table public.profiles to authenticated granted by postgres;/' \
     "$RLS" > "$scratch/t" && mv "$scratch/t" "$RLS"
   run_scenario "Grants" "profiles grant given GRANTED BY postgres (grantor changed)" \
@@ -475,14 +440,16 @@ control_classes=""
     "the bucket INSERT carries only relation/cols/selectStmt/override"
 
   echo
-  echo "== group 8: the REVIEW-016 finding 1 classes — the audit of EVERY named"
-  echo "== class for the defect shape REVIEW-016 found in one of them: a class"
-  echo "== claims exactness while the assertion reads only PART of a node's"
-  echo "== structure. Twenty-five accepted in-class neighbors across four classes,"
-  echo "== closed at three structural causes: a subscript list read by position"
-  echo "== instead of whole; a function-call shape test that existed for column"
-  echo "== defaults but was not shared with the predicate call sites; and named"
-  echo "== things compared without the helper that marks their neighbors =="
+  echo "== group 8: the REVIEW-016 finding 1 defect shape — a class claims"
+  echo "== exactness while the assertion reads only PART of a node's structure."
+  echo "== The scenarios below are the in-class neighbors this battery runs and"
+  echo "== the classes they demonstrate; nothing here records a search over the"
+  echo "== classes where no such neighbor was found, so no all-class audit is"
+  echo "== claimed. Closed at three structural causes: a subscript list read by"
+  echo "== position instead of whole; a function-call shape test that existed"
+  echo "== for column defaults but was not shared with the predicate call"
+  echo "== sites; and named things compared without the helper that marks their"
+  echo "== neighbors =="
 
   for pol in select insert update delete; do
     case "$pol" in
@@ -566,16 +533,6 @@ control_classes=""
     "$STOR" > "$scratch/t" && mv "$scratch/t" "$STOR"
   run_scenario "Storage bucket row" "bucket INSERT target column given subscript indirection: public[1] (the compared name list prints \"public\" either way)" \
     "the bucket INSERT carries only relation/cols/selectStmt/override"
-
-  fresh
-  perl -0777 -pi -e 's/create function public\.set_updated_at\(\)\nreturns trigger/create function public.set_updated_at()\nreturns trigger[]/s' "$CORE"
-  run_scenario "Functions" "set_updated_at return type made the array neighbor trigger[] (the return type was joined without the typmod/array marking every column type already gets)" \
-    "set_updated_at: returns trigger, plpgsql, SECURITY INVOKER, search_path pinned to ''"
-
-  fresh
-  perl -0777 -pi -e 's/create function public\.handle_new_user\(\)\nreturns trigger/create function public.handle_new_user()\nreturns trigger[]/s' "$PROV"
-  run_scenario "Functions" "handle_new_user return type made the array neighbor trigger[]" \
-    "handle_new_user: returns trigger, plpgsql, SECURITY DEFINER, search_path pinned to ''"
 
   fresh
   sed 's/references auth.users (id) on delete cascade/references somedb.auth.users (id) on delete cascade/' \

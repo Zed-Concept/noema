@@ -28,11 +28,6 @@ pinned class: Foreign keys
 expected failing assertion: user_id-consistency guarantee: composite FK (capture_id, user_id) -> public.captures (id, user_id) ON DELETE CASCADE
 exit code: 1 (1 required); named FAIL line present: yes (yes required)
 
-scenario: provisioning function demoted to SECURITY INVOKER
-pinned class: Functions
-expected failing assertion: handle_new_user: returns trigger, plpgsql, SECURITY DEFINER, search_path pinned to ''
-exit code: 1 (1 required); named FAIL line present: yes (yes required)
-
 == group 2: append-class mutations (audit workflow findings) ==
 
 scenario: DISABLE ROW LEVEL SECURITY appended after the enable/force block
@@ -110,16 +105,6 @@ exit code: 1 (1 required); named FAIL line present: yes (yes required)
 scenario: profiles updated_at trigger given a WHEN clause (conditional maintenance)
 pinned class: Triggers
 expected failing assertion: BEFORE UPDATE row triggers run set_updated_at on exactly profiles and captures (transcripts has no updated_at) — unconditional: no WHEN clause and no UPDATE OF column list
-exit code: 1 (1 required); named FAIL line present: yes (yes required)
-
-scenario: set_updated_at given an extra SET (statement_timeout) beyond the pinned search_path
-pinned class: Functions
-expected failing assertion: set_updated_at: returns trigger, plpgsql, SECURITY INVOKER, search_path pinned to ''
-exit code: 1 (1 required); named FAIL line present: yes (yes required)
-
-scenario: set_updated_at declared STRICT (null-input behavior changed)
-pinned class: Functions
-expected failing assertion: set_updated_at: returns trigger, plpgsql, SECURITY INVOKER, search_path pinned to ''
 exit code: 1 (1 required); named FAIL line present: yes (yes required)
 
 scenario: profiles.created_at given a typmod (timestamptz(3) — precision truncated)
@@ -251,21 +236,6 @@ pinned class: Triggers
 expected failing assertion: the three trigger names are exactly profiles_set_updated_at, captures_set_updated_at, on_auth_user_created
 exit code: 1 (1 required); named FAIL line present: yes (yes required)
 
-scenario: set_updated_at search_path widened to '', public (only the first argument was compared)
-pinned class: Functions
-expected failing assertion: set_updated_at: returns trigger, plpgsql, SECURITY INVOKER, search_path pinned to ''
-exit code: 1 (1 required); named FAIL line present: yes (yes required)
-
-scenario: handle_new_user search_path widened to '', public — public resolvable again inside the SECURITY DEFINER body
-pinned class: Functions
-expected failing assertion: handle_new_user: returns trigger, plpgsql, SECURITY DEFINER, search_path pinned to ''
-exit code: 1 (1 required); named FAIL line present: yes (yes required)
-
-scenario: handle_new_user made CREATE OR REPLACE (silently redefines an existing definer function)
-pinned class: Functions
-expected failing assertion: every CREATE FUNCTION carries only funcname/returnType/options
-exit code: 1 (1 required); named FAIL line present: yes (yes required)
-
 scenario: profiles grant given GRANTED BY postgres (grantor changed)
 pinned class: Grants
 expected failing assertion: every GRANT is an object-level, RESTRICT-behaviour grant of whole-table privileges
@@ -301,14 +271,16 @@ pinned class: Storage bucket row
 expected failing assertion: the bucket INSERT carries only relation/cols/selectStmt/override
 exit code: 1 (1 required); named FAIL line present: yes (yes required)
 
-== group 8: the REVIEW-016 finding 1 classes — the audit of EVERY named
-== class for the defect shape REVIEW-016 found in one of them: a class
-== claims exactness while the assertion reads only PART of a node's
-== structure. Twenty-five accepted in-class neighbors across four classes,
-== closed at three structural causes: a subscript list read by position
-== instead of whole; a function-call shape test that existed for column
-== defaults but was not shared with the predicate call sites; and named
-== things compared without the helper that marks their neighbors ==
+== group 8: the REVIEW-016 finding 1 defect shape — a class claims
+== exactness while the assertion reads only PART of a node's structure.
+== The scenarios below are the in-class neighbors this battery runs and
+== the classes they demonstrate; nothing here records a search over the
+== classes where no such neighbor was found, so no all-class audit is
+== claimed. Closed at three structural causes: a subscript list read by
+== position instead of whole; a function-call shape test that existed
+== for column defaults but was not shared with the predicate call
+== sites; and named things compared without the helper that marks their
+== neighbors ==
 
 scenario: storage select folder lookup given a second subscript: (storage.foldername(name))[1][2] — apply-valid (PostgreSQL returns NULL for the wrong number of subscripts), so the owner predicate is UNKNOWN for every row and owners are denied (REVIEW-016 finding 1, decisive case)
 pinned class: RLS
@@ -415,16 +387,6 @@ pinned class: Storage bucket row
 expected failing assertion: the bucket INSERT carries only relation/cols/selectStmt/override
 exit code: 1 (1 required); named FAIL line present: yes (yes required)
 
-scenario: set_updated_at return type made the array neighbor trigger[] (the return type was joined without the typmod/array marking every column type already gets)
-pinned class: Functions
-expected failing assertion: set_updated_at: returns trigger, plpgsql, SECURITY INVOKER, search_path pinned to ''
-exit code: 1 (1 required); named FAIL line present: yes (yes required)
-
-scenario: handle_new_user return type made the array neighbor trigger[]
-pinned class: Functions
-expected failing assertion: handle_new_user: returns trigger, plpgsql, SECURITY DEFINER, search_path pinned to ''
-exit code: 1 (1 required); named FAIL line present: yes (yes required)
-
 scenario: auth.users FKs given a catalog qualifier: references somedb.auth.users (id) — the one relation reference that did not go through isPlainRel, and the compared name drops catalogname
 pinned class: Foreign keys
 expected failing assertion: profiles.id FK -> auth.users(id) ON DELETE CASCADE
@@ -442,13 +404,12 @@ exit code: 1 (1 required); named FAIL line present: yes (yes required)
 # a class cannot be claimed without a permanent control demonstrating it, and
 # a control cannot silently drop out of the claim.
 
-classes demonstrated by this battery (12):
+classes demonstrated by this battery (11):
   - Column types
   - Constraint presence and absence
   - Constraint values and operators
   - Entity inventory
   - Foreign keys
-  - Functions
   - Grants
   - Indexes
   - RLS
@@ -456,13 +417,12 @@ classes demonstrated by this battery (12):
   - Storage bucket row
   - Triggers
 
-classes claimed by README.md (12):
+classes claimed by README.md (11):
   - Column types
   - Constraint presence and absence
   - Constraint values and operators
   - Entity inventory
   - Foreign keys
-  - Functions
   - Grants
   - Indexes
   - RLS
@@ -475,7 +435,7 @@ demonstrated but not claimed: <none> (must be <none>)
 duplicate class names in README's claimed list: <none> (must be <none>)
 class lists identical: yes (yes required)
 
-scenarios run: 80
+scenarios run: 72
 --- enforced: every scenario exits 1 with its named FAIL line; every scenario
 --- carries a class tag; the run count equals the enumerated scenario lines;
 --- and the demonstrated class set equals README's claimed set — or

@@ -1,3 +1,230 @@
+## 2026-08-23 — feat/schema-rls-v1 (Unit C fix cycle 6 — REVIEW-017, subtraction-only)
+
+**Controller:** CTRL-004 Schema and RLS v1. **Builder:** Claude Code,
+**Opus 5 [1m] / Max effort**, fresh session — the owner-ruled temporary
+substitution for Fable 5, dispatched as such. **Base:**
+`64c1ce603491fb2cb6e8b7b948a369731a436c7f`. **Parent:**
+`3129ddb43cdb6448fe187a881ff60fc14edd7c49` (the owner's REVIEW-017 push).
+**LOCK:** `REVIEW — fix cycle 6 complete, awaiting re-review`; MERGED remains
+controller-only.
+
+**Ruling-6 disclosure.** No workflow ran. No subagent was spawned. All work
+was done in the main lane by direct file reading and editing, plus three
+offline producer runs (004a `capture.sh` x3 via `stability.sh`, and two
+direct captures). Model **Opus 5 [1m]**, effort **Max**, fresh session, no
+continuation of any prior session.
+
+**The governing constraint, and the one place it bites.** This cycle is
+**subtraction-only** under the fix-cycle-5 stop rule, and the dispatch
+prohibits invoking `live-probes.sh` **in any form**. Those two rules together
+made one dispatched item impossible as written, and I did not work around it:
+`004b/capture.sh` regenerates `settings-preflight-control.txt` by running
+`settings-control.mjs`, which spawns `live-probes.sh`, and it also runs
+`live-probes.sh --control` directly for `redaction-control.txt`. So the
+004b touch-set entries `settings-preflight-control.txt`, `gates`, and
+`stability` **could not be regenerated**. I edited the producer as F2
+directs, left the transcript at its fix-cycle-5 bytes rather than hand-write
+a measurement that was never made, and **downgraded every claim that rested
+on the un-regenerated artifact** (004b claims 15, 23, 25, and a new claim 26
+that states the divergence outright). Hand-editing an artifact to match an
+edited producer would have been fabrication; running the producer would have
+repeated the fix-cycle-5 violation shape. Reported, not resolved — the
+controller owns the choice.
+
+### Exact-head confirmation
+
+- `git fetch origin` returned 0 before any work. `origin/feat/schema-rls-v1`
+  and local HEAD both equal `3129ddb43cdb6448fe187a881ff60fc14edd7c49`; its
+  sole parent is `5cab52a30b08eee597ef3ff85dbb333b78750c45`; that commit
+  touches only `docs/04-reviews/REVIEW-017.md` and `docs/01-state/HANDOFF.md`
+  (+531). Starting tree clean.
+- Fix cycle 6 delta, derived from `git diff --cached --numstat` **excluding
+  this HANDOFF file, which cannot count its own insertion**: **9 files,
+  +171/-183**. The commit is 10 files including `HANDOFF.md`; its exact total
+  is measurable only once the commit exists, so the reviewer's fresh
+  `git diff` at the target is the authority for that figure and this block
+  does not guess it (REVIEW-016 finding 3 is the precedent for not
+  transcribing a numstat). Of the 9: the two evidence READMEs, the two
+  `capture.sh` files, `live-probes.sh`, `settings-control.mjs`, the
+  regenerated `assertions-negative-control.txt`, the one-line LOCK status
+  suffix, and the one-line Active-work row. `git diff --check` returns 0 with
+  no diagnostics.
+- Protected/immutable paths show an **empty diff**: the four applied
+  migrations, `src/lib/database.types.ts`, `docs/03-decisions/`, all
+  `docs/04-reviews/`, `roles-acl.sql`, `roles-acl.txt`, and the three live
+  transcripts. `anon-probes.txt` is still
+  `9ba3c2b58ac469d8bd8827bceb6dbf7821fbb7bade3a0f97ede2d2a41d0d643f` and
+  `auth-probes.txt` is still
+  `059edefac0eb3edbe2e2dd4d8b495973c8d55251cb1281edae8ebcc5d3ff0e34`.
+- **No live run of any kind.** No signup, no namespace, no toggle, no
+  invocation of `live-probes.sh`, no Supabase project queried, no credential
+  read, no `.env` touched, no migration applied, no types regenerated, no
+  push, PR, merge, or deploy. Every edit was verified by reading the written
+  file, never by a proxy exit code.
+
+### F1 — the `Functions` class is removed from the claimed list
+
+`Functions` is gone from *What the oracle proves*; the enumerated list is now
+**eleven** classes (Grants/RLS/Storage bucket row renumbered 9/10/11). The
+eight `Functions`-tagged scenarios were removed from `capture.sh` with the
+class, because the derivation cross-check requires every scenario to carry a
+class tag and the two sets to be identical in both directions — a scenario
+carrying no tag, or a tag naming a class the README does not claim, fails
+`capture.sh`. Removing the scenarios is the only form of "drop the class
+label from its scenarios" the fail-closed guard admits without weakening it.
+The battery therefore runs **72** scenarios (derived from the artifact's own
+run counter and cross-checked against its `scenario:` lines), across **11**
+demonstrated classes, matching the README's claimed 11 in both directions —
+`class lists identical: yes`. Group totals, derived from the regenerated
+artifact: 4 / 2 / 1 / 4 / 12 / 6 / 20 / 23.
+
+The oracle itself is **untouched** — `verify-migrations.mjs` has an empty
+diff, still runs its function assertions, and the baseline is unchanged at
+**91 assertions, 91 PASS, 0 FAIL, parse failures 0**. What changed is the
+claim, not the code: *What it does not prove* now states plainly that
+**function-definition structure is not a pinned class**, names the cause (the
+oracle joins `opts.as.List.items` and never pins that list to one item, so a
+two-`AS`-item neighbor changes the body text and the option sequence and
+still returns 91/91), and says what does establish the committed function
+definitions instead — **direct inspection of the four migration files and
+REVIEW-014's source-verified analysis**. Claim 7 is rebased onto exactly
+those two sources for its function half. **The AS-list defect is not fixed
+and is not claimed to be**, per the stop rule.
+
+One further sentence was withdrawn as part of the same subtraction: the
+oracle's contract line used to read "a parse-valid neighbor is rejected
+**exactly when it changes a property some assertion names**". REVIEW-017
+finding 1 is a direct counterexample to that sentence, so it now says the
+**enumerated class list, not the assertion text, is the boundary**.
+
+### F2 — the settings control's acceptance predicate is strictly narrowed
+
+`settings-control.mjs` accepted a negative case on `aborted && probePassLines
+=== 0`. It now requires `aborted && probeLines === 0` — zero probe lines of
+**any** classification. `probe()` in `rls-probes.mjs` emits exactly one
+`PASS  `/`FAIL  ` line per probe on every path, so zero such lines is what
+"before any probe runs" means; the reviewer's countercontrol (a FAIL probe
+before `finish(4)`) would now turn all 18 negative cases red. The per-case
+report line changed with it: it prints the total probe-line count as the
+0-required figure and the PASS count parenthetically.
+
+**This narrowing has no artifact.** Producing one requires running the
+harness, which spawns `live-probes.sh`. So **claim 23 is rewritten down to
+what the committed transcript does prove** — exit 4, in both modes, with the
+exact recorded reason and zero probe `PASS` lines — and the "before any probe
+runs" boundary is classified **NOT RUN**, with the reason stated in the claim
+itself and in new claim 26.
+
+### F3 — the containment matrix claim is narrowed, not completed
+
+**Chosen: narrow the quantified claim to the pairs actually run.** Completing
+the fourth variable/mode pair was the other permitted option, but it would
+only add an unrun case: the artifact that would record it cannot be
+regenerated without invoking `live-probes.sh`, so the completed matrix would
+be a claim with no artifact behind it — exactly the AGENTS.md breach
+REVIEW-017 finding 3 identifies. Under this cycle's subtraction preference,
+narrowing is also the smaller change. Claim 25 now says **three of four**
+variable/mode pairs are measured and names the missing one
+(`SETTINGS_PREFLIGHT_CONTROL` under `--control`) as **not exercised by any
+artifact**; the producer's own trailer, its doc comment, `live-probes.sh`'s
+containment comment, and `004b/capture.sh`'s comment all say the same. The
+guard's source still enumerates both names for both modes — that is noted as
+source reading, explicitly not offered as evidence.
+
+### F4 — five prose overstatements corrected to measurement
+
+1. **"No test hook at all"** — false, and removed from `settings-control.mjs`
+   (doc comment and printed header), `004b/capture.sh`, and 004b claim 25.
+   The accurate statement is narrower: the **settings-preflight success hook**
+   is gone from both producers; the contained synthetic `REDACTION_CONTROL_LEAK`
+   hook and `live-probes.sh --control` remain, and section 2 is what shows an
+   ambient control variable cannot switch a production run.
+2. **"Before anything is read"** — false. `live-probes.sh` resolves its own
+   directory and runs `git rev-parse --show-toplevel` before the guard. Every
+   statement of the boundary — the containment comment, the exit-code legend,
+   the refusal message printed to stderr, the harness's per-case line, and
+   claim 25 — now says the refusal precedes every `.env`/credential read,
+   every write, and any network contact, and explicitly **not** repository
+   discovery.
+3. **The four-violation guard mutant** — corrected here rather than in the
+   fix-cycle-5 block, which is immutable. **Deleting the complete containment
+   block yields three violations, not four.** The four came from deleting only
+   the `CONTROL_VARS` assignment, which makes `set -u` break every wrapper
+   case including the clean positive — a broken-script mutant, not evidence of
+   guard-removal sensitivity. The corrected reading is 9, 6, 6 and **3**. This
+   correction is prose only; I did not re-run the mutants (they require
+   `live-probes.sh`), so the three-violation figure is **REVIEW-017's
+   measurement, adopted**, not one of mine.
+4. **"Six-case" rerun text** — the 004b rerun section now says the 24-case
+   control (20 preflight + 4 wrapper-containment), and additionally warns that
+   `capture.sh` invokes `live-probes.sh`, which is why fix cycle 6 could not
+   regenerate the transcript.
+5. **The all-twelve-class audit trail** — **deleted, not manufactured.** The
+   004a README no longer says every class was audited by measurement. It now
+   says the battery records the neighbors it runs and the classes they
+   demonstrate, and states outright that **no artifact records a search over
+   the classes where no such neighbor was found, so no all-class audit is
+   claimed**. Group 8's header in `capture.sh` says the same. The related
+   "three AST-equivalent green probes" bullet is now labelled a **stated
+   design boundary, not a measured one**.
+
+### Verification and classifications
+
+| Check | Classification | Evidence |
+| --- | --- | --- |
+| Origin tip, sole parent, and the REVIEW-017 commit's file set | PASS | Fresh fetch; HEAD = `origin/feat/schema-rls-v1` = `3129ddb`; sole parent `5cab52a`; tip touches only REVIEW-017.md and HANDOFF.md |
+| Fix-cycle-6 delta and whitespace | PASS | 7 files, +169/-181 (`--numstat`); `git diff --check` exit 0, no diagnostics |
+| Protected/immutable paths unchanged | PASS | Empty staged diff for migrations, generated types, ADRs, all REVIEW records, `roles-acl.*`, and all three live transcripts; both transcript SHA-256s equal their GREEN bindings |
+| `Functions` removed from the claimed list, both directions | PASS | [`assertions-negative-control.txt`](../05-quality/evidence/004a-schema-rls/assertions-negative-control.txt): 11 claimed = 11 demonstrated, `class lists identical: yes`, no duplicates, `capture.sh` exit 0 |
+| Battery totals after removal | PASS | Same artifact: **72** scenarios, derived from the run counter and cross-checked against its own `scenario:` lines; groups 4/2/1/4/12/6/20/23 |
+| Baseline unchanged by the removal | PASS | [`sql-assertions.txt`](../05-quality/evidence/004a-schema-rls/sql-assertions.txt): **91 assertions, 91 PASS, 0 FAIL, parse failures 0**, exit 0; byte-identical to the committed fix-cycle-5 artifact |
+| `verify-migrations.mjs` untouched | PASS | Empty diff — the removal required no oracle change, and the stop rule forbade one |
+| 004a byte-stability at this head | PASS | [`stability.txt`](../05-quality/evidence/004a-schema-rls/stability.txt): six gated artifacts x two fresh captures, 12 identical, 0 differing, exit 0 |
+| 004a four non-install repository gates | PASS | [`gates.txt`](../05-quality/evidence/004a-schema-rls/gates.txt) regenerated byte-identical: typecheck, lint, Jest, format-check all exit 0 |
+| F2 narrowing present in the producer | PASS by reading the written file | `settings-control.mjs`: negative-case predicate is `aborted && probeLines === 0`; `node --check` parses |
+| F2 narrowing proven by an artifact | **NOT RUN — dispatch prohibits invoking `live-probes.sh` in any form**, and `settings-control.mjs` spawns it | Claim 23 rewritten down; claim 26 states the divergence |
+| Claim 23 at its narrowed boundary | PASS | [`settings-preflight-control.txt`](../05-quality/evidence/004b-schema-rls-live/settings-preflight-control.txt) section 1: 18 aborts at exit 4 with exact reason and zero probe `PASS`, 2 continuations |
+| F3 fourth variable/mode pair | **NOT RUN — narrowed instead**, by choice, stated above | Claim 25 quantifies over the three measured pairs only |
+| 004b byte-stability at this head | **NOT RUN — cannot be regenerated without `live-probes.sh`** | Committed `stability.txt` is the fix-cycle-5 result; 004b claim 15 downgraded to NOT RUN, with the four unaffected artifacts named as reasoning, not as a PASS |
+| `settings-preflight-control.txt` matches its producer | **FAIL introduced by fix cycle 6, disclosed** | The transcript is pre-narrowing bytes; 004b claim 26 states it outright rather than hiding it. `docs/` is prettier- and eslint-ignored, so no repository gate masks this |
+| Five prose overstatements | PASS | Corrected in `004a/README.md`, `004a/capture.sh`, `004b/README.md`, `004b/capture.sh`, `004b/live-probes.sh`, `settings-control.mjs`; the four-violation figure adopts REVIEW-017's measurement and says so |
+| Live producers, staging, credentials | NOT RUN — prohibited by dispatch | Nothing was run, read, created, toggled, or contacted |
+| `npm ci` | NOT RUN with reason | No package/lockfile delta in this cycle's diff |
+| Branch CI | NOT RUN | No PR opened; no push |
+| `supabase db lint` / local stack | NOT RUN | Requires Docker and a local database; unchanged boundary |
+| 004a nonzero-gate machinery chore | NOT RUN — backlogged by the controller | Deliberately not widened |
+| REVIEW-015 finding 3, REVIEW-013 finding 4 | NOT RUN — excluded, controller-owned | Untouched |
+
+### Touch-set note
+
+One file was edited beyond the enumerated 004b list: **`004b/capture.sh`**
+(comments only, no behavioral change). Its header comment carried two of the
+five F4 overstatements verbatim — "Neither producer carries a test hook" and
+"before anything is read or written" — so leaving it would have left F4
+uncleared under a grep. Flagged rather than assumed.
+
+### Adjacent findings — reported, not acted on
+
+1. **`Entity inventory` still lists a property no scenario demonstrates.**
+   Class 2 claims "two functions ... **by name**", but the battery's two
+   Entity-inventory scenarios are a `LIKE` table element and a trigger rename;
+   no scenario demonstrates that renaming a *function* rejects. This is the
+   residual shape of REVIEW-015 finding 1 at the property level rather than
+   the class level — the derivation guard binds classes, not the individual
+   properties listed under them. Fixing it needs either a scenario (forbidden
+   this cycle) or another subtraction the dispatch did not authorize.
+2. **The control-variable manifest is duplicated** between
+   `settings-control.mjs` and `live-probes.sh` and must be kept in step by
+   hand. REVIEW-017 already logged this as a judgment-call smell; it has not
+   drifted.
+3. **`004b/stability.sh` cannot run at all under a no-`live-probes.sh`
+   rule**, because `capture.sh` invokes it twice per run. If future cycles are
+   to be offline, the redaction positive control and the settings control need
+   a path that does not go through the wrapper — that is added capability, so
+   it is named here rather than built.
+
+---
+
 ## 2026-08-23 — feat/schema-rls-v1 (REVIEW-017 fix-cycle-5 re-review)
 
 **Controller:** CTRL-004 Schema and RLS v1. **Reviewer of record:** Codex Sol,
