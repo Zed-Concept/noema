@@ -3,13 +3,16 @@
 The authoritative record of what is true right now. If this file and your
 memory of the project disagree, this file is right and you are stale.
 
-**Last verified:** 2026-08-19, CTRL-004 opening, verified against main at
-`5b4fa8a` (the PR #6 merge of the CTRL-003 close-out, GitHub-signed,
-parent `d1a8642`)
-**Verification method:** controller read of main via GitHub API — both
-state files verbatim, the PR ledger #3–#6 (all merged, merge SHAs matching
-the LOCK record), and the branch inventory (`main` is the sole live
-branch).
+**Last verified:** 2026-08-24, CTRL-005 fix cycle 1 preparation, verified against main at
+`07ad5a51ed597f67bac523e681525c4e87fe644d` (the PR #9 merge of the CTRL-004
+close-out, GitHub-signed, parents `d794328` + `6809dbf`)
+**Verification method:** controller read of main via GitHub API — both state
+files verbatim, `AGENTS.md` re-hashed and matched byte-exact against the
+recorded sha256 (`0ff02d20…f013`, 5378 bytes), the PR ledger #1–#9 (all merged,
+merge SHAs matching the LOCK record), the branch inventory, and an independent
+audit of the Unit D candidate at `d6dc677` (diff contents, `expo.scheme`
+byte-identity across refs, and HANDOFF byte-preservation established by suffix
+test rather than by builder testimony).
 
 ## Project facts
 
@@ -42,10 +45,22 @@ runs on, where it is deployed.
 
 ## Current state
 
-As of 2026-08-19:
+As of 2026-08-24:
 
-- Repository `Zed-Concept/noema` is **private**; `main` is at `d1a8642`
-  (PR #5, the Unit B merge).
+- Repository `Zed-Concept/noema` is **private**; `main` is at
+  `07ad5a51ed597f67bac523e681525c4e87fe644d` (PR #9, the CTRL-004 close-out merge).
+- **Unit C is merged** at `d794328` (PR #8): `profiles`, `captures`,
+  `transcripts` with FORCE RLS and owner-only policies, the
+  `handle_new_user()` SECURITY DEFINER provisioning trigger, and the private
+  `captures-audio` bucket. Merged on owner override of a REVIEW-018 FAIL whose
+  remaining findings were all claim-trimming with no security defect.
+- **Unit D is built and under review, not merged**: `feat/auth-session-v1` at
+  `d6dc677`, one commit, 36 files, ahead 1 / behind 0 from this tip. Phase A
+  is offline by construction — no live Supabase call, no credential read, and
+  no SQL, migration, or policy file in the diff.
+- Two merged branches still survive on origin — `feat/schema-rls-v1` and
+  `chore/state-ctrl-004-closeout`, both 0 ahead. Convention is main as the sole
+  live branch; owner deletion pending.
 - Unit B is merged: `@supabase/supabase-js` 2.112.3; one shared typed
   client reading `EXPO_PUBLIC_SUPABASE_URL` +
   `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, failing loudly when unset;
@@ -91,6 +106,11 @@ explicitly and get it overturned on the record.
 | 9 | The Linear mirror is active (team NOE): controller syncs Linear from the repo after every merge; one-way, repo wins. The earlier deferral ruling is void. | 2026-08-18 | this row (owner ruling, CTRL-002) |
 | 10 | Schema/RLS migration application is owner-executed: builders author migration and policy files in-repo; the owner applies them to staging (same credential class as `types:gen`); builders verify post-apply. Builders still receive the staging URL + publishable key only. | 2026-08-19 | this row (owner ruling, CTRL-004) |
 | 11 | Three standing security rulings from REVIEW-014 (advisory), binding on every future unit. **S1:** every function migration pins `revoke all on function ... from public, anon, authenticated` and grants EXECUTE only where intended; any SECURITY DEFINER non-trigger function in a client-reachable schema is RED-lane class. **S2:** any grant to `service_role` re-triggers an advisory review before merge — that role bypasses the entire owner-only matrix. **S3:** every future public-schema table repeats ENABLE + FORCE + per-operation policies; a table granted CRUD to `authenticated` without RLS enabled is wide open. | 2026-08-23 | this row (owner merge of PR #8 ratifies; REVIEW-014) |
+| 12 | v1 authenticates by **email one-time code**, and the session is persisted through a **SecureStore-backed chunking adapter** that fails closed. Password, magic-link, and native OAuth flows are not available at v1 — each needs a redirect scheme, and `expo.scheme` is frozen by ruling 8. Web keeps `localStorage`; no token-storage claim may be made unqualified across platforms. | 2026-08-24 | `docs/03-decisions/ADR-004-auth-session-v1.md` |
+| 13 | `signOut()` passes `scope: 'local'` — a routine sign-out never destroys another device's session. Token auto-refresh is **gated on AppState**, so a refresh never fires while the device is locked; SecureStore keeps `WHEN_UNLOCKED`. "Sign out everywhere" is a deliberate v1.x affordance, and until it exists there is no remote revocation. | 2026-08-24 | `docs/03-decisions/ADR-005-session-lifecycle.md` |
+| 14 | The three-cycle fix budget counts only cycles triggered by an external `REVIEW-NNN` record. A builder's own pre-submission adversarial cycle is recorded but not charged — charging it would make self-review cost budget and reward shipping unreviewed. | 2026-08-24 | this row (controller ruling, CTRL-005) |
+| 15 | The session adapter's read-integrity property is narrowed: a read fails closed to `null` when the index is missing, unparseable, out of range, inconsistent in chunk count or total length, **or when a recorded non-cryptographic checksum over the payload disagrees**. That checksum is corruption detection — of truncation, interleaved-writer hybrids, and accidental damage — and explicitly **not** tamper resistance. No claim of resistance to an adversary with write access to the secure store may be made; such an adversary already holds the tokens. | 2026-08-24 | `docs/03-decisions/ADR-006-read-integrity.md` |
+| 16 | An ADR may narrow a single clause of an earlier ADR without superseding it wholesale. The narrowing ADR names the exact sentence it replaces and states that the rest stands; the earlier ADR's `Status` stays `Accepted` and its file is not edited. A deliberate departure from the template's binary Accepted/Superseded model, taken because marking ADR-004 superseded would falsely retire the auth-method decision along with one read-integrity sentence. | 2026-08-24 | this row (controller ruling, CTRL-005) |
 
 ## Active work
 
@@ -192,6 +212,37 @@ exhausted mid-unit, so builder and controller both ran as Opus 5 at the
 ruling-5 effort class from fix cycle 2 onward; the harness-fixed
 `Co-Authored-By: Claude Fable 5` trailer disagrees with the LOCK and HANDOFF
 records, which are authoritative.
+
+**CTRL-005.** Three learnings, two of them from controller defects.
+
+**13 — A dispatch is not issuable until every document it cites exists.** The
+Unit D dispatch named `ADR-004` as READ FIRST while ADR-004 did not exist in
+any tree, branch, or commit. The controller had written the dispatch as a
+paste-ready block and the "do not paste until the opening state commit lands"
+condition as surrounding prose. The block was pasted; the prose was not a gate.
+Cited documents are gating artifacts, not promises — do not emit paste-ready
+dispatch text ahead of them. Nothing downstream was corrupted only because the
+dispatch happened to restate the adapter's required properties in full, and
+because the builder correctly refused to author a controller record to fill the
+hole.
+
+**14 — Every negative-result check validates its pattern against a positive
+control.** A check that reports "0 hits" is indistinguishable from a check
+whose pattern silently stopped matching. Unit D's `banned-apis.txt` runs each
+pattern against a synthetic control file that *does* contain it, and fails the
+run when a pattern fails its control. Adopt this for every absence claim. Two
+vacuous passes on the same day motivated it: the builder's `capture.sh` exited
+0 having measured nothing when its output directory was unwritable, and the
+controller printed "SQL/migration in diff: NONE — claim holds" from an empty
+file list produced by a 404 against a branch that had not been pushed. An
+instrument that cannot fail cannot pass.
+
+**15 — Ambiguous approval is only resolvable against a named recommendation.**
+"Approved" against a set of lettered options with no controller recommendation
+selects nothing, and inferring a choice there is manufacturing compliance.
+"Approved" against an explicit recommendation per item resolves cleanly. The
+controller's obligation is therefore to carry a named recommendation into every
+owner decision it can, and to hold — not guess — when it has not.
 
 ## Known issues
 
