@@ -41,6 +41,68 @@ it (REVIEW-013 finding 4, REVIEW-015 finding 3).
 
 ---
 
+## LOCK — chore/state-ctrl-005-opening
+
+```
+Project:            Noema
+Branch:             chore/state-ctrl-005-opening
+Controller:         CTRL-005 Auth and session v1
+Builder:            Controller (direct state edit via GitHub API; no product
+                    code — controller-only class per AGENTS.md state ownership)
+Model+Effort:       Opus 5 / Max / same session — the sanctioned substitution
+                    for the ruling-4 Fable 5 controller seat, recorded here
+                    rather than assumed.
+Reviewer of record: none (controller-only state edits)
+Status:             BUILD
+Dispatch:           CTRL-005 opening state commit, landed late and out of
+                    order. Reconcile the ctrl-004-opening LOCK to MERGED
+                    (PR #7, 64c1ce6) and retroactively register the
+                    ctrl-004-closeout LOCK that was never written — both first
+                    acts per learning 5. Record ADR-004 (auth method and
+                    session storage) and ADR-005 (session lifecycle and
+                    revocation posture), rulings 12–14, learnings 13–15, and
+                    the CTRL-005 governance ledger. Deliberately does NOT
+                    register a Unit D LOCK: one already exists on
+                    `feat/auth-session-v1`, and adding a second would conflict
+                    on merge and would backdate a block that was in fact
+                    written late by the builder.
+Evidence:           — (documentation-only state edit; the diff is the evidence)
+```
+
+**Known lag.** As with every controller state branch, this block reads `BUILD`
+after the owner merges until the next controller state commit reconciles it.
+
+---
+
+## LOCK — chore/state-ctrl-004-closeout
+
+```
+Project:            Noema
+Branch:             chore/state-ctrl-004-closeout
+Controller:         CTRL-004 Schema and RLS v1
+Builder:            Controller (direct state edit via GitHub API)
+Model+Effort:       Opus 5 / Max / same session (Fable 5 quota exhausted
+                    mid-unit; the ruling-4 substitution)
+Reviewer of record: none (controller-only state edits)
+Status:             MERGED
+Dispatch:           CTRL-004 close-out state commit: Unit C merge record,
+                    REVIEW-018 disposition and the owner override, the five
+                    known limitations of the merged evidence suite, learnings
+                    promotion, and the naming of CTRL-005.
+Evidence:           — (documentation-only state edit; the diff is the evidence)
+```
+
+**Registered retroactively 2026-08-24 by CTRL-005 — this is a defect record,
+not a routine entry.** The branch merged at `07ad5a51ed597f67bac523e681525c4e87fe644d`
+(PR #9) having never registered a LOCK block at all, so for one full session
+the authoritative lock record omitted a branch that existed, was built on, and
+was merged. Nothing was lost — the branch was controller-only and its diff is
+in history — but the omission means BRANCH-NOTES was not complete during that
+window, and completeness is the whole claim this file makes. Recorded rather
+than backfilled silently.
+
+---
+
 ## LOCK — chore/state-ctrl-004-opening
 
 ```
@@ -51,7 +113,7 @@ Builder:            Controller (direct state edit via GitHub API; no product
                     code — controller-only class per AGENTS.md state ownership)
 Model+Effort:       Fable 5 (controller conversation) / Max / same session
 Reviewer of record: none (controller-only state edits)
-Status:             BUILD
+Status:             MERGED
 Dispatch:           CTRL-004 opening state commit: reconcile the
                     ctrl-003-closeout LOCK to MERGED (PR #6, 5b4fa8a) — first
                     act per learning 5 — register the Unit C LOCK
@@ -66,6 +128,11 @@ Evidence:           — (documentation-only state edit; the diff is the evidence
 **Known lag.** As with every controller state branch, this block reads `BUILD`
 after the owner merges until the next controller state commit reconciles it —
 learning 5 makes that reconciliation the first act of the next state commit.
+
+**Reconciled 2026-08-24 by CTRL-005** — merged at `64c1ce603491fb2cb6e8b7b948a369731a436c7f`
+(PR #7). The lag ran two sessions rather than one: the CTRL-005 opening state
+commit did not land before Unit D was built. See the CTRL-005 governance ledger
+in `PROJECT-STATE.md`.
 
 ---
 
