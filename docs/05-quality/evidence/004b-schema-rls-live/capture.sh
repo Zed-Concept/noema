@@ -1,8 +1,16 @@
 #!/usr/bin/env bash
-# Regenerates this directory's OFFLINE artifacts. Gated (byte-stable at the
-# committed head, normalization stated in README.md): types-shape.txt,
-# redaction-control.txt, settings-preflight-control.txt, gates.txt,
-# secret-scan.txt, inventory.txt.
+# Regenerates this directory's OFFLINE artifacts. Gated in principle
+# (normalization stated in README.md): types-shape.txt, redaction-control.txt,
+# settings-preflight-control.txt, gates.txt, secret-scan.txt, inventory.txt.
+#
+# NOT byte-stable at the committed head, and this header no longer says it is
+# (REVIEW-018 finding 3). The committed stability.txt is the fix-cycle-5
+# result. Fix cycle 6 edited settings-control.mjs, live-probes.sh, and this
+# script, and no capture has been run since, because regenerating
+# settings-preflight-control.txt and redaction-control.txt means invoking
+# live-probes.sh, which the fix-cycle-6 and fix-cycle-7 dispatches prohibit in
+# any form. settings-preflight-control.txt is known STALE and will NOT
+# reproduce here. README.md claims 15 and 26 are the governing statement.
 # Run-varying (fields named in README.md): environment.txt. The three live
 # artifacts (anon-probes.txt, auth-probes.txt, redaction-gate.txt) are NOT
 # touched here — live-probes.sh produced them once against staging and the

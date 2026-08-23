@@ -1,3 +1,255 @@
+## 2026-08-23 — feat/schema-rls-v1 (Unit C fix cycle 7 — REVIEW-018, subtraction-only, FINAL)
+
+**Controller:** CTRL-004 Schema and RLS v1. **Builder:** Claude Code,
+**Opus 5 [1m] / Max effort**, fresh session — the owner-ruled temporary
+substitution for Fable 5, dispatched as such. **Base:**
+`64c1ce603491fb2cb6e8b7b948a369731a436c7f`. **Parent:**
+`56bc34cad290f34642e91c0ed375805c82f56f96` (verified at session start: local
+HEAD and `origin/feat/schema-rls-v1` both equal it, sole parent
+`c135eeb7f14de0b329c90665f031abefee2ce771`, touching only `REVIEW-018.md` and
+`HANDOFF.md`, clean tree — learning 6). **Review of record:** REVIEW-018
+(FAIL). By owner ruling this is the **last cycle of Unit C**: no further
+review is dispatched, REVIEW-018 stands as the final review of record, the
+controller opens the PR and the owner merges.
+
+**Ruling-6 disclosure.** **No workflow ran and no subagent was used.** All work
+was done in the main lane: the Git preflight, reading REVIEW-018 and the three
+governance files, direct inspection of both evidence READMEs and the five
+producers named below, every edit, and every verification. Model **Opus 5
+[1m]**, effort label **Max** (the tier ruling 5 sets for review-fix loops, and
+what this session's UI reports).
+
+**No run of any kind.** I did not invoke `live-probes.sh`, `settings-control.mjs`,
+`rls-probes.mjs`, either `capture.sh`, either `stability.sh`, or any other
+producer — not for a smoke test, not for a syntax check, not by proxy. I ran
+no `bash -n`, `node --check`, `npm`, `npx`, or CI step. I did not query
+Supabase, read a credential or `.env`, create a user, touch auth state, apply a
+migration, regenerate types, push, open a PR, merge, or deploy. **Every edit in
+this block was verified by reading the written file back**, never by an exit
+code.
+
+### The four REVIEW-018 remedies, as applied
+
+All four are subtraction. **No oracle capability, class, scenario, instrument,
+or artifact was added.**
+
+1. **M1 — `Entity inventory` claimed function-name discrimination with no
+   scenario. The claim is deleted.** Function count and the two function names
+   are no longer claimed as pinned anywhere in 004a. `Entity inventory` now
+   states only what its two permanent scenarios actually demonstrate — the
+   three trigger names (trigger-rename scenario) and every table element
+   pinned to a `ColumnDef`/`Constraint` (the `LIKE` scenario) — and says
+   outright that no committed scenario rejects a function rename or addition.
+   Function identity now rests on **direct inspection of the four migration
+   files and REVIEW-014**, exactly as function-*definition* structure already
+   did; it has its own bullet in *What it does not prove*, and claims 2 and 7
+   were narrowed to match. **No scenario was added** (Codex named this remedy
+   explicitly). The general defect behind it is now stated once, in the open:
+   the machine cross-check binds **sets of class labels, not each property a
+   class paragraph names**, so a class demonstrated by two scenarios can list
+   properties neither exercises.
+   *Untouched by design:* `verify-migrations.mjs`, `capture.sh`, and
+   `assertions-negative-control.txt` are byte-identical. The class-list parser
+   still extracts the **same 11 duplicate-free names** — I re-ran that exact
+   `sed` extraction over the edited README by hand and compared it to the
+   battery's tags — so the derivation cross-check is unchanged, the baseline
+   stays 91/91, and the battery stays at 72 scenarios.
+
+2. **M2 — claim 25 outran its oracle. It is narrowed, and the stronger
+   boundary is NOT RUN.** Claim 25 now asserts only the three things the
+   artifact records for each measured pair: wrapper exit 5, the refusal
+   message printed, and the handed output directory **absent or empty when the
+   run ended** — with the mechanism spelled out (`existsSync(outdir)` false, or
+   `readdirSync(outdir).length === 0`), the consequence stated (a run that
+   created the directory before refusing, or created an entry and removed it,
+   would still green), and the fact that the oracle instruments **no**
+   credential/`.env` read, **no** write outside that directory, and **no**
+   network activity. The stronger claim — *refusal precedes every credential/
+   `.env` read, every write, and any network contact* — is classified **NOT
+   RUN**, supported only by source reading, which is not the standard AGENTS.md
+   sets. The claim headline was narrowed from "cannot silently switch a
+   production run" to what was measured. The committed transcript's own
+   per-case annotation prints the stronger wording; that is recorded as
+   **outrunning its own oracle** and superseded by the claim. It was not
+   rewritten — an evidence transcript is measured output, not editable prose,
+   and regenerating it needs a run this dispatch forbids.
+
+3. **L1 — the unfinished prose subtraction is completed, and the three
+   producer comments REVIEW-018 named are disclosed rather than edited.**
+   Completed in place: 004b's generic "gated" definition now says the
+   definition **is not satisfied at this head**; the settings-control artifact
+   row no longer says every case runs with no control variable set (section 2
+   deliberately sets one in three of four cases) and no longer says the output
+   directory is left "untouched"; and 004b `capture.sh`'s header no longer
+   calls the six artifacts byte-stable at the committed head. **Disclosed, not
+   edited:** `verify-migrations.mjs` (withdrawn "exactly when" contract, lines
+   8–17; an all-class-audit sentence naming the removed `Functions` class,
+   lines 41–44), `rls-probes.mjs` (line 290's `NO TEST HOOK LIVES BELOW THIS
+   LINE` — false as written: the contained synthetic `REDACTION_CONTROL_LEAK`
+   hook is 40 lines below, at line 330 in `anonMode()`; I verified the line
+   numbers directly), and `settings-control.mjs`'s generated header. Each has
+   a named subsection saying plainly what is wrong and that **the README, not
+   the source comment, is the claim boundary**.
+   **Why these three were left byte-untouched — this is the controller's
+   adjudication to review.** Each produces committed artifacts this cycle may
+   not regenerate. `verify-migrations.mjs` backs 004a's six gated artifacts and
+   the two-run `stability.txt` that REVIEW-018 independently reproduced twice;
+   `rls-probes.mjs` produces the three **protected** live transcripts whose
+   bytes are bound to their GREEN SHA-256s. Editing either would desynchronize
+   proven artifacts from their producer — spreading 004b's existing
+   producer/artifact divergence into 004a and onto the protected transcripts,
+   with no run available to close it. The dispatch's "prefer claim edits over
+   code edits" and the ban on runs point the same way. Correcting those
+   comments belongs to a cycle allowed to regenerate.
+
+4. **L2 — the HANDOFF delta row, corrected here and derived, not
+   transcribed.** I measured it with Git rather than copying any figure:
+   fix cycle 6 (`3129ddb` → `c135eeb`) is **10 files, +398/-183** including its
+   own HANDOFF insertion, and **9 files, +171/-183** excluding it. The
+   fix-cycle-6 block's verification row said **7 files, +169/-181**; that is
+   exactly the **evidence-only subset** (I confirmed it: `git diff --stat`
+   restricted to `docs/05-quality/evidence` returns 7 files, +169/-181),
+   mislabelled as the cycle delta because it omits the one-line `BRANCH-NOTES.md`
+   and `PROJECT-STATE.md` edits — a difference of 2 files, +2/-2. The
+   fix-cycle-6 HANDOFF block is **immutable and left exactly as written**; per
+   append-only governance the correction lives here, in the new block.
+
+### Also narrowed, unprompted — two claims that would have gone stale on commit
+
+Not in the four findings, but they would have become false the moment this
+commit landed, and under-claiming is the instruction:
+
+- **Claims 11 (both directories) and 14 (004a) no longer say "at this head".**
+  The four CI gates and 004a's six-artifact byte-stability were measured at the
+  **fix-cycle-6** head. Nothing was re-run here, so both are now **NOT RUN at
+  this head**, with the reasoning stated and explicitly **not offered as a
+  PASS**: this cycle changed only `docs/` prose, which is prettier-ignored (an
+  explicit `docs/` entry in `.prettierignore`), reaches neither `expo lint`
+  (no `.md`/`.sh` file does) nor `tsc` nor Jest, moves no package file, and
+  carries no string the five secret-scan patterns can match.
+
+### Consolidated limitations the merged evidence suite carries
+
+**The whole list, unsoftened.** This is what merges.
+
+*Producer/artifact divergence — four files:*
+
+- `settings-preflight-control.txt` is **stale**: its bytes are the fix-cycle-5
+  capture and no longer match `settings-control.mjs`, which fix cycle 6
+  narrowed. The narrowed predicate (zero probe lines of **any** classification)
+  **has no artifact at all**. 004b claims 15 and 26.
+- That same transcript's per-case annotation asserts the refusal "precedes
+  every read and write" — **stronger than its own oracle checks** (M2). Its
+  header lines likewise say every case runs with no control variable set,
+  which section 2 contradicts.
+- `verify-migrations.mjs`, `rls-probes.mjs`, and `settings-control.mjs` carry
+  **stale comments** as itemized under L1 above. All three files are
+  byte-untouched; the READMEs govern.
+
+*Not run:*
+
+- **004b byte-stability is NOT RUN at this head** (claim 15) — and now at the
+  fix-cycle-7 head too. `settings-preflight-control.txt` **will not** reproduce.
+- **004a byte-stability and the four CI gates are NOT RUN at this head**
+  (claims 14 and 11, both directories); last measured at fix cycle 6, where
+  REVIEW-018 reproduced 004a's six artifacts across two further fresh captures.
+- **Claim 25's precedence boundary is NOT RUN** — uninstrumented (M2).
+- **Claim 25's fourth variable/mode pair** (`SETTINGS_PREFLIGHT_CONTROL` under
+  `--control`) is unexercised by any artifact.
+- **Claim 23's "before any probe runs" boundary is NOT RUN**; the committed
+  transcript supports only exit 4 + exact reason + zero probe `PASS`.
+- Column-level privileges (claim 21), `pg_proc.proowner` (claim 20), non-SQL-
+  editor tooling roles (claim 19), `supabase db lint`/local stack (claim 16),
+  types **generation** (claims 1 and 17 — owner-executed, verification indirect),
+  branch CI (claim 12), and `npm ci` (claim 11) are all NOT RUN with reason.
+- `anon-probes.txt` and `auth-probes.txt` predate claim 23's preflight and were
+  not recaptured (claim 24, disclosed not claimed).
+
+*Oracle boundaries in 004a:*
+
+- **The `Functions` class was removed** in fix cycle 6, with its eight
+  scenarios. **Function-definition structure is not a pinned class** — a
+  neighbor splitting one PL/pgSQL body across two `AS` items still returns
+  91/91.
+- **Function identity — count and names — is not a pinned property either**
+  (M1, new this cycle). Both now rest on direct inspection and REVIEW-014.
+- **The class cross-check binds class labels, not the individual properties a
+  class paragraph names** (M1). Concretely: `Entity inventory` also evaluates
+  three tables, two functions, one INSERT, and each table's column list and
+  order, and **none of those has a scenario of its own** — they hold on the
+  committed text and are stated as such, not as demonstrated discrimination.
+  *The same structural gap may exist in other classes; see the adjacent
+  finding below.*
+- **No all-class audit is claimed** — the battery records the neighbors it
+  runs, not a search over classes where none was found (REVIEW-017 finding 4).
+- Not exhaustive schema equivalence; parse-valid neighbors outside the
+  enumerated classes may pass. Comments, whitespace, formatting, and
+  intra-file statement order beyond the per-file counts are unpinned.
+  Same-AST spellings are accepted by design — a **stated, not measured**
+  boundary. Static only; pinned to this four-file set.
+
+*Carried, controller-owned:*
+
+- The 004a nonzero-gate chore stays backlogged; REVIEW-015 finding 3 and
+  REVIEW-013 finding 4 remain excluded and controller-owned. The fix-cycle-5
+  unauthorized live run stays two-tiered: repository facts verified,
+  deleted-output/external-effect testimony **unverifiable from the repository**.
+  The control-variable manifest is still duplicated between
+  `settings-control.mjs` and `live-probes.sh` (REVIEW-018's judgment-call
+  smell); it has not drifted, and deduplicating it is a code edit this cycle
+  may not make.
+
+### Adjacent finding — reported, not acted on
+
+**The class-label gap M1 closes for function identity is not necessarily
+unique to function identity.** REVIEW-018 diagnosed the mechanism —
+label-set derivation admits every property a class paragraph names — and
+required subtraction for the one property it disclosed. I applied exactly
+that, and stated the general mechanism, but **I did not audit the other ten
+classes for listed-but-unscenarioed properties**. Doing so honestly would mean
+either adding scenarios (capability — forbidden) or deleting properties beyond
+the dispatched scope on my own authority. Where I could see it plainly, inside
+`Entity inventory` itself, I named the four unscenarioed properties in place
+rather than leave them to the label. **A full per-property audit across all
+eleven classes is unrun and belongs to a cycle that may add scenarios.** I
+flag it as the largest known unmeasured question in the merged suite.
+
+### Verification and classifications
+
+| Check | Classification | Evidence |
+| --- | --- | --- |
+| Dispatched preflight: origin tip, sole parent, touch-set, clean tree | PASS | Fetched; local HEAD = `origin/feat/schema-rls-v1` = `56bc34c`; sole parent `c135eeb`; that commit touches only `REVIEW-018.md` and `HANDOFF.md`; `git status` empty at start |
+| M1 — function-name/count discrimination subtracted, no scenario added | PASS | `004a-schema-rls/README.md`: class 2 rewritten, new *What it does not prove* bullet, claims 2 and 7 narrowed. `verify-migrations.mjs`, `capture.sh`, `assertions-negative-control.txt`, `sql-assertions.txt` all byte-identical (empty diff) |
+| Class cross-check still parses 11 duplicate-free names matching the battery | PASS | The script's own extraction re-run by hand over the edited README: `Set shape, Entity inventory, Column types, Constraint presence and absence, Constraint values and operators, Foreign keys, Indexes, Triggers, Grants, RLS, Storage bucket row` — unchanged in both directions. **Not** re-proven by executing `capture.sh` |
+| M2 — claim 25 narrowed; precedence boundary classified | PASS | `004b-schema-rls-live/README.md` claim 25 and the settings artifact row; the precedence boundary is **NOT RUN** in the claim's own class cell |
+| L1 — residual prose subtracted; three producer comments disclosed | PASS | Both READMEs (gated definition, artifact row, new *Producer source comments* section in 004b, new stale-comment paragraph in 004a) and `004b .../capture.sh` header. Line numbers in the disclosures verified by direct inspection |
+| L2 — fix-cycle-6 delta corrected, derived not transcribed | PASS | Derived above with `git diff --stat` at three scopes; prior HANDOFF block left immutable |
+| Protected/immutable paths empty | PASS | Empty diff for all four migrations, `src/lib/database.types.ts`, `docs/03-decisions/`, `docs/04-reviews/`, `roles-acl.sql`, `roles-acl.txt`, the three protected live transcripts, `settings-preflight-control.txt`, `rls-probes.mjs`, `settings-control.mjs`, `live-probes.sh`, `verify-migrations.mjs`, 004a `capture.sh`, and both `stability.*`. Prior HANDOFF bytes preserved below this block |
+| Markdown table integrity after long-cell edits | PASS | Field counts uniform by direct measurement: 004a 19 claim rows + 8 artifact rows, 004b 26 claim rows + 13 artifact rows, every one at 6 pipe-fields. Two raw double-pipe operators my first draft introduced into table cells (in a quoted JavaScript predicate) were reworded out, since the evidence READMEs carry no pipe-escaping precedent; zero remain |
+| Whitespace | PASS | `git diff --check` clean |
+| Fix-cycle-7 delta | PASS, derived | **5 files, +129/-26** excluding this self-counting HANDOFF block; the evidence subset is **3 files, +124/-24**. Full range vs base: 52 files, +11769/-12 before this block |
+| Any producer run, capture, probe, or gate | **NOT RUN — prohibited by dispatch** | No `live-probes.sh`, `settings-control.mjs`, `rls-probes.mjs`, `capture.sh`, `stability.sh`, `npm`, `npx`, `node`, or CI step was invoked, for any purpose |
+| Live/staging/credentials/production | **NOT RUN — prohibited** | No project query, signup, namespace, toggle, credential or `.env` read, migration, types generation, push, PR, merge, or deploy |
+| 004a byte-stability and four CI gates at this head | **NOT RUN with reason** | No capture authorized; last measured at fix cycle 6 and reproduced twice by REVIEW-018 there. Claims 11 and 14 now say so |
+| 004b byte-stability at this head | **NOT RUN — prohibited producer path** | Claims 15 and 26 govern; `settings-preflight-control.txt` will not reproduce |
+| New scenarios, classes, instruments, artifacts, dependencies, schema/type change | **none — excluded by dispatch** | No file added or deleted; five files edited, all prose or comments |
+
+### LOCK status line
+
+```
+Status:             REVIEW — fix cycle 7 complete (final, subtraction-only);
+                    no further review dispatched by owner ruling — REVIEW-018
+                    stands as the review of record. Controller opens the PR;
+                    MERGED remains controller-only, after the owner merges
+```
+
+Committed, **not pushed** — the owner pushes. Write scope was exactly the five
+files above plus this block: the two evidence READMEs, 004b `capture.sh`, the
+`BRANCH-NOTES.md` LOCK status-line suffix, and the `PROJECT-STATE.md` Active-work
+row.
+
+---
+
 ## 2026-08-23 — feat/schema-rls-v1 (REVIEW-018 fix-cycle-6 re-review)
 
 **Controller:** CTRL-004 Schema and RLS v1. **Reviewer of record:** Codex Sol,

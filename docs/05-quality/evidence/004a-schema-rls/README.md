@@ -106,11 +106,11 @@ applied migration.
 
 `verify-migrations.mjs` is an **enumerated-assertion oracle**, not a proof of
 exhaustive schema equivalence. It parses the four migrations with the real
-PostgreSQL 17 grammar and evaluates 91 named assertions. A parse-valid
-neighbor of the migration set is rejected when it changes a property in one
-of the **enumerated classes below**, and is accepted when it does not. A
-green run means *every enumerated property holds* — not *no other schema
-text could pass*.
+PostgreSQL 17 grammar and evaluates 91 named assertions. Each
+**enumerated class below** carries at least one permanent scenario showing
+the oracle rejects a neighbor that changes something in that class. A green
+run means *every enumerated property holds* — not *no other schema text
+could pass*.
 
 The earlier form of that sentence — "rejected exactly when it changes a
 property some assertion names" — claimed more than the mechanism delivers
@@ -120,6 +120,18 @@ the demonstrated counterexample (REVIEW-017 finding 1), which is why it is
 no longer a claimed class. **The enumerated list below, not the assertion
 text, is the boundary**, and every entry on it is derived from a permanent
 scenario that demonstrates the rejection.
+
+**What that derivation binds, and what it does not (REVIEW-018 finding 1).**
+The machine cross-check below compares *sets of class labels*: a class earns
+its place on the list when at least one scenario tagged with that label
+turns the oracle red. It does not bind each individual property a class
+paragraph then goes on to name. A class demonstrated by two scenarios can
+therefore list properties that neither scenario exercises, and the tag alone
+would still admit the whole paragraph. Where a listed property has no
+scenario of its own, that property is **not** claimed as discriminated here —
+the Entity-inventory function-identity properties were removed from the list
+on exactly this ground, and the residue is stated at each class rather than
+left to the label.
 
 This wording is deliberate and replaces the earlier "the schema is exactly
 the v1 scope, nothing extra can hide" framing, which claimed more than the
@@ -222,11 +234,20 @@ above:
    hide behind the parser's filter, the per-file statement counts
    (9 + 21 + 3 + 5), and a statement-type whitelist. Appended or
    countermanding statements cannot hide.
-2. **Entity inventory** — exactly three tables, two functions, three
-   triggers **by name**, one INSERT, the exact column list and order per
-   table, and every table element pinned to a `ColumnDef` or a `Constraint`
-   so a `LIKE` source table cannot contribute columns that never reach the
-   compared list.
+2. **Entity inventory** — the three trigger names, and every table element
+   pinned to a `ColumnDef` or a `Constraint` so a `LIKE` source table cannot
+   contribute columns that never reach the compared list. Those two
+   properties are what this class's two permanent scenarios demonstrate — a
+   trigger rename and a `LIKE` table element. **Function count and function
+   names are not claimed here** (REVIEW-018 finding 1): no committed
+   scenario shows the oracle rejecting a neighbor that renames a function or
+   adds one, so the class tag alone cannot carry that property. The
+   remaining entity counts this class's assertions also evaluate — three
+   tables, two functions, one INSERT, and each table's exact column list and
+   order — hold on the committed text and are recorded in
+   `sql-assertions.txt`, but they are **not** offered as demonstrated
+   discrimination; the set-shape bounds in class 1 are what is demonstrated
+   against appended or countermanding statements.
 3. **Column types** — exact type name, with typmod and array neighbors
    rejected, and the column definition's exact node shape, so `COLLATE`,
    `STORAGE`, `COMPRESSION`, `IDENTITY`, and `GENERATED` cannot ride beside
@@ -308,6 +329,19 @@ above:
   discrimination. The battery's Functions-tagged scenarios were removed with
   the class, so the claimed list and the demonstrated set still match in
   both directions.
+- **Function identity — how many functions exist and what they are named —
+  is NOT a pinned property either** (REVIEW-018 finding 1). It was previously
+  listed inside the Entity-inventory class, but that class's two permanent
+  scenarios are a `LIKE` table element and a trigger rename; neither renames
+  or adds a function, and the class-label cross-check binds the label, not
+  the property. `verify-migrations.mjs` does compare the two names exactly
+  and the committed text satisfies that comparison in every green run, but
+  **no committed artifact demonstrates that a function-renaming or
+  function-adding neighbor is rejected**, so no claim here asserts it.
+  Function identity now rests on the same basis as function-definition
+  structure: **direct inspection of the four migration files** and
+  **REVIEW-014**. Under the binding stop rule the property was subtracted
+  rather than a scenario added.
 - **It is not a proof of exhaustive schema equivalence.** Parse-valid
   neighbors outside the enumerated classes above may pass. The honest
   statement of a green run is "every enumerated property holds", and any
@@ -329,6 +363,23 @@ above:
   to `../004b-schema-rls-live/`.
 - A future migration adding a fifth file would fail assertion 1 rather than
   be analysed; the oracle is pinned to this four-file set.
+
+**The producer's own source comments are stale, deliberately (REVIEW-018
+finding 3).** `verify-migrations.mjs` is **byte-untouched** in this cycle, and
+its file-header comments still carry two statements this README withdraws: the
+"rejected **exactly when** it changes a property some assertion names"
+contract (lines 8–17), and a sentence reporting that **every** named class was
+audited for the REVIEW-016 defect shape, naming a `Functions` class that no
+longer exists (lines 41–44). Both are withdrawn — **this README, not the
+source comment, is the claim boundary**. The source was left byte-untouched on
+purpose: `capture.sh` runs this file, and the committed gated artifacts and
+their two-run byte-stability result in `stability.txt` are proven against
+*these* producer bytes. Editing the comments in a cycle that cannot re-run the
+capture would put 004a into the same producer/artifact divergence that
+`../004b-schema-rls-live/` already discloses in its claims 15 and 26, and would
+buy nothing a withdrawal here does not already deliver. The divergence is
+recorded rather than papered over; correcting the comments belongs to a cycle
+that is allowed to regenerate the artifacts.
 
 ## Artifacts and classification
 
@@ -365,19 +416,19 @@ broken positive control. A green artifact set from a red run cannot exist.
 | # | Claim | Class | Artifact |
 | --- | --- | --- | --- |
 | 1 | All four migrations parse under the real PostgreSQL 17 grammar (libpg_query, pinned `libpg-query@17.7.4`): 9 + 21 + 3 + 5 = 38 statements, zero failures | PASS | `sql-assertions.txt`, parse section |
-| 2 | Every property in the eleven enumerated classes of *What the oracle proves* holds on this migration set: three tables, column-by-column (names, order, types, nullability, defaults, CHECK values **and operators**), the enumerated set-shape bounds (statement-type whitelist, exact per-file statement counts, no extra tables/functions/inserts), and per-class absence pinning. **This is an enumerated-assertion result, explicitly not a proof of exhaustive schema equivalence — parse-valid neighbors outside the enumerated classes may pass** (REVIEW-013 finding 2; the bounded coverage statement and the known limits are in *What the oracle proves*) | PASS, bounded to the enumerated classes | `sql-assertions.txt` (91/91 AST assertions, including the append-class bounds: exact per-file statement counts, exactly six RLS ALTERs with no countermanding subtype, exactly 17 schema-qualified policies, and exactly three triggers — function-definition structure is **not** a pinned class and nothing here claims discrimination over it, REVIEW-017 finding 1). **Exact-value discipline** — the `duration_ms >= 0` assertion compares the literal against zero (REVIEW-011 finding 2), and the storage folder lookup's **whole subscript list** — exactly one plain integer index, value 1, so `[1][2]` and `[1:1]` turn it red (REVIEW-016 finding 1) — both boolean constants (`WITH CHECK (true)`, bucket `public = false`), every string literal, trigger timing/event codes, and FK actions are exact-value comparisons. **Absence-pinning discipline** (REVIEW-012 finding 2, extended by REVIEW-013 finding 2): each column's exact constraint-type multiset is compared, so a DEFAULT — or any other constraint — added to a column declared default-free turns it red; each table's exact table-level constraint set is compared, with `INHERITS`/`PARTITION BY`/`OF`/tablespace/`IF NOT EXISTS` pinned absent; CHECK `IN` lists pin the operator, so a `NOT IN` neighbor with the same values turns it red; that same call-shape guard now applies at **every** pinned call site, not only column defaults, so argument, star, `VARIADIC`, `DISTINCT`, `ORDER BY`, `FILTER`, and `OVER` neighbors of `auth.uid()` and `storage.foldername(name)` reject too (REVIEW-016 finding 1); every FK pins constraint name, referenced table — as a plain, non-inheriting, permanent relation, so a catalog qualifier rejects — **and attribute list**, match type, and both actions; every column type-name comparison rejects typmod and array neighbors, so `::text[]` turns it red; the initplan `(select auth.uid())` subquery is pinned to a bare one-target SELECT, so an added `WHERE`/`LIMIT`/`GROUP BY` turns it red, and its single target is pinned to a bare value so an output alias turns it red; grants pin per-column privilege lists absent; the bucket insert pins its `VALUES` row count, that row's item count, and bare-name target columns; and the remaining optional clauses that could widen behavior are pinned absent — trigger `WHEN`/`UPDATE OF`/args/`CONSTRAINT`, `WITH GRANT OPTION`, index `UNIQUE`/predicate/access method/`INCLUDE`, and `ON CONFLICT`/`RETURNING` on the bucket insert |
+| 2 | Every property in the eleven enumerated classes of *What the oracle proves* holds on this migration set: three tables, column-by-column (names, order, types, nullability, defaults, CHECK values **and operators**), the enumerated set-shape bounds (statement-type whitelist, exact per-file statement counts), and per-class absence pinning. **Function identity — the function count and the two function names — is excluded from this claim** (REVIEW-018 finding 1): the assertions evaluate it and it holds on the committed text, but no committed scenario demonstrates discrimination over it, so it is reported as directly inspected rather than as an oracle result. **This is an enumerated-assertion result, explicitly not a proof of exhaustive schema equivalence — parse-valid neighbors outside the enumerated classes may pass** (REVIEW-013 finding 2; the bounded coverage statement and the known limits are in *What the oracle proves*) | PASS, bounded to the enumerated classes | `sql-assertions.txt` (91/91 AST assertions, including the append-class bounds: exact per-file statement counts, exactly six RLS ALTERs with no countermanding subtype, exactly 17 schema-qualified policies, and exactly three triggers — function-definition structure and function identity are **not** pinned properties and nothing here claims discrimination over either, REVIEW-017 finding 1 and REVIEW-018 finding 1). **Exact-value discipline** — the `duration_ms >= 0` assertion compares the literal against zero (REVIEW-011 finding 2), and the storage folder lookup's **whole subscript list** — exactly one plain integer index, value 1, so `[1][2]` and `[1:1]` turn it red (REVIEW-016 finding 1) — both boolean constants (`WITH CHECK (true)`, bucket `public = false`), every string literal, trigger timing/event codes, and FK actions are exact-value comparisons. **Absence-pinning discipline** (REVIEW-012 finding 2, extended by REVIEW-013 finding 2): each column's exact constraint-type multiset is compared, so a DEFAULT — or any other constraint — added to a column declared default-free turns it red; each table's exact table-level constraint set is compared, with `INHERITS`/`PARTITION BY`/`OF`/tablespace/`IF NOT EXISTS` pinned absent; CHECK `IN` lists pin the operator, so a `NOT IN` neighbor with the same values turns it red; that same call-shape guard now applies at **every** pinned call site, not only column defaults, so argument, star, `VARIADIC`, `DISTINCT`, `ORDER BY`, `FILTER`, and `OVER` neighbors of `auth.uid()` and `storage.foldername(name)` reject too (REVIEW-016 finding 1); every FK pins constraint name, referenced table — as a plain, non-inheriting, permanent relation, so a catalog qualifier rejects — **and attribute list**, match type, and both actions; every column type-name comparison rejects typmod and array neighbors, so `::text[]` turns it red; the initplan `(select auth.uid())` subquery is pinned to a bare one-target SELECT, so an added `WHERE`/`LIMIT`/`GROUP BY` turns it red, and its single target is pinned to a bare value so an output alias turns it red; grants pin per-column privilege lists absent; the bucket insert pins its `VALUES` row count, that row's item count, and bare-name target columns; and the remaining optional clauses that could widen behavior are pinned absent — trigger `WHEN`/`UPDATE OF`/args/`CONSTRAINT`, `WITH GRANT OPTION`, index `UNIQUE`/predicate/access method/`INCLUDE`, and `ON CONFLICT`/`RETURNING` on the bucket insert |
 | 3 | `transcripts.user_id` is provably consistent with the parent capture's `user_id` (composite FK + backing UNIQUE; technique documented above and in the migration comments) | PASS | `sql-assertions.txt` |
 | 4 | FK-supporting indexes exist for every FK; `updated_at` triggers exist exactly where the column exists (profiles, captures — not transcripts) | PASS | `sql-assertions.txt` |
 | 5 | RLS is ENABLEd and FORCEd on all three tables; the policy matrix is per-operation owner-only TO `authenticated` with initplan-wrapped `(select auth.uid()) = id/user_id` predicates (INSERT via WITH CHECK, UPDATE via both); no policy names `anon` or PUBLIC; the sole exception is the documented INSERT-only provisioning policy TO `postgres` | PASS | `sql-assertions.txt` |
 | 6 | The **authored** grants are explicit and minimal: select/insert/update/delete on the three tables, to `authenticated` only, as table-object grants without WITH GRANT OPTION — this set authors no grant naming `anon`, `service_role`, or PUBLIC. (What is *effectively* held is a separate measured question — `../004b-schema-rls-live/README.md` claims 18/21) | PASS | `sql-assertions.txt` |
-| 7 | Provisioning is a SECURITY DEFINER function with `search_path` pinned to `''`, body schema-qualified, wired AFTER INSERT FOR EACH ROW on `auth.users`. **The function half of this claim does not rest on the oracle's discrimination**: function-definition structure is not a pinned class (REVIEW-017 finding 1, *What it does not prove*), so what the committed definition is rests on direct inspection of `20260820100200_v1_profile_provisioning.sql` and on REVIEW-014's source-verified analysis. `sql-assertions.txt` records the same properties holding on the committed text, and the trigger half is inside the pinned Triggers class | PASS on the committed text — by direct inspection and REVIEW-014 for the function definition, by the oracle for the trigger wiring | `sql-assertions.txt` (function properties recorded, not class-pinned); `supabase/migrations/20260820100200_v1_profile_provisioning.sql` (direct inspection); `../../../04-reviews/REVIEW-014.md` |
+| 7 | Provisioning is a SECURITY DEFINER function with `search_path` pinned to `''`, body schema-qualified, wired AFTER INSERT FOR EACH ROW on `auth.users`. **The function half of this claim does not rest on the oracle's discrimination**: neither function-definition structure nor function identity is a pinned property (REVIEW-017 finding 1 and REVIEW-018 finding 1, *What it does not prove*), so what the committed function is — and that it is one of exactly two — rests on direct inspection of `20260820100200_v1_profile_provisioning.sql` and on REVIEW-014's source-verified analysis. `sql-assertions.txt` records the same properties holding on the committed text, and the trigger half is inside the pinned Triggers class | PASS on the committed text — by direct inspection and REVIEW-014 for the function definition, by the oracle for the trigger wiring | `sql-assertions.txt` (function properties recorded, not class-pinned); `supabase/migrations/20260820100200_v1_profile_provisioning.sql` (direct inspection); `../../../04-reviews/REVIEW-014.md` |
 | 8 | Storage: `captures-audio` is created private, and exactly four `storage.objects` policies (one per operation, TO `authenticated`) are bucket-pinned and `{user_id}/`-scoped via `(storage.foldername(name))[1] = (select auth.uid()::text)`; keys with no folder fail closed (the segment is null) | PASS | `sql-assertions.txt` |
 | 9 | The oracle is not vacuous, and **the enumerated-class list in *What the oracle proves* is derived from this battery rather than asserted beside it**: 72 security/spec-relevant tamperings in eight labelled groups — four removals/narrowings; two append-class mutations (a countermanding DISABLE, an unqualified extra policy); the exact-value neighbor (`duration_ms >= -1`, REVIEW-011 finding 2); the four REVIEW-012 finding 2 absence classes (added DEFAULT, function-argument neighbor, FK referenced-attribute neighbor, appended ON CONFLICT); the twelve further absence classes that fix cycle 2 ran in scratch only (FK `ON UPDATE`, FK `MATCH FULL`, FK rename, `WITH GRANT OPTION`, unique index, partial index, trigger `WHEN`, typmod, second column CHECK, column UNIQUE, table-level CHECK, `NULLS NOT DISTINCT`); the six REVIEW-013 finding 2 classes (CHECK `NOT IN`, policy subquery `WHERE false`, column-only `SELECT(id)`, a second public bucket row, `UPDATE OF display_name`, index `INCLUDE(id)`); and the **twenty REVIEW-015 finding 1 classes** — neighbors that changed a property a named class SAYS it pins and passed green anyway: the storage folder-owner equality reversed to `IS DISTINCT FROM` (decisive: the confidentiality predicate inverted while the oracle printed its `{user_id}/-scoped` PASS), the storage bucket equality likewise, a storage `IS NOT DISTINCT FROM` that stops failing closed on a null folder, the provisioning policy made `AS RESTRICTIVE`, `ALTER TABLE ONLY`, a renamed migration filename, a fifth non-`.sql` file, a `LIKE` table element, a renamed trigger, `COLLATE`, `STORAGE EXTERNAL`, `UNLOGGED`, CHECK `NO INHERIT`, `>= ANY`, index `DESC`, index `CONCURRENTLY`, trigger `REFERENCING`, `CREATE OR REPLACE` on a trigger, `GRANTED BY`, and `OVERRIDING USER VALUE`; and the **twenty-three REVIEW-016 finding 1 neighbors, across three classes** — the defect shape REVIEW-016 found, a class claiming exactness while the assertion reads only part of a node's structure (this battery records the neighbors it runs; it records no search over the classes where none was found, so no all-class audit is claimed — REVIEW-017 finding 4): the storage folder lookup given a second subscript `[1][2]` on each of the four policies (decisive: apply-valid, evaluates to NULL, denies owners, and the oracle printed its `{user_id}/-scoped` PASS), the slice `[1:1]`, five aggregate/window clauses on `storage.foldername(name)` (`VARIADIC`, `DISTINCT`, `ORDER BY`, `FILTER`, `OVER`), four on `auth.uid()` across the storage and `profiles` initplans (star argument twice, `OVER`, `FILTER`), the owner cast widened to `::text[]` and `::pg_catalog.text[]`, an output alias on both pinned initplan targets, a fourth expression in the bucket `VALUES` row, subscript indirection on a bucket target column, and a catalog qualifier on the `auth.users` and composite foreign keys — each turning it red with its named FAIL and exit 1. **No claim in this directory rests on a scratch-only neighbor run** (REVIEW-013 finding 3). Four fail-closed cross-checks bind the artifact to its own claims: the stated count is derived from the run counter and compared to the artifact's `scenario:` lines; every scenario must carry a class tag; the claimed class list must be duplicate-free; and the set of classes demonstrated here must equal the set *What the oracle proves* enumerates, or `capture.sh` exits 1. Each absence-class assertion compares one exact string covering every column or site in its class, so the discrimination is not scenario-local. This is discrimination over the enumerated classes; it is not evidence of exhaustive coverage — see *What the oracle proves* | PASS | `assertions-negative-control.txt` |
 | 10 | The committed `supabase/` scaffolding is byte-identical to pinned-CLI init output; machine-local init output (`supabase/.temp`) is untracked and ignored | PASS | `config-provenance.txt` |
-| 11 | The four non-install CI steps pass at this head (typecheck, lint, test, format:check — all exit 0). The install step is NOT RUN here: this unit's delta provably contains no dependency change (probe in the transcript), and 002d/003a document the destructive npm-ci ENOTEMPTY transient under a live editor; CI runs the real install when the PR opens | PASS / install NOT RUN with reason | `gates.txt` |
+| 11 | The four non-install CI steps pass at the measured head (typecheck, lint, test, format:check — all exit 0). The install step is NOT RUN here: this unit's delta provably contains no dependency change (probe in the transcript), and 002d/003a document the destructive npm-ci ENOTEMPTY transient under a live editor; CI runs the real install when the PR opens. **Measured at the fix-cycle-6 head, not re-run at this one** — the fix-cycle-7 dispatch authorizes no capture; that cycle changed only `docs/` prose, which is prettier-ignored, reaches neither `expo lint` nor `tsc` nor Jest, and moves no package file. | PASS at the fix-cycle-6 head / install NOT RUN with reason | `gates.txt` |
 | 12 | CI itself on this branch | NOT RUN | no `pull_request` event yet; the workflow file is untouched by this unit |
 | 13 | No credential shape exists anywhere in the index (five patterns, each with a matching positive control) | PASS | `secret-scan.txt` |
-| 14 | The six gated artifacts regenerate byte-for-byte (two fresh capture runs, locale pinned) | PASS | `stability.txt` |
+| 14 | The six gated artifacts regenerate byte-for-byte (two fresh capture runs, locale pinned) | PASS **at the fix-cycle-6 head** — where `stability.txt` was produced and where REVIEW-018 independently reproduced all six artifacts across two further fresh captures. **NOT re-run at this head:** the fix-cycle-7 dispatch authorizes no capture of any kind. That cycle changed only prose in `docs/`, which is prettier-ignored, is not linted (no `.md` or `.sh` file reaches `expo lint`), and is invisible to `tsc` and Jest; the dependency-delta probe is pinned to the dispatch base and no package file moved; and the secret-scan patterns report per-pattern match counts that the added prose cannot change, carrying no key prefix, project host, token, or connection string. The six artifacts are therefore **expected** to be byte-identical here — but that is reasoning, not a capture, and it is **not offered as a PASS at this head** | `stability.txt` (fix-cycle-6 result), `../../../04-reviews/REVIEW-018.md` |
 | 15 | The migrations apply cleanly to `noema-staging` | NOT RUN — owner-executed by ruling 10; requested in the Phase A HANDOFF | — |
 | 16 | Live RLS behavior: anon denied, cross-user denied, owner allowed, storage path scoping enforced, signup provisioning creates the profiles row | NOT RUN — needs the applied schema and a live database; this is Phase B's evidence, against staging, after the owner applies | — |
 | 17 | Regenerated database types against the applied schema | NOT RUN — owner-executed (`npm run types:gen`, ruling 10); Phase B commits the output | — |
