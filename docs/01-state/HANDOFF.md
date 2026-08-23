@@ -1,3 +1,130 @@
+## 2026-08-24 — feat/auth-session-v1 (Unit D — REVIEW-019 reviewer of record)
+
+**Controller:** CTRL-005 Auth and session v1. **Reviewer of record:** Codex
+Sol, Ultra effort, fresh session — did not build the unit and did not open the
+builder's session. **Target:**
+`d6dc677953148def3cb6d4b898ac177308eab990`. **Review merge base:**
+`07ad5a51ed597f67bac523e681525c4e87fe644d`. **Current main consulted for
+governing records:** `8ab17821f2dbc3d46ae77c75090cf8d7bbeca96b`.
+**PR:** #11, exact target head. **Verdict:** REVIEW-019 **FAIL**.
+
+**LOCK status line:** `Status: BUILD` — unchanged on the reviewed target. The
+dispatch names Codex Sol / Ultra as reviewer of record; the known
+`BRANCH-NOTES.md` reconciliation and status update remain controller-owned.
+
+### What I set out to do
+
+Review the one-commit Unit D candidate against its own merge base, applying
+ADR-004 and ADR-005 from current main without attributing those later controller
+commits to the unit. Verify the client-only RED authorization independently,
+test the two-generation adapter and removal rejection path adversarially, audit
+the claims table against its instruments, check live CI for the exact head, and
+commit the immutable review record. Do not fix product code, tests, evidence,
+state, ADRs, or the LOCK.
+
+### Reviewer parallelism disclosure
+
+Three independent, read-only reviewer lenses ran in parallel: secure-store
+interleavings and ADR-004 properties; evidence reproducibility and mutation
+sensitivity; and exact Git scope, RED-lane paths, governance touch-set, and live
+CI. All three completed. They edited no shared file. The main lane independently
+read the governing records, inspected the implementation and committed tests,
+reran the local gates, reran the eight review-only counterexamples, adjudicated
+the findings, and made the only two authorized edits: this reviewer HANDOFF
+block and `REVIEW-019.md`.
+
+### What I changed
+
+1. Added immutable `docs/04-reviews/REVIEW-019.md` with a **FAIL** verdict and
+   ten numbered findings. Findings 1–8 drive the verdict; findings 9–10 are low
+   record-accuracy defects.
+2. Prepended this reviewer HANDOFF block. All older HANDOFF bytes remain in
+   their original order.
+
+No product source, test, evidence producer/artifact, ADR, PROJECT-STATE,
+BRANCH-NOTES, dependency, workflow, or configuration file was changed.
+
+### What the review established
+
+**Six implementation defects, all introduced by Unit D:**
+
+1. A reader that captured the old index can resume after post-commit cleanup
+   and return `null`; the claimed two-generation atomicity is false.
+2. Two writers can target the same spare generation and commit a valid-JSON
+   hybrid session containing bytes from both payloads.
+3. Rejected deletes are swallowed, so `removeItem` resolves while the complete
+   durable session remains readable and auth-js can emit `SIGNED_OUT`.
+4. A transient current-index read failure is treated as absence; a subsequent
+   failed replacement can destroy the old committed session.
+5. A self-consistent corrupt index can make `getItem` return a non-null
+   truncated prefix, and same-length corruption is returned non-null.
+6. The first-gap orphan sweep can strand a token fragment created by the
+   adapter's own swallowed cleanup failure.
+
+**Two verdict-driving evidence defects, introduced by Unit D:**
+
+7. ADR-004's token-opacity property has no claim or instrument and is not
+   classified NOT RUN. Direct source inspection found no current violation,
+   but a payload-parsing mutant survives every gate.
+8. Claims 7, 13, and 13c are mapped to tests that do not reach the named
+   chunk-read rejection, client wiring, or cleanup-delete paths. A combined
+   meaningful mutant passed all four gates and all 57 tests.
+
+**Two low, non-verdict record defects:** the evidence producer table says 25
+storage cases where its transcript names 28 adapter plus 3 platform cases, and
+the builder HANDOFF's touch-set silently excludes its own 211 inserted lines.
+
+### Verification and classification
+
+- **PASS — exact boundary:** target, origin branch, sole parent, and merge base
+  were pinned. The range is 36 files, `+3134/-27`; `git diff --check` passed.
+- **PASS — RED scope:** the complete `supabase/` tree, `.github/` tree, and
+  generated database-types blob are identical at base and target. Controlled
+  scans found no migration, SQL, RLS/policy, function, grant, storage-bucket,
+  payment, secret, or outward-deployment change.
+- **PASS — local gates:** typecheck, lint, 5 suites / 57 tests, and format check
+  each exited 0 in a fresh reviewer run.
+- **PASS for reproducibility only:** offline `stability.sh` regenerated seven
+  gated artifacts twice; both captures exited 0 and all seven pairs were
+  byte-identical.
+- **FAIL introduced:** the eight deterministic review-only secure-store probes
+  reproduced all eight counterexamples recorded in REVIEW-019.
+- **FAIL pre-existing:** the committed `npm audit` capture reports the existing
+  upstream advisory set; no dependency remediation was authorized.
+- **NOT RUN — CI:** at `2026-08-23T17:42:42Z`, PR #11 had exact head
+  `d6dc677`, exact base `8ab1782`, zero check runs, zero statuses, and an empty
+  check rollup.
+- **NOT RUN:** live Supabase/OTP, real keychain, device/simulator, OS/process
+  concurrency, served-browser storage/title, and real-router navigation.
+- **NOT RUN, ruled pending and not findings:** ADR-005 local sign-out and
+  AppState-gated auto-refresh. No dissent recorded.
+- **UNVERIFIABLE FROM GIT:** historical testimony that no credential was read
+  and no live service was contacted. The committed diff contains no indication
+  of either action, but repository objects cannot prove external non-action.
+- **NOT RUN in this record:** no advisory-reviewer result was provided; the
+  controller owns that seat.
+
+The Expo lint command loaded the local `.env` through the CLI and printed only
+exported variable names. I did not read the file, and no value was printed or
+recorded.
+
+### What I did not do
+
+I did not alter or weaken production code, tests, validation, authorization,
+RLS, evidence, claims, governance, or configuration. I did not query Supabase,
+read a credential, create a user, send an OTP, regenerate database types, run a
+device build, push, merge, deploy, publish, or perform any outward-facing
+action. I did not resolve the known current-main conflict or implement the two
+ADR-005 rulings. I did not act on the non-blocking duplicated-title smell.
+
+### Next step
+
+Return `feat/auth-session-v1` to the same builder for external fix cycle 1 of 3.
+The builder addresses REVIEW-019 on the same branch and also lands the two
+already-ruled ADR-005 changes in that post-review cycle. A fresh reviewer writes
+a new immutable review record. The controller separately handles the advisory
+seat, the additive `BRANCH-NOTES.md` reconciliation, and LOCK/status state.
+
 ## 2026-08-23 — feat/auth-session-v1 (Unit D — auth and session v1, Phase A)
 
 **Controller:** CTRL-005 Auth and session v1. **Builder:** Claude Code,
