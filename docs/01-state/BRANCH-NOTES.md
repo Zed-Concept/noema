@@ -41,6 +41,33 @@ it (REVIEW-013 finding 4, REVIEW-015 finding 3).
 
 ---
 
+## LOCK — chore/state-adr-006-read-integrity
+
+```
+Project:            Noema
+Branch:             chore/state-adr-006-read-integrity
+Controller:         CTRL-005 Auth and session v1
+Builder:            Controller (direct state edit via GitHub API; no product
+                    code — controller-only class per AGENTS.md state ownership)
+Model+Effort:       Opus 5 / Max / same session — sanctioned ruling-4
+                    substitution for the Fable 5 controller seat
+Reviewer of record: none (controller-only state edits)
+Status:             BUILD
+Dispatch:           Reconcile the ctrl-005-opening LOCK to MERGED (PR #10,
+                    8ab1782) — first act per learning 5. Record ADR-006,
+                    which narrows one clause of ADR-004 following REVIEW-019
+                    finding 5, plus rulings 15 and 16. Written BEFORE the fix
+                    cycle 1 dispatch because that dispatch cites ADR-006, and
+                    learning 13 bars issuing a dispatch that names a document
+                    which does not yet exist.
+Evidence:           — (documentation-only state edit; the diff is the evidence)
+```
+
+**Known lag.** This block reads `BUILD` after the owner merges until the next
+controller state commit reconciles it.
+
+---
+
 ## LOCK — chore/state-ctrl-005-opening
 
 ```
@@ -53,7 +80,7 @@ Model+Effort:       Opus 5 / Max / same session — the sanctioned substitution
                     for the ruling-4 Fable 5 controller seat, recorded here
                     rather than assumed.
 Reviewer of record: none (controller-only state edits)
-Status:             BUILD
+Status:             MERGED
 Dispatch:           CTRL-005 opening state commit, landed late and out of
                     order. Reconcile the ctrl-004-opening LOCK to MERGED
                     (PR #7, 64c1ce6) and retroactively register the
@@ -71,6 +98,9 @@ Evidence:           — (documentation-only state edit; the diff is the evidence
 
 **Known lag.** As with every controller state branch, this block reads `BUILD`
 after the owner merges until the next controller state commit reconciles it.
+
+**Reconciled 2026-08-24 by CTRL-005** — merged at `8ab17821f2dbc3d46ae77c75090cf8d7bbeca96b`
+(PR #10). Reconciled on the next state commit, as the protocol intends.
 
 ---
 
