@@ -1,0 +1,42 @@
+# The auth provider's properties: bootstrap, currency, OTP call shapes,
+# device-local sign-out, and the AppState gate on token auto-refresh.
+# The supabase client module is replaced by a double, so no network
+# call and no credential is involved.
+
+
+> noema@0.1.0 test
+> jest --ci --runInBand --verbose --testPathPattern auth-provider
+
+PASS src/__tests__/auth-provider.test.tsx
+  auth provider — bootstrap
+    ✓ starts in bootstrapping, which is not signed out
+    ✓ resolves to signedOut when there is no stored session
+    ✓ resolves to signedIn and carries the session when one is stored
+    ✓ resolves rather than hanging when the stored session cannot be read
+    ✓ stops waiting on a cold-start read that never settles
+    ✓ subscribes before reading, so an event in flight is not missed
+  auth provider — currency
+    ✓ follows onAuthStateChange into and out of a session
+    ✓ does not let a late cold-start read overwrite a newer event
+    ✓ unsubscribes on unmount
+  auth provider — OTP flow
+    ✓ requests a code that also creates the account, and never a redirect link
+    ✓ verifies the emailed code as an email OTP
+    ✓ reports errors instead of throwing them
+    ✓ returns an error rather than throwing when auth-js throws
+    ✓ ends the session through signOut, device-locally
+  auth provider — auto-refresh is gated on AppState
+    ✓ starts the refresh ticker when the app is already active at mount
+    ✓ does not start a ticker when mounted while the app is backgrounded
+    ✓ stops the ticker on background and on inactive, and restarts on active
+    ✓ releases the AppState listener and stops the ticker on unmount
+    ✓ absorbs a rejected gate call rather than crashing the effect
+  auth provider — misuse
+    ✓ refuses to hand out context outside a provider
+
+Test Suites: 1 passed, 1 total
+Tests:       20 passed, 20 total
+Snapshots:   0 total
+Time:        <duration>
+Ran all test suites matching /auth-provider/i.
+exit: 0

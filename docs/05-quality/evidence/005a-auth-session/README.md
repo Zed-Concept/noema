@@ -1,5 +1,17 @@
 # Evidence — 005a Auth and session v1 (Unit D, CTRL-005)
 
+> **Superseded for the code, retained for the record (2026-08-24, fix cycle 1).**
+> REVIEW-019 returned **FAIL** against the head this directory measures
+> (`d6dc677`), and fix cycle 1 replaced the storage layer these artifacts
+> describe. **Do not read anything here as a current claim about the adapter.**
+> The current evidence is `../005b-auth-session-fix1/`, whose claims table is
+> re-derived from a rebuilt battery and whose every claim ships a mutant that
+> turns it red. This directory is kept, unregenerated, because it is the record
+> of what the build cycle measured and of what REVIEW-019 reviewed — regenerating
+> it against replaced code would destroy that. One factual correction has been
+> made in place, marked inline: the storage-assertion count in the producer table
+> (REVIEW-019 finding 9).
+
 Branch `feat/auth-session-v1`, cut from `main` at
 `07ad5a51ed597f67bac523e681525c4e87fe644d` (the tip the dispatch named).
 Phase A, offline: **no Supabase call, no credential read, no signup, no user
@@ -40,7 +52,7 @@ same treatment as `../003a-supabase-wiring`.
 | Artifact | Producer | Class | Varying fields / notes |
 |---|---|---|---|
 | `gates.txt` | `capture.sh` | gated | the four CI steps. Normalization, and there are exactly three: `env:` lines dropped; trailing `(N s)`/`(N ms)` suffixes removed entirely rather than masked — jest prints a suite duration only above a threshold, so a masked-but-optional field is not presence-invariant; `Time:` masked. No general mid-line duration rule exists, deliberately — see **Instrument corrections**. Jest emits one `PASS`/`FAIL` line per suite in **completion order**, which is timing-dependent, so those lines are sorted — sorted, not dropped |
-| `adapter-properties.txt` | `capture.sh` | gated | `--verbose`, so all 25 storage-layer assertions are named individually. Same duration normalization |
+| `adapter-properties.txt` | `capture.sh` | gated | `--verbose`, so all **31** storage-layer assertions are named individually — 28 adapter cases plus 3 platform cases, which is what the committed transcript's own `Tests: 31 passed` line reports. Corrected 2026-08-24 in fix cycle 1; the figure previously read 25, which REVIEW-019 finding 9 recorded as a miscount of this directory's own artifact. Same duration normalization |
 | `session-properties.txt` | `capture.sh` | gated | `--verbose`, 13 session/OTP assertions named individually |
 | `route-guards.txt` | `capture.sh` | gated | `--verbose`, 9 guard and chrome assertions named individually |
 | `banned-apis.txt` | `capture.sh` | gated | ten banned identifiers scanned across `src/` excluding tests, each with a run-time-assembled positive control |

@@ -1,0 +1,36 @@
+# Banned authentication surfaces must not appear in application source.
+# Scope: src/ (tracked application code). Each pattern is checked
+# against src/, then against a synthetic control file that DOES contain
+# it — a pattern that fails its control is reported and fails the run.
+
+source files scanned: 11
+
+signInWithPassword       src/ code hits: 0    (control MATCHED)
+signUp                   src/ code hits: 0    (control MATCHED)
+resetPasswordForEmail    src/ code hits: 0    (control MATCHED)
+signInWithOAuth          src/ code hits: 0    (control MATCHED)
+signInWithIdToken        src/ code hits: 0    (control MATCHED)
+signInWithSSO            src/ code hits: 0    (control MATCHED)
+emailRedirectTo          src/ code hits: 0    (control MATCHED)
+magiclink                src/ code hits: 0    (control MATCHED)
+secureTextEntry          src/ code hits: 0    (control MATCHED)
+linkIdentity             src/ code hits: 0    (control MATCHED)
+
+## The OTP surface that IS used, for contrast
+src/app/(app)/index.tsx:9:  const { state, signOut } = useAuth();
+src/app/(app)/index.tsx:18:    const { error: signOutError } = await signOut();
+src/app/(app)/index.tsx:25:    if (signOutError) {
+src/app/(app)/index.tsx:26:      setError(signOutError.message);
+src/app/(auth)/sign-in.tsx:16:  const { sendOtp, verifyOtp } = useAuth();
+src/app/(auth)/sign-in.tsx:40:    const { error: verifyError } = await verifyOtp(email.trim(), code.trim());
+src/lib/auth/secure-store-adapter.ts:546:    // does not emit SIGNED_OUT, `signOut()` rejects, `auth-provider.tsx`
+src/lib/auth/auth-provider.tsx:29: * instance — straight out of `verifyOtp`/`signOut`. A caller that only expected
+src/lib/auth/auth-provider.tsx:45:  readonly verifyOtp: AuthAction<[email: string, token: string]>;
+src/lib/auth/auth-provider.tsx:46:  readonly signOut: AuthAction<[]>;
+src/lib/auth/auth-provider.tsx:169:      const { error } = await supabase.auth.signInWithOtp({
+src/lib/auth/auth-provider.tsx:177:  const verifyOtp = useCallback(async (email: string, token: string) => {
+src/lib/auth/auth-provider.tsx:179:      const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+src/lib/auth/auth-provider.tsx:184:  const signOut = useCallback(async () => {
+src/lib/auth/auth-provider.tsx:195:      const { error } = await supabase.auth.signOut({ scope: 'local' });
+src/lib/auth/auth-provider.tsx:201:    () => ({ state, sendOtp, verifyOtp, signOut }),
+src/lib/auth/auth-provider.tsx:202:    [state, sendOtp, verifyOtp, signOut],

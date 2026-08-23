@@ -1,0 +1,45 @@
+# Chrome gate: the app name's single config source, and the frozen scheme.
+
+## app.json — the fields this unit may and may not touch
+expo.name   (user-visible placeholder): "ZC App (dev)"
+expo.slug   (internal, ruling 8 exempt): "noema"
+expo.scheme (FROZEN by ruling 8):        "noema"
+
+## expo.scheme against the base — must be identical
+base (7095267f3891e4d019cc9926b57930107e6e86be): "noema"
+head:                                            "noema"
+result: UNCHANGED
+
+## Every user-visible name string resolves from the single source
+APP_NAME definition:
+25:export const APP_NAME: string = Constants.expoConfig?.name ?? 'App';
+
+Consumers (headers and browser titles):
+  src/app/(app)/index.tsx:5:import { APP_NAME } from '@/lib/app-config';
+  src/app/(app)/index.tsx:42:        <title>{APP_NAME}</title>
+  src/app/(app)/_layout.tsx:3:import { APP_NAME } from '@/lib/app-config';
+  src/app/(app)/_layout.tsx:26:      <Stack.Screen name="index" options={{ title: APP_NAME }} />
+  src/app/(auth)/sign-in.tsx:5:import { APP_NAME } from '@/lib/app-config';
+  src/app/(auth)/sign-in.tsx:54:        <title>{`Sign in · ${APP_NAME}`}</title>
+  src/app/(auth)/_layout.tsx:3:import { APP_NAME } from '@/lib/app-config';
+  src/app/(auth)/_layout.tsx:15:      <Stack.Screen name="sign-in" options={{ title: `Sign in · ${APP_NAME}` }} />
+
+Hard-coded title strings that bypass the single source (expect none):
+  literal <title> children: 0
+
+## Ruling 8 — no user-visible field may contain the trademark-gated name
+Occurrences in src/ (application source), case-insensitive:
+  src/ code hits: 0
+expo.name is the field ruling 8 actually governs — asserted, not printed:
+  expo.name contains the gated name: false
+expo.slug and expo.scheme keep it as an internal identifier and a frozen
+value respectively — both printed above, neither user-visible.
+
+## The mechanism each title uses
+in-app header  — Stack.Screen options.title:
+  src/app/(app)/_layout.tsx:26:      <Stack.Screen name="index" options={{ title: APP_NAME }} />
+  src/app/(auth)/_layout.tsx:15:      <Stack.Screen name="sign-in" options={{ title: `Sign in · ${APP_NAME}` }} />
+browser tab    — expo-router/head <title>:
+  src/app/(app)/index.tsx:1:import Head from 'expo-router/head';
+  src/app/(app)/_layout.tsx:23:  // reaches `document.title`. Each screen sets that through `expo-router/head`.
+  src/app/(auth)/sign-in.tsx:1:import Head from 'expo-router/head';

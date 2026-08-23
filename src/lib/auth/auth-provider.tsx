@@ -1,6 +1,8 @@
 import type { Session } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import { AppState } from 'react-native';
+import type { AppStateStatus } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
 
@@ -125,6 +127,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  useEffect(() => {
+    // ADR-005: token auto-refresh is gated on AppState.
+    //
+    // The failure this prevents is silent and device-dependent. SecureStore
+    // keeps `WHEN_UNLOCKED`, so a background refresh on a locked device cannot
+    // write. The rotated token is lost, the next unlock presents a superseded
+    // refresh token, and Supabase's refresh-token reuse detection can revoke
+    // the whole family and sign the user out — arriving as an unreproducible
+    // bug report. Gating on foreground means a refresh only ever fires while
+    // the app is active and the device therefore unlocked, which is why
+    // ADR-005 rejected weakening the accessibility class instead.
+    //
+    // Applied on every platform, as ADR-005 states it, though the mechanism it
+    // protects is native: web has no keychain accessibility class and keeps
+    // its session in `localStorage`. On web this simply stops the refresh
+    // ticker while the tab is hidden.
+    function apply(status: AppStateStatus) {
+      // Not load-bearing for correctness, so failures are absorbed rather than
+      // surfaced: the ticker is an optimisation, and auth-js still refreshes on
+      // demand when a caller asks for a session near expiry. An unhandled
+      // rejection out of an effect, by contrast, is a crash-class problem.
+      const gate =
+        status === 'active' ? supabase.auth.startAutoRefresh() : supabase.auth.stopAutoRefresh();
+      void Promise.resolve(gate).catch(() => {});
+    }
+
+    // The current state, not an assumption about it: a provider mounted while
+    // the app is already backgrounded must not start a ticker.
+    apply(AppState.currentState);
+    const appStateSubscription = AppState.addEventListener('change', apply);
+
+    return () => {
+      appStateSubscription.remove();
+      void Promise.resolve(supabase.auth.stopAutoRefresh()).catch(() => {});
+    };
+  }, []);
+
   const sendOtp = useCallback(async (email: string) => {
     return reportRatherThanThrow(async () => {
       const { error } = await supabase.auth.signInWithOtp({
@@ -143,12 +182,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
-    // Left at auth-js's default scope, which is 'global': signing out here
-    // revokes every session on the account, including this user's other
-    // devices. That is auth-js's default rather than a decision taken here, and
-    // it is called out in the handoff as one the owner may want to revisit.
+    // ADR-005: device-local, stated rather than inherited. auth-js defaults
+    // `scope` to `'global'`, which revokes every session on the account — so
+    // signing out on a phone would silently end the same user's session on
+    // their tablet. In a multi-device second brain that is the wrong default
+    // for the common case in order to serve the rare one.
+    //
+    // The accepted cost, recorded in ADR-005 rather than discovered later:
+    // there is no remote revocation until a "sign out everywhere" affordance
+    // exists, so a lost device's refresh token stays valid until it expires.
     return reportRatherThanThrow(async () => {
-      const { error } = await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
       return error;
     });
   }, []);

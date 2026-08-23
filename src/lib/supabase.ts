@@ -27,7 +27,23 @@ export const supabase = createClient<Database>(supabaseUrl, supabasePublishableK
 
     // Keeps the access token current while the app is running. Session state
     // reaches the UI through onAuthStateChange, which fires on refresh too.
+    //
+    // ADR-005 gates WHEN the ticker runs, not whether it exists: `auth-provider`
+    // calls startAutoRefresh/stopAutoRefresh off AppState so a refresh never
+    // fires against a locked device, where SecureStore's WHEN_UNLOCKED class
+    // would lose the rotated token. Turning this off instead would also disable
+    // the on-demand refresh auth-js performs when a caller asks for a session
+    // near expiry, which is the path that recovers a long-backgrounded session.
     autoRefreshToken: true,
+
+    // No `lock` option, deliberately. The pinned auth-js 2.112.3 marks the only
+    // lock it ships for this environment (`processLock`) `@deprecated` —
+    // "the auth client coordinates refreshes itself ... passing
+    // `{ lock: processLock }` to it has no effect" — and annotates its own lock
+    // path `TODO(v3): remove legacy lock path`. Serialization of session
+    // storage is provided by the adapter instead, which covers every call that
+    // reaches it rather than only the ones auth-js makes. Scope and limits are
+    // stated in `auth/secure-store-adapter.ts` under "Serialization scope".
 
     // Stays off: this unit ships email OTP only. Both flows that would put a
     // session in a URL — magic links and OAuth redirects — are out of scope, so

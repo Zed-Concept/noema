@@ -1,5 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
+import { AppState } from 'react-native';
+import type { AppStateStatus } from 'react-native';
 
 import { AuthProvider, useAuth } from '@/lib/auth/auth-provider';
 import { supabase } from '@/lib/supabase';
@@ -15,6 +17,8 @@ jest.mock('@/lib/supabase', () => ({
       signInWithOtp: jest.fn(),
       verifyOtp: jest.fn(),
       signOut: jest.fn(),
+      startAutoRefresh: jest.fn(),
+      stopAutoRefresh: jest.fn(),
     },
   },
 }));
@@ -25,7 +29,29 @@ const auth = supabase.auth as unknown as {
   signInWithOtp: jest.Mock;
   verifyOtp: jest.Mock;
   signOut: jest.Mock;
+  startAutoRefresh: jest.Mock;
+  stopAutoRefresh: jest.Mock;
 };
+
+/**
+ * AppState is driven directly rather than through a module mock: the provider
+ * reads `currentState` at mount and subscribes for changes, and both halves
+ * have to be controllable for the gate to be measured rather than assumed.
+ */
+const appStateListeners: ((status: AppStateStatus) => void)[] = [];
+const removeAppStateListener = jest.fn();
+
+function setAppState(status: AppStateStatus): void {
+  Object.defineProperty(AppState, 'currentState', {
+    configurable: true,
+    get: () => status,
+  });
+}
+
+function emitAppState(status: AppStateStatus): void {
+  setAppState(status);
+  for (const listener of appStateListeners) listener(status);
+}
 
 const unsubscribe = jest.fn();
 /** The listener the provider registered, so tests can drive auth events. */
@@ -52,6 +78,22 @@ beforeEach(() => {
   auth.signInWithOtp.mockResolvedValue({ data: {}, error: null });
   auth.verifyOtp.mockResolvedValue({ data: {}, error: null });
   auth.signOut.mockResolvedValue({ error: null });
+  auth.startAutoRefresh.mockResolvedValue(undefined);
+  auth.stopAutoRefresh.mockResolvedValue(undefined);
+
+  appStateListeners.length = 0;
+  setAppState('active');
+  jest.spyOn(AppState, 'addEventListener').mockImplementation(((
+    _type: string,
+    listener: (status: AppStateStatus) => void,
+  ) => {
+    appStateListeners.push(listener);
+    return { remove: removeAppStateListener };
+  }) as unknown as typeof AppState.addEventListener);
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
 });
 
 describe('auth provider — bootstrap', () => {
@@ -238,13 +280,80 @@ describe('auth provider — OTP flow', () => {
     await expect(result.current.signOut()).resolves.toEqual({ error: expect.any(Error) });
   });
 
-  it('ends the session through signOut', async () => {
+  it('ends the session through signOut, device-locally', async () => {
     const { result } = await renderHook(() => useAuth(), { wrapper });
     await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
 
     await result.current.signOut();
 
     expect(auth.signOut).toHaveBeenCalledTimes(1);
+    // ADR-005 and binding ruling 13. auth-js defaults this to `'global'`, which
+    // would end the same user's session on their other devices. The exact
+    // argument is asserted, because the property is what is passed, not that a
+    // call happened.
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+  });
+});
+
+/**
+ * ADR-005: a refresh must never fire while the device is locked, because
+ * SecureStore keeps `WHEN_UNLOCKED` and the rotated token would be lost —
+ * ending in refresh-token reuse detection revoking the family. Foreground is
+ * the proxy for unlocked.
+ */
+describe('auth provider — auto-refresh is gated on AppState', () => {
+  it('starts the refresh ticker when the app is already active at mount', async () => {
+    await renderHook(() => useAuth(), { wrapper });
+
+    expect(auth.startAutoRefresh).toHaveBeenCalledTimes(1);
+    expect(auth.stopAutoRefresh).not.toHaveBeenCalled();
+  });
+
+  it('does not start a ticker when mounted while the app is backgrounded', async () => {
+    setAppState('background');
+
+    await renderHook(() => useAuth(), { wrapper });
+
+    // The current state, not an assumption that a mounting app is foreground.
+    expect(auth.startAutoRefresh).not.toHaveBeenCalled();
+    expect(auth.stopAutoRefresh).toHaveBeenCalled();
+  });
+
+  it('stops the ticker on background and on inactive, and restarts on active', async () => {
+    await renderHook(() => useAuth(), { wrapper });
+    expect(auth.startAutoRefresh).toHaveBeenCalledTimes(1);
+
+    await act(async () => emitAppState('background'));
+    expect(auth.stopAutoRefresh).toHaveBeenCalledTimes(1);
+
+    await act(async () => emitAppState('active'));
+    expect(auth.startAutoRefresh).toHaveBeenCalledTimes(2);
+
+    // `inactive` is the iOS state during the app switcher and an incoming call.
+    // It is not active, so it must not keep a refresh ticker running.
+    await act(async () => emitAppState('inactive'));
+    expect(auth.stopAutoRefresh).toHaveBeenCalledTimes(2);
+  });
+
+  it('releases the AppState listener and stops the ticker on unmount', async () => {
+    const { unmount } = await renderHook(() => useAuth(), { wrapper });
+
+    expect(removeAppStateListener).not.toHaveBeenCalled();
+    await unmount();
+
+    expect(removeAppStateListener).toHaveBeenCalledTimes(1);
+    expect(auth.stopAutoRefresh).toHaveBeenCalled();
+  });
+
+  it('absorbs a rejected gate call rather than crashing the effect', async () => {
+    auth.startAutoRefresh.mockRejectedValue(new Error('ticker unavailable'));
+
+    const { result } = await renderHook(() => useAuth(), { wrapper });
+
+    // An unhandled rejection out of an effect is a crash-class problem, and the
+    // ticker is not load-bearing: auth-js still refreshes on demand.
+    await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
+    expect(auth.startAutoRefresh).toHaveBeenCalled();
   });
 });
 

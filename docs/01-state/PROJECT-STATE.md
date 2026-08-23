@@ -118,7 +118,7 @@ What is in flight, who owns it, and what it is blocked on. One row per stream.
 
 | Stream | Owner | Status | Blocked on |
 |---|---|---|---|
-| Unit D — Auth and session v1 | Claude Code (`feat/auth-session-v1`) | BUILD — built and evidenced at `docs/05-quality/evidence/005a-auth-session/`; Phase A offline, no PR opened | Reviewer of record unnamed, and the CTRL-005 opening state commit never landed — the branch LOCK was written by the builder and needs controller reconciliation (see HANDOFF)
+| Unit D — Auth and session v1 | Claude Code (`feat/auth-session-v1`) | BUILD — **fix cycle 1 of 3 complete**, answering REVIEW-019 FAIL. Main merged in; evidence at `docs/05-quality/evidence/005b-auth-session-fix1/` (005a retained as the build cycle's record). Phase A offline; PR #11 open | Reviewer of record for REVIEW-020 unnamed, and the advisory seat the auth-diff trigger calls for is still unnamed. LOCK status reconciliation remains controller-owned (see HANDOFF)
 | Production Supabase project | Owner | Parked by ruling — create in East US (North Virginia) before any launch-facing unit | Free-tier slot or Pro upgrade at that time |
 
 Unit A merged 2026-08-19 at `8d648bb` (PR #2, REVIEW-007 PASS); its full

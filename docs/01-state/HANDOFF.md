@@ -1,3 +1,298 @@
+## 2026-08-24 — feat/auth-session-v1 (Unit D — fix cycle 1 of 3, REVIEW-019)
+
+**Controller:** CTRL-005 Auth and session v1. **Builder:** Claude Code — same
+builder, same branch, fresh session, per AGENTS.md workflow step 5.
+**Model+Effort:** **Opus 5 [1m] / Max / fresh session** — the owner-set
+substitution for the dispatched Fable 5, recorded here and in the LOCK because
+the dispatch instructed that this specific substitution be recorded rather than
+stopped for. Max is the ruling-5 tier for a review-fix loop; the build cycle ran
+at Ultracode. **Branch base:** `main` at
+`7095267f3891e4d019cc9926b57930107e6e86be`, merged into the branch as this
+cycle's first act. **Reviewed target being fixed:**
+`d6dc677953148def3cb6d4b898ac177308eab990`, verdict **REVIEW-019 FAIL**.
+**Evidence:** `docs/05-quality/evidence/005b-auth-session-fix1/`.
+
+**LOCK status line:** `Status: BUILD` — unchanged. REVIEW-019 records status
+reconciliation as controller-owned, and a builder does not flip its own LOCK.
+The LOCK block gains one dated addendum recording this cycle's model+effort and
+evidence path; every historical field is left as written.
+
+**Fix budget:** this is external fix cycle **1 of 3** (ruling 14). Two remain.
+
+### Preflight
+
+Fetched and confirmed before touching anything: `origin/feat/auth-session-v1`
+at `4a190acc8d23f777718996ca54ac763e0666e391`, `origin/main` at
+`7095267f3891e4d019cc9926b57930107e6e86be`, branch 2 ahead / 4 behind, local
+tree clean at the same tip. No mismatch, so no stop.
+
+### Workflows and subagent fan-out — ruling 6
+
+**None. No workflow was run and no subagent was spawned.** The dispatch sets
+this cycle at Max and states "Not Ultracode; this is remediation against a
+written record, not new build." A keyword hook in this harness detected the
+string "ultracode" inside that very sentence and offered multi-agent
+orchestration; the dispatch's own words govern, so it was declined. Every edit,
+run, and reading in this cycle is single-lane.
+
+### What I set out to do
+
+Establish three invariants that make REVIEW-019's eight counterexamples
+unreachable rather than fixing eight schedules; add the ADR-006 checksum; land
+ADR-005's ruled-pending sign-out scope and AppState gate; rebuild the evidence
+to a standard where every claim ships a mutant that turns it red; correct two
+record defects; and resolve the BRANCH-NOTES conflict keep-both. Not touch
+REVIEW-019, the database layer, or the two items the dispatch put out of scope.
+
+### Part A — three invariants, not ten patches
+
+Stated in the module header of `secure-store-adapter.ts` and named at the code
+that enforces each.
+
+1. **Absence is not failure** (findings 3, 4). `readQuietly`/`deleteQuietly` are
+   gone. Reads return a union that keeps "the key is not there" apart from "the
+   backend refused", and deletes return whether the key is gone. `setItem` now
+   **rejects** rather than guessing a generation when it cannot read the current
+   index — that guess is what let a failed replacement destroy a live session.
+   `removeItem` **rejects** unless everything it swept is actually gone.
+   `getItem` keeps returning `null` on a refusal, and that asymmetry is
+   deliberate and written down: `getItem` answers "can you prove a value?", and
+   a refused read cannot, so `null` is its fail-closed answer rather than an
+   assertion about the store.
+2. **Operations are serialized** (findings 1, 2). Every public method runs
+   through a queue, so a reader can never hold an index across a writer's
+   cleanup and two writers can never select the same spare generation. Scope is
+   stated in code and in the evidence rather than assumed: it covers every
+   operation through one adapter instance in one JS runtime; it does **not**
+   cover a second OS process, a native thread below the JS layer, or a second
+   instance; and it is **not applicable to web**, which never reaches this
+   module because web is `localStorage`. auth-js's `lock` option was considered
+   and **not** adopted — the pinned 2.112.3 marks `processLock` `@deprecated`
+   ("passing `{ lock: processLock }` to it has no effect") and annotates its own
+   lock path `TODO(v3): remove legacy lock path`, and it would serialize only
+   the calls auth-js makes.
+3. **Cleanup does not stop at the first gap** (finding 6). `removeItem` deletes
+   the complete enumerable key space for both generations with no early exit,
+   finishes the sweep even after a refusal, and only then reports. `MAX_CHUNKS`
+   drops 256 → 64 because the bound now has a price: `2 x MAX_CHUNKS + 1` = 129
+   deletes per removed key. 96 KiB remains an order of magnitude beyond any
+   session payload, and exceeding it throws at write time rather than truncating.
+
+### Part B — the ADR-006 checksum
+
+A 32-bit FNV-1a over the payload's code units, recorded in the index as `c` and
+verified on read. Nine lines, no dependency, no cryptographic API — ADR-004
+names this adapter the highest-risk code in the repo and minimality there is the
+point. Reads fail closed to `null` on mismatch, closing both finding-5
+counterexamples.
+
+**It is corruption detection, not tamper resistance.** Ruling 15 bars any claim
+otherwise. That distinction is written where a future reader hits it: in the
+function's own doc comment, in the evidence README, and — because prose erodes —
+as an executable assertion. `does NOT detect a forger who recomputes the
+checksum` is a committed test. An index with no checksum parses as "not ours",
+which makes the format self-describing rather than migrated; the installed base
+that strands is empty (no EAS project, no store presence, Phase A offline).
+
+### Part C — ADR-005, landed
+
+`signOut({ scope: 'local' })`; auto-refresh gated on AppState with
+`startAutoRefresh` on active and `stopAutoRefresh` on background and inactive,
+reading the state the app is actually in at mount; SecureStore stated at
+`WHEN_UNLOCKED` on every write rather than inherited from the library default.
+The gate is applied on every platform because ADR-005's decision sentence is
+unconditional; the evidence records that the mechanism it protects is native.
+
+### Part D — evidence rebuilt to the new standard
+
+**Every re-instrumented claim ships a mutant.** `mutants.sh` applies a named,
+exact edit to shipped source, runs that claim's own instrument, and requires it
+to turn RED — after first requiring it GREEN with at least one test executed on
+the unmutated tree. **21 mutants, 21 SENSITIVE, tree restored byte-identical.**
+This generalises the run-time positive controls that `banned-apis.txt` already
+used and that learning 14 promoted without applying to the claims table.
+
+The standard found four instrument defects, three of them in the instruments
+this cycle wrote:
+
+- **Its first run reported all twenty mutants SURVIVED.** No mutation had been
+  applied — `node -e` puts the first script argument at `argv[1]`, not `argv[2]`
+  — and nothing consulted the mutator's exit status. Both fixed; verdicts are
+  now classified from jest's JSON report rather than its exit status, so "the
+  claim failed" cannot be confused with "the file would not parse".
+- **`length-not-verified` survived, correctly**: the checksum catches the same
+  corruption. The length check is a redundant guard and cannot be isolated by
+  mutation. The claim was restated as the pair it actually measures and the
+  non-isolability disclosed, rather than explained away.
+- **`index-delete-failure-swallowed` survived**: its instrument refused every
+  delete, so the sweep's own check masked the mutation. The instrument was
+  **split** until it isolated.
+- **The new RED-lane scanner matched itself** and exited 1 on two captures: its
+  own pattern list, its run-time control literals, and REVIEW-019.md's prose
+  describing the scan the reviewer ran. Remedied the way 005a remedied the same
+  class — control literals assembled from fragments so the producer never
+  contains the tokens it scans for, and the added-line scan scoped to
+  non-`docs/` paths with the bound stated. The path filter and the three
+  object-identity comparisons were deliberately left unscoped.
+- **The verbose transcripts were not byte-stable, and the stability gate caught
+  it twice.** With `--verbose`, jest prints each suite's assertion tree as one
+  block and orders the FILES by its own scheduling heuristic, so whole blocks
+  changed places as timings drifted. My first fix — `--runInBand` — was **wrong,
+  and is recorded as wrong**: I applied it on a plausible hypothesis about
+  worker completion order *before reading the differing bytes*, and it failed
+  again. Reading them showed the ordering is jest's file scheduler, which
+  survives a single worker. Fixed properly by taking the order away from jest:
+  `adapter-properties.txt` is now one invocation per suite, in a sequence the
+  producer names. `--runInBand` was kept for the narrower reason now stated in
+  `capture.sh`, and it is the only divergence from CI's own test command —
+  steps, order, and exit codes still match `.github/workflows/ci.yml`.
+- **One stability failure was never reproduced or explained.** An early run
+  reported `gates.txt` DIFFERS from both its pair and the committed copy. It did
+  not recur across ten subsequent runs — six isolated repeats of the test step
+  and four full captures, two concurrent — and the committed copy matched every
+  one byte for byte. It is not the reordering above, which that section escapes
+  by sorting. The cause is **unidentified** and recorded as such: a
+  byte-stability claim with a swept-aside failure behind it is exactly the
+  stable false-green REVIEW-019 was about.
+
+New instruments: **token opacity** (ADR-004's required property, which
+REVIEW-019 finding 7 found had neither a claim nor a NOT RUN row) as three
+assertions — a non-JSON payload round-trips, the stored chunks concatenate to
+exactly the input, and the index carries an exact metadata-only key set; and
+**client wiring**, asserted on the options object `createClient` is actually
+called with, presence *and* identity, because identity alone passes vacuously on
+web. `red-lane.txt` is new: the client-only scope is now a producer artifact
+with object-ID comparisons and eleven controlled scans, not reviewer testimony.
+
+The claims table is re-derived from the battery: 50 claims, each naming the
+exact assertion that measures it and the exact mutant that breaks it. Rows with
+no mutant say so and say why.
+
+**Battery:** 89 tests across 7 suites — adapter 48, client wiring 5, platform 3,
+accessibility 2, provider 20, guards 9, home 2.
+
+### Part E — record corrections
+
+1. **005a storage-test count.** `005a-auth-session/README.md` said "all 25
+   storage-layer assertions" while its own committed transcript reports
+   `Tests: 31 passed` — 28 adapter plus 3 platform. Corrected in place, marked
+   inline with the date and finding number. Nothing else in that directory was
+   regenerated: it measures replaced code and is the record REVIEW-019 reviewed.
+   A superseding banner now says so at the top.
+2. **HANDOFF touch-set boundary.** The build cycle's block reported 10
+   existing-file changes at `+138/-27` plus 25 new files at 2785 lines. Those
+   are the range with the HANDOFF's own 211 inserted lines omitted. Learning 9
+   was applied correctly — recordable deltas are the right count — but the
+   exclusion was not disclosed, and an undisclosed boundary makes a true number
+   read as a wrong one. Derived, not transcribed:
+
+   | Range `07ad5a51..d6dc677` | Files | Insertions | Deletions |
+   |---|---|---|---|
+   | full immutable range | 36 | 3134 | 27 |
+   | excluding `HANDOFF.md` | 35 | 2923 | 27 |
+   | `HANDOFF.md` alone | 1 | 211 | 0 |
+
+   The prior HANDOFF block is left exactly as written; append-only governance
+   puts the correction in the new block, not over the old one.
+
+### Part F — the BRANCH-NOTES conflict
+
+Merged main into the branch. `BRANCH-NOTES.md` conflicted because both sides
+insert a LOCK block at the same anchor, as the dispatch predicted, and nothing
+larger. Resolved **KEEP BOTH, nothing deleted**, ordered newest-first:
+`chore/state-adr-006-read-integrity`, `chore/state-ctrl-005-opening`,
+`feat/auth-session-v1`, `chore/state-ctrl-004-closeout`,
+`chore/state-ctrl-004-opening`. Verified by diffing the resolution against both
+sides: **zero deleted lines relative to `origin/main`**, and the only line
+differing from the branch tip is main's own `ctrl-004-opening` BUILD → MERGED
+reconciliation, carried forward untouched. No other governance content in that
+file was adjudicated. `PROJECT-STATE.md` auto-merged; only the builder-owned
+Active work row differs.
+
+### Verification and classification
+
+Full table in the evidence README. Summary:
+
+- **PASS** — typecheck, lint, 7 suites / 89 tests, format:check, all exit 0
+  (`gates.txt`); 58 storage-layer assertions named individually
+  (`adapter-properties.txt`); 20 session assertions (`session-properties.txt`);
+  9 guard assertions (`route-guards.txt`); ten banned auth surfaces absent with
+  every positive control matched (`banned-apis.txt`); client-only RED scope at
+  the Git-object boundary with eleven controlled scans (`red-lane.txt`);
+  `expo.scheme` UNCHANGED and ruling-8 clean (`chrome.txt`); no dependency added
+  this cycle (`deps.txt`); 21/21 mutants sensitive with the tree restored
+  byte-identical (`mutants.txt`); 8 gated artifacts byte-identical across two
+  fresh captures, both exiting 0, both matching the committed copies
+  (`stability.txt`), across three consecutive passes of the whole gate —
+  read with the two failures disclosed above.
+- **NOT RUN — `npm audit`.** The registry was unreachable from this session
+  (`getaddrinfo ENOTFOUND registry.npmjs.org`), so the advisory count was not
+  re-measured and is **not** re-asserted. Its standing FAIL pre-existing
+  classification comes from the 005a capture and PROJECT-STATE **Known issues**
+  #2, which owns it; this cycle adds no dependency, so it cannot have moved.
+- **NOT RUN — GitHub CI for this head** at the time of writing. PR #11 was open
+  at head `4a190ac` with an empty check rollup; pushing this cycle moves that
+  head and triggers `.github/workflows/ci.yml` on `pull_request`. Whatever it
+  reports is not part of this artifact set.
+- **NOT RUN** — everything device-, browser-, and network-bound, unchanged from
+  the build cycle: real keychain, OS enforcement of `WHEN_UNLOCKED`, cross-
+  process concurrency, real `localStorage`, a served browser flow, live
+  Supabase, and the wall-clock cost of the 129-delete removal sweep on a device.
+- **NOT RUN** — advisory reviewer. Controller owns that seat; the auth-diff
+  trigger in ADR-001 still applies.
+
+Learning 11 was applied throughout: every file written in this cycle was read
+back from disk, and the evidence numbers in the README were re-derived from the
+artifacts rather than transcribed from the runs that produced them. Two README
+figures were wrong on that read-back and were corrected — the dependency claim
+and the `npm audit` classification.
+
+### What I deliberately did not do
+
+- **`REVIEW-019.md` is untouched.** Immutable.
+- The duplicated `` `Sign in · ${APP_NAME}` `` expression — backlogged, not this
+  cycle's, and named as out of scope.
+- `npm audit`'s upstream advisories — pre-existing, not this unit's.
+- No migration, RLS policy, database function, grant, or storage-bucket policy.
+  `red-lane.txt` measures that rather than asserting it.
+- No LOCK status change, no ruling, no learning, no current-state edit on main —
+  controller-owned.
+- `005a-auth-session/` artifacts were **not** regenerated. They measure replaced
+  code; regenerating them would destroy the record REVIEW-019 reviewed.
+
+### Touch set — with the boundary stated
+
+Two ranges, both derived with `git diff --shortstat`, neither transcribed. The
+HANDOFF's own delta is **listed separately rather than omitted** — that is the
+disclosure finding 10 asked for. Learning 9 still governs the count (recordable
+deltas only); what it never licensed was leaving the boundary unstated, so the
+complete row is given rather than left to be inferred.
+
+| Range | Scope | Files | Insertions | Deletions |
+|---|---|---|---|---|
+| `4a190ac..HEAD` — this fix cycle alone | excluding `HANDOFF.md` | 29 | 3819 | 262 |
+| `4a190ac..HEAD` — this fix cycle alone | `HANDOFF.md` alone | 1 | 295 | 0 |
+| `4a190ac..HEAD` — this fix cycle alone | **complete** | 30 | 4114 | 262 |
+| `7095267..HEAD` — all the branch adds to main | excluding `HANDOFF.md` | 54 | 6524 | 27 |
+| `7095267..HEAD` — all the branch adds to main | `HANDOFF.md` alone | 1 | 633 | 0 |
+| `7095267..HEAD` — all the branch adds to main | **complete** | 55 | 7157 | 27 |
+
+The deletions in the fix-cycle range are the replaced adapter and the replaced
+adapter tests. No evidence artifact, no ADR, and no review record was deleted,
+and every older byte of `HANDOFF.md` is preserved in its original order — the
+`005a` directory keeps all eleven of its artifacts, with one factual correction
+marked inline in its README.
+
+### Next step
+
+Route this diff to the reviewer of record for **REVIEW-020**, fresh session,
+against the pushed head. The advisory seat is still unnamed and the auth-diff
+trigger still applies. Two external fix cycles remain; the ruling-12 stop rule
+stands — an in-class defect recurring after cycle three is remedied by
+subtraction.
+
+---
+
 ## 2026-08-24 — feat/auth-session-v1 (Unit D — REVIEW-019 reviewer of record)
 
 **Controller:** CTRL-005 Auth and session v1. **Reviewer of record:** Codex

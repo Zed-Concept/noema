@@ -1,0 +1,45 @@
+# CI-equivalent gates at this head.
+# The four steps .github/workflows/ci.yml runs after install, in order.
+
+## typecheck — npm run typecheck
+
+> noema@0.1.0 typecheck
+> tsc --noEmit
+
+exit: 0
+
+## lint — npm run lint
+
+> noema@0.1.0 lint
+> expo lint
+
+exit: 0
+
+## test — npm test -- --ci --runInBand
+PASS src/__tests__/auth-provider.test.tsx
+PASS src/__tests__/home-screen.test.tsx
+PASS src/__tests__/route-guards.test.tsx
+PASS src/__tests__/secure-store-accessibility.test.ts
+PASS src/__tests__/secure-store-adapter.test.ts
+PASS src/__tests__/session-storage-platform.test.ts
+PASS src/__tests__/supabase-client.test.ts
+
+> noema@0.1.0 test
+> jest --ci --runInBand
+
+
+Test Suites: 7 passed, 7 total
+Tests:       89 passed, 89 total
+Snapshots:   0 total
+Time:        <duration>
+Ran all test suites.
+exit: 0
+
+## format:check — npm run format:check
+
+> noema@0.1.0 format:check
+> prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
+exit: 0
