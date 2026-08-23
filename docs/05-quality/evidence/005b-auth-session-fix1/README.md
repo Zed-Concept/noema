@@ -81,6 +81,7 @@ lines are dropped by `mask()` as machine state, and no value is ever printed.
 | `environment.txt` | `capture.sh` | run-varying | node, npm, and OS of the machine; the locale line is pinned by construction |
 | `npm-audit.txt` | `capture.sh` | run-varying | tracks the upstream advisory database |
 | `mutants.txt` | `mutants.sh` | not gated | **new this cycle.** Its exit status is its contract. Not compared by `stability.sh`: `mutants.sh` rewrites and restores tracked source, and running it twice more inside a stability gate doubles that exposure for no additional information. It verifies its own restoration byte for byte instead |
+| `ci.txt` | one-off `gh run view` | not gated | **new this cycle, and it is the gate REVIEW-019 had to record NOT RUN.** GitHub CI on the exact pushed head, `81ecd0d`, conclusion **success**. Captured separately rather than by `capture.sh`, which is offline by construction; the run URL is the independently checkable original |
 | `stability.txt` | `stability.sh` | not gated | a gate cannot contain a run of itself (house precedent: `../002d-fix-loop-3/negative-control.txt`). Its exit status is its contract: 0 all-match, 1 otherwise |
 
 ### What the doubles model and do not model
@@ -139,6 +140,13 @@ Each mutant is checked both ways, which is what makes RED mean anything:
 
 `mutants.sh` restores every file it edits and byte-compares the restoration.
 Runtime is roughly 15 minutes: two jest invocations per mutant, single-worker.
+
+**Runtime, stated because it is a real cost.** `capture.sh` grew to roughly six
+minutes once `adapter-properties.txt` became four separate jest invocations
+(*Instrument corrections* 8), so `stability.sh` — which runs it twice — takes
+about twelve, and `mutants.sh` about fifteen. Deterministic transcripts were
+worth four extra jest startups; a future unit that adds suites to this
+directory should expect the same trade and is warned rather than surprised.
 
 ## The battery
 
@@ -210,6 +218,7 @@ it was split until it isolated (see *Instrument corrections*).
 | 46 | `expo.scheme` is byte-identical to the base commit; the user-visible app name resolves from one config source; ruling 8's gated name appears in no `src/` code and not in `expo.name` | PASS | `chrome.txt` — direct comparison, consumer list, zero-hit literal-title scan, and a direct assertion on `app.json` that fails the run if it matches | — |
 | 47 | **Fix cycle 1 adds no dependency.** The ADR-006 checksum is computed inline, with no crypto API and no new package | PASS | `deps.txt` — the dependency-line diff against main contains exactly one `+` line, `expo-secure-store ~57.0.1`, which is the build cycle's authorized addition and the unit's only one. auth-js is recorded at its lockfile-pinned 2.112.3 and this cycle does not move it | — |
 | 48 | The four CI-equivalent gates pass at this head: typecheck, lint, test, format:check — all exit 0 | PASS | `gates.txt` | — |
+| 48a | **GitHub CI itself passes on the exact pushed head**, on a clean checkout with a fresh `npm ci`, on Node 24 rather than this machine's | PASS | `ci.txt` — run `32671673617`, head `81ecd0d`, conclusion success. This is not a local re-run: it is the same four steps executed by `.github/workflows/ci.yml` on infrastructure that shares nothing with the machine that produced the other artifacts | — |
 | 49 | Every claim above that names a behaviour has a mutant that turns its instrument red | PASS | `mutants.txt` — 21 mutants, all SENSITIVE, tree restored byte-identical | — this row IS the mutation record |
 | 50 | The gated artifacts regenerate byte-for-byte across two fresh `capture.sh` runs, both runs exited 0, and both match the committed copies | PASS | `stability.txt`, plus three consecutive passes of the whole gate. Read with *Instrument corrections* 8 and 9, which are the two times it failed | — |
 
@@ -245,7 +254,7 @@ Every check this cycle ran, classified as the dispatch requires.
 | REVIEW-019 findings 7-8 (the two evidence defects) | **fixed** | claim 7 is the missing token-opacity instrument; claims 10, 32, and 18 close the three claims that exceeded their probes; the mutation standard is the general remedy |
 | REVIEW-019 findings 9-10 (the two record defects) | **corrected** | see **Record corrections** |
 | `npm audit` | **NOT RUN this cycle** | `npm-audit.txt` records `getaddrinfo ENOTFOUND registry.npmjs.org` — this session had no route to the registry, so the advisory count was not re-measured. The standing figure and its FAIL pre-existing classification come from the 005a capture and PROJECT-STATE **Known issues** #2, which owns it. This cycle adds no dependency, so it cannot have changed the picture. Not this unit's defect and explicitly out of this cycle's scope |
-| GitHub CI for this head | NOT RUN at the time of writing | PR #11 was open at head `4a190ac` with an empty check rollup. Pushing this cycle moves that head and triggers `.github/workflows/ci.yml` on `pull_request`; the result is not part of this artifact set. The HANDOFF states what was true when it was written |
+| GitHub CI for the exact pushed head | **PASS** | `ci.txt` — run `32671673617`, head `81ecd0d959a0ba2c101efdead98628d50fd30dc5`, conclusion **success**, all four gate steps (Typecheck, Lint, Test, Format check) successful. REVIEW-019 had to record this NOT RUN because PR #11 carried no check runs at all; pushing this cycle moved the PR head and the workflow ran on the exact tree under review. CI uses jest's default worker pool where the local transcript pins `--runInBand`, so this is also an independent confirmation that the one divergence does not change the outcome |
 | Live Supabase, real OTP, real session, credential use | NOT RUN | Phase A is offline; owner-executed Phase B |
 | Real iOS/Android keychain, OS accessibility enforcement, OS/process concurrency | NOT RUN | no device or simulator run; see the NOT RUN table below |
 | Browser `localStorage`, rendered title, real router navigation | NOT RUN | module and components tested with doubles; no served browser flow |

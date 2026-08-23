@@ -230,10 +230,16 @@ Full table in the evidence README. Summary:
   re-measured and is **not** re-asserted. Its standing FAIL pre-existing
   classification comes from the 005a capture and PROJECT-STATE **Known issues**
   #2, which owns it; this cycle adds no dependency, so it cannot have moved.
-- **NOT RUN — GitHub CI for this head** at the time of writing. PR #11 was open
-  at head `4a190ac` with an empty check rollup; pushing this cycle moves that
-  head and triggers `.github/workflows/ci.yml` on `pull_request`. Whatever it
-  reports is not part of this artifact set.
+- **PASS — GitHub CI on the exact pushed head.** REVIEW-019 had to record this
+  NOT RUN because PR #11 carried no check runs at all. Pushing this cycle moved
+  the PR head to `81ecd0d` and the workflow ran on the exact tree under review:
+  run `32671673617`, conclusion **success**, all four gate steps green on a
+  clean checkout with a fresh `npm ci`, on infrastructure sharing nothing with
+  this machine. Recorded in `ci.txt` with the run URL, captured by a one-off
+  `gh run view` rather than by `capture.sh`, which stays offline by
+  construction. CI runs `npm test` with jest's default worker pool where the
+  local transcript pins `--runInBand`, so this is also independent confirmation
+  that the one divergence does not change the outcome.
 - **NOT RUN** — everything device-, browser-, and network-bound, unchanged from
   the build cycle: real keychain, OS enforcement of `WHEN_UNLOCKED`, cross-
   process concurrency, real `localStorage`, a served browser flow, live
@@ -270,18 +276,27 @@ complete row is given rather than left to be inferred.
 
 | Range | Scope | Files | Insertions | Deletions |
 |---|---|---|---|---|
-| `4a190ac..HEAD` — this fix cycle alone | excluding `HANDOFF.md` | 29 | 3819 | 262 |
-| `4a190ac..HEAD` — this fix cycle alone | `HANDOFF.md` alone | 1 | 295 | 0 |
-| `4a190ac..HEAD` — this fix cycle alone | **complete** | 30 | 4114 | 262 |
-| `7095267..HEAD` — all the branch adds to main | excluding `HANDOFF.md` | 54 | 6524 | 27 |
-| `7095267..HEAD` — all the branch adds to main | `HANDOFF.md` alone | 1 | 633 | 0 |
-| `7095267..HEAD` — all the branch adds to main | **complete** | 55 | 7157 | 27 |
+| `4a190ac..HEAD` — this fix cycle alone | excluding `HANDOFF.md` | 30 | 3871 | 262 |
+| `4a190ac..HEAD` — this fix cycle alone | `HANDOFF.md` alone | 1 | 310 | 0 |
+| `4a190ac..HEAD` — this fix cycle alone | **complete** | 31 | 4181 | 262 |
+| `7095267..HEAD` — all the branch adds to main | excluding `HANDOFF.md` | 55 | 6576 | 27 |
+| `7095267..HEAD` — all the branch adds to main | `HANDOFF.md` alone | 1 | 648 | 0 |
+| `7095267..HEAD` — all the branch adds to main | **complete** | 56 | 7224 | 27 |
 
 The deletions in the fix-cycle range are the replaced adapter and the replaced
 adapter tests. No evidence artifact, no ADR, and no review record was deleted,
 and every older byte of `HANDOFF.md` is preserved in its original order — the
 `005a` directory keeps all eleven of its artifacts, with one factual correction
 marked inline in its README.
+
+### This cycle landed as two commits
+
+The first carries the code, tests, producers, evidence, and records. The second
+carries `ci.txt` and the classification change above, because GitHub CI cannot
+run on a head until that head exists — the NOT RUN could only be retired after
+the push, and retiring it honestly meant a second commit rather than a claim
+written ahead of its artifact. The touch-set table below covers both, and the
+completion report to the controller names the final pushed SHA.
 
 ### Next step
 

@@ -1,0 +1,43 @@
+# GitHub CI on the exact pushed head — the gate REVIEW-019 had to record NOT RUN.
+#
+# Captured by a one-off `gh run view` after the push, NOT by capture.sh.
+# capture.sh is offline by construction and a network call inside it would
+# destroy that property, so this artifact is produced separately and is neither
+# gated nor byte-stable — it records an external fact at a point in time. The
+# run URL below is the independently checkable original; nothing here is
+# builder testimony.
+#
+# Command:
+#   gh run view 32671673617 --repo Zed-Concept/noema \
+#     --json databaseId,headSha,headBranch,conclusion,status,createdAt,updatedAt,url,workflowName,jobs
+
+run id      : 32671673617
+workflow    : CI
+branch      : feat/auth-session-v1
+head sha    : 81ecd0d959a0ba2c101efdead98628d50fd30dc5
+status      : completed success
+created     : 2026-08-23T22:47:42Z
+updated     : 2026-08-23T22:48:39Z
+url         : https://github.com/Zed-Concept/noema/actions/runs/32671673617
+pull request: https://github.com/Zed-Concept/noema/pull/11
+
+job         : typecheck, lint, test completed success
+   step     : Set up job                   completed success
+   step     : Run actions/checkout@v7      completed success
+   step     : Run actions/setup-node@v7    completed success
+   step     : Install                      completed success
+   step     : Typecheck                    completed success
+   step     : Lint                         completed success
+   step     : Test                         completed success
+   step     : Format check                 completed success
+   step     : Post Run actions/setup-node@v7 completed success
+   step     : Post Run actions/checkout@v7 completed success
+   step     : Complete job                 completed success
+
+# The head SHA above is the pushed commit, so this result belongs to the exact
+# tree under review — not to a rebase, a merge preview, or a later head.
+#
+# CI runs `npm test` with jest's default worker pool. The local gate transcript
+# pins `--runInBand` for byte-comparability (see capture.sh); the four steps,
+# their order, and their exit statuses are the same, and this run is the
+# independent confirmation that the difference does not change the outcome.

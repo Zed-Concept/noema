@@ -15,12 +15,12 @@
   src/lib/database.types.ts    IDENTICAL  8c7fc943ffbadaf5a080999c34071a3b7cf3cbcc
 
 ## Paths in the range that would be database-layer changes (expect none)
-  paths in range: 55
+  paths in range: 56
   database-layer paths: 0
   control MATCHED (a synthetic migration path is detected by this filter)
 
 ## Added lines in the range that would be database-layer operations
-  docs/ paths excluded from the added-line scan: 33
+  docs/ paths excluded from the added-line scan: 34
   (records of scanning, not scanning targets — see the note in capture.sh)
   added non-docs lines in range: 2945
   CREATE[[:space:]]+POLICY                   hits: 0   (control MATCHED)
