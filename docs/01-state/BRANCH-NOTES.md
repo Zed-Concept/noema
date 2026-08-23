@@ -41,6 +41,47 @@ it (REVIEW-013 finding 4, REVIEW-015 finding 3).
 
 ---
 
+## LOCK — feat/auth-session-v1
+
+```
+Project:            Noema
+Branch:             feat/auth-session-v1
+Controller:         CTRL-005 Auth and session v1
+Builder:            Claude Code
+Model+Effort:       Opus 5 [1m] / Ultracode (xhigh + workflows) / fresh session
+                    — the owner-ruled substitution for the dispatched Fable 5,
+                    recorded here because the dispatch instructed that this
+                    specific substitution be recorded rather than stopped for.
+                    Effort tier per ruling 5 for a build unit.
+Reviewer of record: — not yet named. Ruling 4 seats Codex Sol / Ultra; the
+                    RED-on-arrival auth trigger in ADR-001 and PROJECT-STATE
+                    additionally calls for one advisory reviewer on this diff.
+                    Controller to name both before review begins.
+Status:             BUILD
+Dispatch:           Unit D — the v1 CLIENT-SIDE authentication surface only:
+                    email OTP sign-in/sign-up, session persistence behind a
+                    chunked expo-secure-store adapter, route protection, and
+                    the owner-absorbed chrome gate (explicit screen and
+                    document titles from a single config source). Phase A,
+                    offline. The database auth surface stays frozen at Unit C's
+                    merged state: no migration, RLS policy, database function,
+                    grant, or storage-bucket policy is touched. Dependencies:
+                    expo-secure-store only, plus the released backlog nit
+                    adding `supabase/.temp` to .prettierignore.
+Evidence:           docs/05-quality/evidence/005a-auth-session/
+```
+
+**This block was written by the builder, not the controller.** The CTRL-005
+opening state commit that would normally register it had not landed when this
+unit started: `BRANCH-NOTES.md` carried no `feat/auth-session-v1` LOCK, and
+`PROJECT-STATE.md`'s Active work row still read *"Not started ... Blocked on:
+CTRL-005 opening"*. The dispatch requires a LOCK status line in the completion
+report and requires the model substitution to be recorded in the LOCK, neither
+of which is possible against a block that does not exist. Recorded here for the
+controller to reconcile — see the HANDOFF block for the full disclosure.
+
+---
+
 ## LOCK — chore/state-ctrl-004-opening
 
 ```

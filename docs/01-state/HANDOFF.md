@@ -1,3 +1,214 @@
+## 2026-08-23 — feat/auth-session-v1 (Unit D — auth and session v1, Phase A)
+
+**Controller:** CTRL-005 Auth and session v1. **Builder:** Claude Code,
+**Opus 5 [1m] / Ultracode (xhigh + workflows)**, fresh session — the
+owner-ruled substitution for the dispatched Fable 5, recorded rather than
+stopped for because the dispatch instructed exactly that for this
+substitution. Effort tier per ruling 5 for a build unit. **Base:**
+`07ad5a51ed597f67bac523e681525c4e87fe644d`, verified at session start per
+learning 6: `git fetch origin`, then `origin/main`, local `HEAD`, and the
+dispatched SHA all equal, working tree clean. **AGENTS.md verified before
+being trusted:** sha256 `0ff02d20…f013`, 5378 bytes — both match.
+**No PR opened, nothing merged**, per the dispatch.
+
+**Standing rulings, stated so the reviewer need not infer them.** **S1 and S3
+are inert by construction**: this unit creates no database function and no
+table — it contains no SQL, no migration, and no policy. **S2 is inert**: no
+`service_role` grant exists or was created. The database auth surface is
+untouched and remains exactly at Unit C's merged state; `git diff --name-only`
+against the base returns nothing under `supabase/`, no `*.sql`, and no
+migration.
+
+### Ruling-6 disclosure — workflows and per-workflow fan-out
+
+**Two workflows ran. Every other action was taken in the main lane**, including
+the Git preflight, all governance reads, every file edit, all gate runs, and
+all evidence generation.
+
+1. **`auth-session-api-recon`** — 5 `agent()` calls, one phase, all parallel.
+   5 completed, 0 errors, ~661k subagent output tokens, 338 tool uses,
+   ~26 minutes. Lenses: expo-secure-store, expo-router, supabase-js/auth-js,
+   expo-constants, jest harness. **Fan-out note:** the journal records **six**
+   agent instances for five calls — the expo-router agent failed once and the
+   runtime retried it; the retry produced the result used.
+2. **`auth-session-adversarial-review`** — 5 `agent()` calls, one phase, all
+   parallel. 5 completed, 0 errors, ~617k subagent output tokens, 176 tool
+   uses, ~15 minutes. Lenses: fail-closed/security, chunking correctness, scope
+   compliance, evidence discipline, auth-js contract. **Verdicts: 2 SOUND,
+   3 DEFECTS_FOUND, 19 findings.** All were triaged; the outcome is the fix
+   cycle recorded below.
+
+Per ruling 6 this self-verification is **supplementary and is not the review**.
+The reviewer of record gates, and has not yet been named.
+
+### Two governance divergences, found before any code was written
+
+**1. `docs/03-decisions/ADR-004-auth-session-v1.md` does not exist.** The
+dispatch names it under READ FIRST and cites it as governing the
+security-critical adapter. It is absent from the working tree, from all three
+branches, and from the entire history; `grep -rn "ADR-004" docs/ AGENTS.md`
+returns zero hits, and `docs/03-decisions/` holds only ADR-001, -002, -003 and
+the template. **I did not author it** — an ADR is a controller/owner decision
+record, not a builder's, and writing one would have manufactured authority the
+dispatch did not grant. I proceeded because the dispatch text itself states the
+adapter's required properties in full, so the requirements were unambiguous
+without it. **If ADR-004 is later written and diverges from those five
+properties, the adapter must be re-checked against it.**
+
+**2. There was no LOCK block for this branch, and no CTRL-005 opening state
+commit.** `BRANCH-NOTES.md` contained no `feat/auth-session-v1` entry and zero
+occurrences of "CTRL-005", and `PROJECT-STATE.md`'s Active work row still read
+*"Not started … Blocked on: CTRL-005 opening"*. The dispatch requires the model
+substitution to be recorded **in the LOCK** and requires a LOCK status line in
+the completion report — neither possible against a block that does not exist.
+**I wrote the LOCK block myself, on this branch, and said so inside it.**
+Normally a controller act; flagged for reconciliation.
+
+Neither divergence blocked the work, and neither was worked around silently.
+
+### What was built
+
+1. **Session layer** — `src/lib/auth/auth-provider.tsx`. Typed provider with
+   three mutually exclusive states, `bootstrapping` distinct from `signedOut`
+   so a guard can never act on an unresolved session. Cold start reads
+   `getSession()`; currency comes from `onAuthStateChange`. Subscribes *before*
+   reading so an event in flight is not lost, and a late cold-start read cannot
+   overwrite a newer event.
+2. **SecureStore adapter** — `src/lib/auth/secure-store-adapter.ts`. Chunked,
+   fail-closed, opaque-string-only. Deterministic chunk keys; a partial or
+   corrupt read resolves to `null` and never a truncated string; `removeItem`
+   leaves no chunk and no index. See the fix cycle below — the shipped design
+   is two-generation, which the original was not.
+3. **OTP flow** — `signInWithOtp` with `shouldCreateUser`, `verifyOtp` with
+   `type: 'email'`, `signOut`. No password API, no reset, no `emailRedirectTo`,
+   no magic link, no OAuth — asserted by scan, not asserted by assertion.
+4. **Route protection** — `(app)`/`(auth)` group split with redirects driven by
+   session state. During bootstrap the root mounts **no navigator at all**, so
+   "no flash of protected content" is structural rather than a race to win.
+5. **Chrome gate** — screen titles and browser titles set explicitly from a
+   single config source (`app.json` → `expo.name` via `expo-constants`).
+   `expo.scheme` untouched and asserted byte-identical to the base.
+
+Dependencies: `expo-secure-store` `~57.0.1` via `npx expo install`, and nothing
+else. The released backlog nit — `supabase/.temp` in `.prettierignore` — is
+included; it is a real fix, since `supabase/.temp/linked-project.json` is JSON
+that Prettier walks into.
+
+### Fix cycle 1 — driven by the adversarial review, before external review
+
+Four **code** defects were found and fixed. Full detail, with instruments, in
+the evidence README; the two that matter most:
+
+- **`setItem` cleared the live value before writing its replacement**, so a
+  concurrent `getItem` returned `null` for most of a write. Consequence: a
+  `supabase.from(...)` call landing in that window resolves its token through
+  `getSession()`, gets `null`, and falls back to the publishable key — the
+  request goes out **anonymously** and RLS denies it while the user is signed
+  in and the session on disk is valid. Fixed by a two-generation design: a
+  write lays down the generation nobody is reading, then swaps the index in one
+  call. A reader now sees the old payload or the new one, never neither.
+- **`removeItem` could reject**, and `setItem` inherited it: only the index read
+  was guarded. A locked iOS keychain made sign-out reject *before* auth-js emits
+  `SIGNED_OUT`, stranding the button on "Signing out…" with the session still on
+  disk. Teardown reads and deletes are now quiet; writes still propagate.
+
+Also fixed: the provider could stay in `bootstrapping` forever behind a
+never-settling network read (no `.catch()` can see non-settlement), and
+sign-out failure was silently discarded so a user could believe they had signed
+out when they had not.
+
+Seven **instrument** defects were fixed in the same cycle, the sharpest being
+that `capture.sh` **exited 0 having measured nothing** when its output directory
+was not writable, and that `stability.sh` **discarded `capture.sh`'s exit
+status** — so a consistently red capture would have reported a green gate.
+
+**Fix-cycle budget: 1 of 3 used.**
+
+### Evidence — `docs/05-quality/evidence/005a-auth-session/`
+
+Claims table with a per-claim instrument, derived from the battery rather than
+the reverse. **57 assertions across five suites**, all passing. The strongest
+evidence sits where the dispatch asked for it: 28 assertions on the adapter,
+credential-free, including byte-equality round-trip past the chunk threshold,
+fail-closed on a deleted middle chunk, and zero surviving keys after
+`removeItem`. Seven gated artifacts regenerate byte-for-byte across two fresh
+captures, both exiting 0 (`stability.txt`).
+
+**No claim is made about the database, RLS, or policy behaviour** — that is
+Unit C's record, not this unit's. Everything not measured is listed NOT RUN
+with its reason, including all live Supabase behaviour (Phase A is offline),
+real-keychain behaviour, the platform's actual size ceiling, and true
+OS-level concurrency.
+
+### Disclosures
+
+- **Phase A was honoured.** No Supabase call, no credential read, no signup, no
+  user creation, no types regeneration, no migration.
+- **The Expo CLI loaded `.env` on its own** during `npx expo install` and
+  `expo lint`, echoing the two variable **names** it exported. No value was
+  printed and I never read the file. Those lines are dropped from every
+  transcript.
+- **A stale machine-local file was removed:** `.expo/types/router.d.ts`, dated
+  before this route tree existed. It is gitignored and untracked — **no
+  recordable delta** (learning 9), and it regenerates on the next `expo start`.
+- **The dispatch's OTP call shape was corrected.** It specifies
+  `signInWithOtp({ email, shouldCreateUser: true })`; the installed API takes
+  `shouldCreateUser` inside `options`, and at top level it is silently ignored.
+  Built to the real signature, with the intent preserved.
+- **A wrong comment I wrote was corrected before commit.** I initially
+  attributed the browser tab title to expo-router's `useDocumentTitle`
+  formatter. That formatter never runs in this version — `ExpoRoot` hard-codes
+  `documentTitle = { enabled: false }`. The route-name fallback that *does*
+  apply is `getHeaderTitle`, the in-app header. Both halves of the backlog item
+  are addressed, by two different mechanisms.
+- **`npm audit` reports 21 advisories (10 moderate, 11 high)** where
+  PROJECT-STATE Known-issue 2 records 22 (7 moderate, 15 high). That is
+  upstream advisory-database drift, not an effect of this unit's one
+  dependency. Not acted on.
+- **Every edit was verified by reading the written file back** (learning 11);
+  no exit code from a neighbouring command was treated as evidence a change
+  landed. One `python3` edit failed with a syntax error and wrote nothing —
+  caught by reading back, then redone.
+
+### Adjacent findings — reported, acted on none
+
+1. **`signOut()` uses auth-js's default `scope: 'global'`**, which revokes every
+   session on the account: signing out on a phone silently signs out the same
+   user's tablet. auth-js's own docs call `'local'` "recommended for most apps".
+   Left at the default, now stated explicitly in code. **This is a product
+   decision and belongs to the owner** — a natural first entry for the missing
+   ADR-004.
+2. **Background token refresh on a locked device cannot persist.**
+   `autoRefreshToken` is on and its ticker runs unstopped in the background,
+   while SecureStore writes default to `whenUnlocked` accessibility — so a
+   refresh landing while the phone is locked rotates the token server-side and
+   fails to save it, and the next unlock can hit refresh-token reuse detection
+   and sign the user out. The two candidate remedies — `AFTER_FIRST_UNLOCK`
+   accessibility, and AppState-gated `start/stopAutoRefresh` — are both
+   security-posture changes, and `AFTER_FIRST_UNLOCK` genuinely weakens at-rest
+   protection. **Not taken unilaterally**: it is an ADR-class decision.
+3. AGENTS.md's Roles section still reads "Opus, high effort" for the primary
+   builder, predating ruling 4. Pre-existing; editing it changes the tracked
+   sha256.
+
+### Verification at this head
+
+`npm run typecheck`, `npm run lint`, `npm test -- --ci` (57 passed, 5 suites),
+`npm run format:check` — **all exit 0**. `capture.sh` exit 0; `stability.sh`
+exit 0 with 7 gated artifacts and 0 differing-or-failing comparisons.
+**CI itself is NOT RUN** — no PR was opened, and `.github/workflows/ci.yml` is
+untouched.
+
+**Touch-set** (learning 9 — recordable deltas only): 10 tracked files changed,
+**+138/−27**, plus **25 new files** totalling **2785 lines**. Of the tracked
+changes, `app.json` is a **one-line** diff — `npx expo install` added the
+config plugin and reflowed the `plugins` array, and Prettier reflowed it back.
+`expo.scheme` is byte-identical to the base and asserted so in `chrome.txt`.
+
+**LOCK status line:** `Status: BUILD` — `feat/auth-session-v1`, reviewer of
+record not yet named (ruling 4 seats Codex Sol / Ultra; the RED-on-arrival auth
+trigger additionally calls for one advisory reviewer on this diff).
+
 ## 2026-08-23 — feat/schema-rls-v1 (Unit C fix cycle 7 — REVIEW-018, subtraction-only, FINAL)
 
 **Controller:** CTRL-004 Schema and RLS v1. **Builder:** Claude Code,

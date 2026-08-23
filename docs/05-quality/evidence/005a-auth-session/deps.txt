@@ -1,0 +1,12 @@
+# Dependency delta against the dispatch base.
+# Authorized: expo-secure-store, and nothing else.
+
+## git diff package.json (dependency lines only)
++    "expo-secure-store": "~57.0.1",
+
+## installed version
+expo-secure-store: 57.0.1
+
+## SDK compatibility — installed via npx expo install, so the SDK 57 pin holds
+package.json range: ~57.0.1
+expo range:         ~57.0.14

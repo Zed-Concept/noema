@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
+import { authSessionStorage } from './auth/session-storage';
 import type { Database } from './database.types';
 
 // EXPO_PUBLIC_* values are inlined into client bundles by Expo at build time;
@@ -17,10 +18,21 @@ if (!supabaseUrl || !supabasePublishableKey) {
 
 export const supabase = createClient<Database>(supabaseUrl, supabasePublishableKey, {
   auth: {
-    // Session persistence, refresh, and URL detection stay off until the auth
-    // unit ships a storage adapter and policy set (RED lane; separate dispatch).
-    persistSession: false,
-    autoRefreshToken: false,
+    // Persistence is on as of the auth unit, and it must be: `supabase-js`
+    // consults the `storage` option only inside its `persistSession` branch, so
+    // with persistence off the adapter below would be silently replaced by an
+    // in-memory store and every session would die with the process.
+    persistSession: true,
+    storage: authSessionStorage,
+
+    // Keeps the access token current while the app is running. Session state
+    // reaches the UI through onAuthStateChange, which fires on refresh too.
+    autoRefreshToken: true,
+
+    // Stays off: this unit ships email OTP only. Both flows that would put a
+    // session in a URL — magic links and OAuth redirects — are out of scope, so
+    // there is nothing for the client to detect and no reason to let it parse
+    // one out of the address bar.
     detectSessionInUrl: false,
   },
 });

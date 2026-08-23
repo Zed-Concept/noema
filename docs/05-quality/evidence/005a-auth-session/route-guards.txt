@@ -1,0 +1,28 @@
+# Route protection and chrome titles, asserted against the layout
+# components with the session state and the router both replaced by
+# doubles. This measures the guard decision, not a live navigation.
+
+
+> noema@0.1.0 test
+> jest --ci --verbose --testPathPattern route-guards
+
+PASS src/__tests__/route-guards.test.tsx
+  route protection — while the session is unresolved
+    ✓ mounts no navigator at the root, so protected content cannot flash
+    ✓ renders neither screens nor a redirect inside the protected group
+  route protection — once the session is known
+    ✓ sends a signed-out visitor from the protected group to sign-in
+    ✓ shows the protected group to a signed-in user
+    ✓ sends a signed-in user away from the sign-in group
+    ✓ shows the sign-in group to a signed-out visitor
+    ✓ mounts the navigator once the session resolves
+  chrome — screen titles are set, not derived from the route name
+    ✓ titles the home screen from the single config source
+    ✓ titles the sign-in screen explicitly
+
+Test Suites: 1 passed, 1 total
+Tests:       9 passed, 9 total
+Snapshots:   0 total
+Time:        <duration>
+Ran all test suites matching /route-guards/i.
+exit: 0
