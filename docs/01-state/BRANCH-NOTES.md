@@ -31,6 +31,16 @@ feature branch and nothing more.
 
 ---
 
+**Superseding note (CTRL-004 close-out, 2026-08-23).** The Phase B note in
+this file's Unit C LOCK describes the anon evidence as "11/11" denials. The
+accurate figure, established by fix cycle 5 and unchanged since, is **9
+denial/invisibility probes plus 2 service-context probes = 11 PASS**. The
+historical sentence is left in place per supersede-never-delete; this note
+governs. Controller-owned throughout: the builder was instructed not to touch
+it (REVIEW-013 finding 4, REVIEW-015 finding 3).
+
+---
+
 ## LOCK — chore/state-ctrl-004-opening
 
 ```
@@ -78,10 +88,13 @@ Model+Effort:       Fable 5 / Ultracode (xhigh + workflows) / fresh session
 Reviewer of record: Codex (Codex Sol / Ultra / fresh session); advisory
                     reviewer DeepSeek V4 Pro on the RLS/auth policy diff
                     (RED-on-arrival trigger per ADR-001)
-Status:             REVIEW — fix cycle 7 complete (final, subtraction-only);
-                    no further review dispatched by owner ruling — REVIEW-018
-                    stands as the review of record. Controller opens the PR;
-                    MERGED remains controller-only, after the owner merges
+Status:             MERGED — merge commit
+                    d7943288aabb2c597b0657cf56daea89d2a11041 (PR #8,
+                    2026-08-23). Merged by owner ruling over REVIEW-018's
+                    FAIL, whose findings were all claim-trimming with no
+                    security content; REVIEW-018 stands as the final review
+                    of record. Seven fix cycles; no security defect found in
+                    any review. Reconciled by the CTRL-004 close-out commit
 Dispatch:           Unit C — Schema and RLS v1: author initial SQL migrations
                     and the first RLS policy set for the owner-ruled v1
                     entities, regenerate database types against the applied

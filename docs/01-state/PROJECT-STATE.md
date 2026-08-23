@@ -16,9 +16,10 @@ branch).
 Things that are stable and rarely change: what this is, who it serves, what it
 runs on, where it is deployed.
 
-- **What it is:** TODO(owner) — the product definition has not been recorded in a
-  dispatch. Do not infer one from the repo name. A v1 entity-scope ruling is
-  in flight in CTRL-004; the Unit C dispatch records it once ruled.
+- **What it is:** a voice-first AI second brain — see `docs/00-master/PRODUCT.md`. The product definition is ruled and
+  recorded in `docs/00-master/PRODUCT.md` (owner-approved 2026-08-22 with two
+  amendments and an addendum; ratified by the owner's merge of PR #8). That
+  document governs: every future dispatch steers by it.
 - **Stack:** Expo (React Native) for mobile and web; Tauri desktop later, not in
   v1. Supabase for Postgres, auth, storage, and realtime, accessed via
   `supabase-js` with RLS and generated types — no ORM in v1. Anthropic API for
@@ -89,6 +90,7 @@ explicitly and get it overturned on the record.
 | 8 | Naming: no user-visible field may be or contain "noema" until trademark clearance (fallback: Kayan). Internal identifiers — repo, slug, npm package names — are exempt. `expo.scheme` is quasi-outward: frozen pending clearance, a hard gate before any distribution unit. | 2026-08-18 | this row (owner ruling + REVIEW-003) |
 | 9 | The Linear mirror is active (team NOE): controller syncs Linear from the repo after every merge; one-way, repo wins. The earlier deferral ruling is void. | 2026-08-18 | this row (owner ruling, CTRL-002) |
 | 10 | Schema/RLS migration application is owner-executed: builders author migration and policy files in-repo; the owner applies them to staging (same credential class as `types:gen`); builders verify post-apply. Builders still receive the staging URL + publishable key only. | 2026-08-19 | this row (owner ruling, CTRL-004) |
+| 11 | Three standing security rulings from REVIEW-014 (advisory), binding on every future unit. **S1:** every function migration pins `revoke all on function ... from public, anon, authenticated` and grants EXECUTE only where intended; any SECURITY DEFINER non-trigger function in a client-reachable schema is RED-lane class. **S2:** any grant to `service_role` re-triggers an advisory review before merge — that role bypasses the entire owner-only matrix. **S3:** every future public-schema table repeats ENABLE + FORCE + per-operation policies; a table granted CRUD to `authenticated` without RLS enabled is wide open. | 2026-08-23 | this row (owner merge of PR #8 ratifies; REVIEW-014) |
 
 ## Active work
 
@@ -96,7 +98,7 @@ What is in flight, who owns it, and what it is blocked on. One row per stream.
 
 | Stream | Owner | Status | Blocked on |
 |---|---|---|---|
-| Unit C — Schema and RLS v1 (`feat/schema-rls-v1`) | Claude Code | REVIEW-018 FAIL → **fix cycle 7 complete — FINAL**, run **subtraction-only** with **no run of any kind**: no capture, no probe, no wrapper, no `live-probes.sh`, no `settings-control.mjs`. By owner ruling this is the last cycle; **REVIEW-018 stands as the review of record** and no further review is dispatched, so the cycle was run to under-claim. Four remedies, all subtraction. **M1 (Entity inventory claimed function-name discrimination with no scenario):** the property was **deleted**, not backfilled. Function count and the two function names are no longer claimed as pinned anywhere in 004a; they now rest on **direct inspection and REVIEW-014**, exactly as function-*definition* structure already did. The `Entity inventory` class stays on the list (its two permanent scenarios — a `LIKE` table element and a trigger rename — are real), and the machine class cross-check still parses the same 11 duplicate-free names, so `capture.sh` is untouched and the 91/91 baseline and 72-scenario battery are unchanged. The general defect is now stated once: **the derivation binds class labels, not each property named inside a class**. **M2 (claim 25 outran its oracle):** narrowed to the three things the artifact records — exit 5, the refusal message, and a handed output directory absent-or-empty **at end of run** — with the reasoning that a create-then-remove would still green it. The stronger boundary (*refusal precedes every credential/`.env` read, every write, any network contact*) is **NOT RUN**: uninstrumented, source-inspected only. The committed transcript's own annotation prints the stronger wording and is recorded as outrunning its oracle. **L1 (incomplete prose subtraction):** completed in the two READMEs and in 004b `capture.sh`'s header. Three producers — `verify-migrations.mjs`, `rls-probes.mjs`, `settings-control.mjs` — were left **byte-untouched by choice** and their stale comments disclosed instead, because each produces committed artifacts that this cycle may not regenerate; editing them would have spread 004b's producer/artifact divergence to 004a and to the three protected live transcripts. **L2:** the fix-cycle-6 HANDOFF's 7-file/+169/-181 row was the evidence-only subset mislabelled as the cycle delta; the correction is **derived and recorded in the new HANDOFF block**, and the immutable prior block is left as written. **Also narrowed, unprompted:** claims 11 and 14 in both directories no longer say "at this head" — the gates and 004a byte-stability were measured at the fix-cycle-6 head and are **NOT RUN** at this one. Ran wholly as Opus 5 [1m] / Max (owner-ruled substitution for Fable 5); **no workflow and no subagent were used**. | Controller opens the PR; owner merges. No further review by ruling |
+| Unit D — Auth and session v1 | unassigned | Not started; named as CTRL-005's unit (see below) | CTRL-005 opening
 | Production Supabase project | Owner | Parked by ruling — create in East US (North Virginia) before any launch-facing unit | Free-tier slot or Pro upgrade at that time |
 
 Unit A merged 2026-08-19 at `8d648bb` (PR #2, REVIEW-007 PASS); its full
@@ -105,11 +107,22 @@ Unit B merged 2026-08-19 at `d1a8642` (PR #5, REVIEW-010 PASS after two
 fix cycles); its full record lives in the feat/supabase-wiring LOCK, the
 HANDOFF chain, and REVIEW-008 through REVIEW-010.
 
-**Active controller session:** CTRL-004 Schema and RLS v1 — name confirmed
-against this file 2026-08-19 at `5b4fa8a`, per the succession rule. The
-RED-on-arrival condition attaches to Unit C: advisory reviewer DeepSeek
-V4 Pro on the RLS/auth policy diff, per ADR-001. Successor named at
-CTRL-004 close-out.
+Unit C merged 2026-08-23 at `d7943288` (PR #8), 21 commits, 52 files,
++12021/-12. Review chain REVIEW-011 through REVIEW-018 by Codex Sol
+(reviewer of record) with REVIEW-014 advisory (DeepSeek V4 Pro, **SOUND**),
+across seven fix cycles. **No security defect was found in any review.**
+REVIEW-018 is the final review of record and its verdict is **FAIL**; the
+owner ruled to merge over it after a final subtraction-only cycle, because
+every remaining finding was claim-trimming with no security content. The
+merged evidence suite's documented limitations are listed under **Known
+issues**. CTRL-004 closed 2026-08-23.
+
+**Next controller session:** CTRL-005 Auth and session v1 — the successor
+confirms this name against this file before planning anything. Derived from
+`docs/00-master/PRODUCT.md`, whose L0 sequencing puts the auth unit ahead of
+the capture loop; open question 1 (transcription provider) does not gate it.
+RED on arrival: auth-touching diffs re-trigger the advisory seat per ADR-001,
+and standing rulings S1-S3 apply.
 
 ## RED lane
 
@@ -142,6 +155,9 @@ and the rule derived from it. Keep entries short; move long narratives to
 | 7 | Broad reproducibility claims were disproven per-artifact across three reviews | Claims of byte-stability must state their normalization and be proven per-artifact before handoff; gates' exit codes are their contract |
 | 8 | A reviewer dispatch composed another file's mechanics from memory ("only change"; a placement clause contradicting HANDOFF.md), forcing two compliant reviewer stops | Dispatch clauses that specify another file's mechanics (placement, scope counts, formats) are sourced from that file's own rules at dispatch time; enumerated-change clauses say "comprises the authorized items," not "nothing else," when several authorized changes share a file |
 | 9 | A cycle's expected touch-set demanded a file whose regeneration was byte-identical, implying a hunk that could not honestly exist | Expected touch-sets count recordable deltas: a byte-identical regeneration produces no hunk, none is ever manufactured, and the discrepancy is disclosed instead |
+| 10 | A control hook (`SETTINGS_PREFLIGHT_CONTROL`) was honoured by the shipped producer, so an ambient variable could skip every anon probe while the wrapper stayed green | Test hooks must never alter production-path behaviour: controls invoke their own entry point, and the real runner rejects or clears control variables at entry. Env-flag-driven behaviour in a shipped producer is banned |
+| 11 | An edit aborted on its own assertion without writing the file; `bash -n` on the unmodified script was read as confirmation it had landed, and the smoke test that followed became an unauthorised live run | Verify the artifact, not a proxy for it: after any edit, read the written file back. An exit code from a neighbouring command is not evidence that a change exists |
+| 12 | Seven fix cycles each closed the named defects and each surfaced a further claim standing slightly ahead of its instrument; the subject under test had been frozen and correct throughout | A claims table converges asymptotically, not finitely. Bound the claim to the instrument (derive the claimed set from the battery), issue a stop rule before the loop starts paying for completeness, and remedy by subtraction once it fires |
 
 **CTRL-003 governance ledger** (defects recorded, none open): the first
 REVIEW-008 dispatch repeated the learning-4 "only change" defect and the
@@ -157,7 +173,45 @@ P8 and P9 were approved by the owner in CTRL-004 and are learnings 8 and 9
 above; the owner's merge of the CTRL-004 opening state commit ratifies the
 promotion.
 
+**CTRL-004 governance ledger** (defects recorded, none open): two controller
+dispatch defects — the Phase B dispatch asserted staging credentials were
+present in the local env without verifying it, causing a compliant builder
+stop; and the fix-cycle-6 dispatch was self-contradictory, prohibiting
+`live-probes.sh` "in any form" while asking for two remedies that could only
+be evidenced by regenerating an artifact through it (the builder honoured the
+prohibition and disclosed the divergence). One builder defect: an unauthorised
+live run during fix cycle 5, self-disclosed — repository-verifiable facts are
+that both live transcripts are unchanged and hash-bound, no artifact derives
+from the run, and the installed guard now blocks that fall-through; the
+asserted external effects (11 denials, two rejected signups, zero writes) rest
+on builder testimony, as the `/tmp` output was deleted and is unverifiable from
+the repository. Adjudicated non-disqualifying. One process irregularity:
+REVIEW-016's commit is owner-authored because the reviewer left its two files
+uncommitted; the record names Codex Sol. Model substitution: Fable 5 quota
+exhausted mid-unit, so builder and controller both ran as Opus 5 at the
+ruling-5 effort class from fix cycle 2 onward; the harness-fixed
+`Co-Authored-By: Claude Fable 5` trailer disagrees with the LOCK and HANDOFF
+records, which are authoritative.
+
 ## Known issues
+
+**Unit C merged evidence-suite limitations** (documented, carried knowingly;
+each named in REVIEW-018 or self-disclosed and stated in the 004a/004b READMEs):
+
+- `settings-preflight-control.txt` no longer matches its producer, and 004b
+  byte-stability is NOT RUN at the merged head.
+- The `Functions` class was removed from the oracle's claimed class list rather
+  than extended; function definition **and** identity rest on direct inspection
+  and REVIEW-014's source-verified analysis.
+- Claim 25 asserts refusal state (exit 5, message, output directory
+  absent-or-empty), not that refusal precedes every credential read, write, or
+  network action — that precedence is NOT RUN.
+- Three producer comments retain overstatements, disclosed rather than edited,
+  to avoid spreading producer/artifact divergence onto protected transcripts.
+- **Largest unmeasured question:** the derivation cross-check binds class
+  labels, not each property a class paragraph names. Only `Entity inventory`
+  was audited per-property; the other ten classes may list properties no
+  scenario demonstrates.
 
 Defects that are real, understood, and not yet fixed. An issue that is not
 written here does not exist to the next session.
@@ -168,6 +222,27 @@ written here does not exist to the next session.
 | 2 | 22 npm audit advisories (7 moderate, 15 high), all transitive in Expo's SDK-pinned build tooling. | No runtime exposure identified; `npm audit fix --force` would break SDK pins. | Accepted — revisit at each Expo SDK upgrade |
 
 ## Backlog — recorded nits
+
+- `.prettierignore` entry for machine-local `supabase/.temp` — this residue
+  interfered with three separate fix cycles and forced a disposable-clone
+  workaround each time. One line; take it at the next unit that touches
+  tooling.
+- Staging auth posture requires flipping **Confirm email** off and on around
+  every live evidence round (four rounds so far) — find a posture that does
+  not, before the next live-evidence unit.
+- Staging now rejects `@example.com` signups (`email_address_invalid`) where
+  four earlier rounds succeeded; any future live evidence run needs a
+  different address domain.
+- `004a/capture.sh` runtime grew with the battery (32+ parser runs per
+  capture, x2 per stability run) — inside its documented bound, revisit if it
+  becomes a drag.
+- Bucket `file_size_limit` / `allowed_mime_types` on `captures-audio`
+  (REVIEW-014 F5 — quota abuse, not privacy).
+- One GraphQL and one Realtime probe to close REVIEW-014 F6.
+- Lowercase-UID storage convention note at the SDK layer (REVIEW-014 F7).
+- Append `select version();` to the next owner-run probe (REVIEW-014 F8).
+- Per-property audit of the ten unaudited oracle classes — needs either added
+  scenarios or deletions, so it belongs to a unit of its own.
 
 Not defects; each is gated or batched. Recorded so they exist to the next
 session.
@@ -213,6 +288,9 @@ Things genuinely undecided. Move each to **Binding rulings** once settled — an
 open question that quietly becomes a decision is how state files start lying.
 
 1. **Voice transcription provider: Deepgram or ElevenLabs Scribe.** Undecided.
+   Weighted first on language/dialect breadth, code-switching quality, and
+   realtime capability, per `docs/00-master/PRODUCT.md` principle 1; per-language
+   routing is an allowed future architecture. Settle by measured bake-off.
    Blocks any client code that touches transcription. Resolve with an ADR, not a
    commit.
 2. **The name "Noema": trademark and domain availability unchecked.** Fallback
