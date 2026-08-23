@@ -1,3 +1,90 @@
+## 2026-08-23 — feat/schema-rls-v1 (REVIEW-018 fix-cycle-6 re-review)
+
+**Controller:** CTRL-004 Schema and RLS v1. **Reviewer of record:** Codex Sol,
+Ultra effort, fresh session. **Reviewed base:**
+`64c1ce603491fb2cb6e8b7b948a369731a436c7f`. **Target:**
+`c135eeb7f14de0b329c90665f031abefee2ce771`; sole parent
+`3129ddb43cdb6448fe187a881ff60fc14edd7c49`. **Verdict:** **FAIL.**
+**LOCK:** unchanged at `Status: REVIEW — fix cycle 6 complete, awaiting
+re-review`; MERGED remains controller-only.
+
+**Ruling-6 disclosure.** The `noema-governance-review` fixed-range method and
+one `standards-spec-review` workflow ran. Five read-only subagents covered
+scope/integrity, F1/oracle coverage, F2–F4 claims, and separate Standards and
+Spec axes. No subagent edited the repository. The main lane independently
+owned the Git preflight, complete diff inspection, two fresh 004a captures,
+004b static inspection, findings, and both authorized records. Actual review
+seat: Codex Sol, Ultra effort, fresh session.
+
+### Verdict and findings
+
+REVIEW-018 is **FAIL** with two medium verdict-driving findings and two low
+record-accuracy findings:
+
+1. **Medium — FAIL introduced by Unit C and retained after fix cycle 6;
+   verdict-driving.** `Entity inventory` still claims that two function names
+   are pinned, but its committed permanent controls cover only a `LIKE` table
+   element and a trigger rename; the derivation binds class-label sets, not
+   each named property. Direct source inspection supports the implementation,
+   but AGENTS.md requires the PASS boundary to be artifact-backed. Under the
+   stop rule, subtract function-name discrimination and dependent “no extra
+   functions” wording; do not add a scenario or capability.
+2. **Medium — FAIL introduced by fix cycle 5 and retained/reasserted after fix
+   cycle 6; verdict-driving.** Claim 25 assigns PASS to refusal before every
+   credential/`.env` read, every write, and network contact. Its oracle checks
+   only exit 5, a refusal substring, and whether the handed output directory
+   is absent or empty. An empty-directory write still greens, and reads/network
+   ordering are unobserved. Narrow to exit/refusal/no-output-file facts; report
+   stronger ordering as source-inspected or NOT RUN.
+3. **Low — non-verdict-driving.** F4's prose subtraction is incomplete in
+   current sources: `verify-migrations.mjs` retains the withdrawn exact-when
+   contract and all-class-audit language; `rls-probes.mjs` says no test hook
+   exists immediately above the retained redaction hook; current 004b text
+   says every case has no control variable although section 2 sets one; and
+   generic byte-stable/gated wording contradicts the specifically disclosed
+   stale artifact.
+4. **Low — non-verdict-driving.** This HANDOFF's fix-cycle verification table
+   says 7 files, +169/-181. Exact Git and the same block's earlier scope line
+   establish 9 files, +171/-183 excluding HANDOFF, or 10 files, +398/-183
+   including its 227-line insertion.
+
+Both medium remedies are subtraction/strict narrowing and comply with the
+fired stop rule. No remediation was performed.
+
+### Verification and classifications
+
+| Check | Classification | Result |
+| --- | --- | --- |
+| Exact target / origin / ancestry / clean start | PASS | Local HEAD and `origin/feat/schema-rls-v1` = `c135eeb`; sole parent `3129ddb`; local/remote main = base; nineteen linear commits |
+| Full and fix-cycle ranges | PASS by Git / HANDOFF row FAIL introduced | Full 51 files, +11330/-12; cycle 10, +398/-183 including HANDOFF; 9, +171/-183 excluding it; both whitespace-clean |
+| Protected paths / append-only governance | PASS | Migrations, types, ADRs, prior reviews, `roles-acl.*`, and three live transcripts unchanged; prior HANDOFF bytes preserved; LOCK REVIEW |
+| F1 mechanical subtraction | PASS | Exactly eight Functions scenarios removed; 72 remain; 11 claimed = 11 demonstrated; 91/91 baseline unchanged |
+| Entity-inventory function-name discrimination | FAIL retained | No committed function-rename scenario; class-set guard is too coarse for the property |
+| 004a two-run byte-stability | PASS | Six gated artifacts x two fresh captures: twelve identical, zero differing; 72-scenario battery and four repo gates reproduced |
+| F2 producer predicate | PASS by source inspection | Negative cases now require `probeLines === 0`; syntax check 0 |
+| F2 stronger zero-any-probe result | NOT RUN | Running its producer would invoke prohibited `live-probes.sh` |
+| Claim 23 old-artifact boundary | PASS | 18 exit-4/exact-reason/zero-PASS negatives + 2 continuations; claim stops there |
+| F3 measured-pair quantifier | PASS | Exactly three named pairs + clean positive; fourth pair explicitly NOT RUN |
+| Claim 25 read/write/network timing | FAIL retained | Artifact observes only exit/refusal/absent-or-empty output state |
+| Settings artifact vs current producer | FAIL introduced by fix cycle 6, disclosed | Fix-cycle-5 bytes retained; claim 26 states divergence |
+| 004b byte-stability at target | NOT RUN | Producer path prohibited; claim 15 correctly supersedes old stability result |
+| Live/staging/credentials | NOT RUN — prohibited | No wrapper, probe, project query, signup, toggle, credential, `.env`, migration, types generation, push, PR, merge, or deploy |
+| REVIEW-015 F3 / REVIEW-013 F4 | NOT RUN — excluded | Controller-owned and not reopened |
+
+The controller-disclosed dispatch conflict is accepted; the known stale
+artifact is quarantined rather than fabricated. Protected live transcript
+hashes remain `9ba3c2…d643f` (anon) and `059edef…0e34` (auth), equal to their
+unchanged GREEN bindings. The prior unauthorized run remains two-tiered:
+repository facts are verified; deleted-output/external-effect testimony is
+unverifiable from the repository.
+
+No Supabase operation, credential read, live producer, state mutation, push,
+PR, merge, or deploy occurred. Exactly `docs/04-reviews/REVIEW-018.md` and
+this top-insert block are the review write scope; they are committed together
+and not pushed.
+
+---
+
 ## 2026-08-23 — feat/schema-rls-v1 (Unit C fix cycle 6 — REVIEW-017, subtraction-only)
 
 **Controller:** CTRL-004 Schema and RLS v1. **Builder:** Claude Code,
