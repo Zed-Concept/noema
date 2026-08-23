@@ -3,7 +3,7 @@
 The authoritative record of what is true right now. If this file and your
 memory of the project disagree, this file is right and you are stale.
 
-**Last verified:** 2026-08-24, CTRL-005 opening, verified against main at
+**Last verified:** 2026-08-24, CTRL-005 fix cycle 1 preparation, verified against main at
 `07ad5a51ed597f67bac523e681525c4e87fe644d` (the PR #9 merge of the CTRL-004
 close-out, GitHub-signed, parents `d794328` + `6809dbf`)
 **Verification method:** controller read of main via GitHub API — both state
@@ -109,6 +109,8 @@ explicitly and get it overturned on the record.
 | 12 | v1 authenticates by **email one-time code**, and the session is persisted through a **SecureStore-backed chunking adapter** that fails closed. Password, magic-link, and native OAuth flows are not available at v1 — each needs a redirect scheme, and `expo.scheme` is frozen by ruling 8. Web keeps `localStorage`; no token-storage claim may be made unqualified across platforms. | 2026-08-24 | `docs/03-decisions/ADR-004-auth-session-v1.md` |
 | 13 | `signOut()` passes `scope: 'local'` — a routine sign-out never destroys another device's session. Token auto-refresh is **gated on AppState**, so a refresh never fires while the device is locked; SecureStore keeps `WHEN_UNLOCKED`. "Sign out everywhere" is a deliberate v1.x affordance, and until it exists there is no remote revocation. | 2026-08-24 | `docs/03-decisions/ADR-005-session-lifecycle.md` |
 | 14 | The three-cycle fix budget counts only cycles triggered by an external `REVIEW-NNN` record. A builder's own pre-submission adversarial cycle is recorded but not charged — charging it would make self-review cost budget and reward shipping unreviewed. | 2026-08-24 | this row (controller ruling, CTRL-005) |
+| 15 | The session adapter's read-integrity property is narrowed: a read fails closed to `null` when the index is missing, unparseable, out of range, inconsistent in chunk count or total length, **or when a recorded non-cryptographic checksum over the payload disagrees**. That checksum is corruption detection — of truncation, interleaved-writer hybrids, and accidental damage — and explicitly **not** tamper resistance. No claim of resistance to an adversary with write access to the secure store may be made; such an adversary already holds the tokens. | 2026-08-24 | `docs/03-decisions/ADR-006-read-integrity.md` |
+| 16 | An ADR may narrow a single clause of an earlier ADR without superseding it wholesale. The narrowing ADR names the exact sentence it replaces and states that the rest stands; the earlier ADR's `Status` stays `Accepted` and its file is not edited. A deliberate departure from the template's binary Accepted/Superseded model, taken because marking ADR-004 superseded would falsely retire the auth-method decision along with one read-integrity sentence. | 2026-08-24 | this row (controller ruling, CTRL-005) |
 
 ## Active work
 
