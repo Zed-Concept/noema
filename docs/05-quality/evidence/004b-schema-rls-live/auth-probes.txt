@@ -1,0 +1,124 @@
+# auth-probes — rls-probes.mjs --auth (redacted at source; file bytes gated post-write)
+# run date (UTC): 2026-08-20
+# Authenticated-path probes: two disposable, namespaced test users created via
+# the publishable-key signup path (README.md documents the identifiers and the
+# owner-class cleanup). Auth responses are reduced summaries, never raw bodies;
+# every issued token and generated password is redaction-registered.
+
+auth settings: HTTP 0 disable_signup=undefined mailer_autoconfirm=undefined external.email=undefined
+
+PASS  signup user1 (ctrl004e-user1@example.com): accepted via the publishable-key signup path (exactly HTTP 200)
+      HTTP 200 user_id=89016456-46d5-4c1b-a57f-c1213eb3801c session=yes confirmation_sent_at=<none> identities=1
+PASS  signup user2 (ctrl004e-user2@example.com): accepted via the publishable-key signup path (exactly HTTP 200)
+      HTTP 200 user_id=037b9a45-da78-42c1-9780-e025e8fad222 session=yes confirmation_sent_at=<none> identities=1
+
+## Signup provisioning + owner visibility (profiles)
+PASS  user1 sees exactly the one provisioned own profiles row (trigger ran; SELECT-own admits; user2 row invisible)
+      HTTP 200 [{"id":"89016456-46d5-4c1b-a57f-c1213eb3801c","display_name":null,"locale":"en","created_at":"2026-08-20T14:34:30.288325+00:00","updated_at":"2026-08-20T14:34:30.288325+00:00"}]
+PASS  user2 sees exactly the one provisioned own profiles row
+      HTTP 200 [{"id":"037b9a45-da78-42c1-9780-e025e8fad222","display_name":null,"locale":"en","created_at":"2026-08-20T14:34:30.912034+00:00","updated_at":"2026-08-20T14:34:30.912034+00:00"}]
+PASS  profiles REST row keys === types-declared Row columns (probe consistency)
+      row keys: created_at, display_name, id, locale, updated_at
+
+## Owner CRUD — profiles (read proven above; update, delete, insert-back)
+PASS  profiles UPDATE own: allowed, and the updated_at trigger fired (updated_at moved off created_at)
+      HTTP 200 [{"id":"89016456-46d5-4c1b-a57f-c1213eb3801c","display_name":"ctrl004e user1","locale":"en","created_at":"2026-08-20T14:34:30.288325+00:00","updated_at":"2026-08-20T14:34:32.672747+00:00"}]
+PASS  profiles DELETE own: allowed (exactly one row returned)
+      HTTP 200 [{"id":"89016456-46d5-4c1b-a57f-c1213eb3801c","display_name":"ctrl004e user1","locale":"en","created_at":"2026-08-20T14:34:30.288325+00:00","updated_at":"2026-08-20T14:34:32.672747+00:00"}]
+PASS  profiles INSERT own: allowed, locale defaults to 'en'
+      HTTP 201 [{"id":"89016456-46d5-4c1b-a57f-c1213eb3801c","display_name":"ctrl004e user1","locale":"en","created_at":"2026-08-20T14:34:33.23878+00:00","updated_at":"2026-08-20T14:34:33.23878+00:00"}]
+
+## Owner CRUD — captures
+PASS  captures INSERT own: allowed, status defaults to 'recorded'
+      HTTP 201 [{"id":"c8913dec-bce7-445b-bc63-041219406ff2","user_id":"89016456-46d5-4c1b-a57f-c1213eb3801c","status":"recorded","audio_path":"89016456-46d5-4c1b-a57f-c1213eb3801c/probe.bin","duration_ms":1234,"captured_at":"2026-08-20T14:34:33.956364+00:00","created_at":"2026-08-20T14:34:33.956364+00:00","updated_at":"2026-08-20T14:34:33.956364+00:00"}]
+PASS  captures INSERT own (second row, for the delete probe): allowed
+      HTTP 201 [{"id":"4e4a149e-be0f-44fe-ad21-8384b7e99b86","user_id":"89016456-46d5-4c1b-a57f-c1213eb3801c","status":"recorded","audio_path":null,"duration_ms":null,"captured_at":"2026-08-20T14:34:35.051552+00:00","created_at":"2026-08-20T14:34:35.051552+00:00","updated_at":"2026-08-20T14:34:35.051552+00:00"}]
+PASS  captures SELECT own: exactly the two own rows, every user_id = own uid
+      HTTP 200 [{"id":"c8913dec-bce7-445b-bc63-041219406ff2","user_id":"89016456-46d5-4c1b-a57f-c1213eb3801c","status":"recorded","audio_path":"89016456-46d5-4c1b-a57f-c1213eb3801c/probe.bin","duration_ms":1234,"captured_at":"2026-08-20T14:34:33.956364+00:00","created_at":"2026-08-20T14:34:33.956364+00:00","updated_at":"2026-08-20T14:34:33.956364+00:00"},{"id":"4e4a149e-be0f-44fe-ad21-8384b7e99b86","user_id":"89…(truncated)
+PASS  captures REST row keys === types-declared Row columns (probe consistency)
+      row keys: audio_path, captured_at, created_at, duration_ms, id, status, updated_at, user_id
+PASS  captures UPDATE own: allowed (status recorded -> 'ready'), updated_at trigger fired
+      HTTP 200 [{"id":"c8913dec-bce7-445b-bc63-041219406ff2","user_id":"89016456-46d5-4c1b-a57f-c1213eb3801c","status":"ready","audio_path":"89016456-46d5-4c1b-a57f-c1213eb3801c/probe.bin","duration_ms":1234,"captured_at":"2026-08-20T14:34:33.956364+00:00","created_at":"2026-08-20T14:34:33.956364+00:00","updated_at":"2026-08-20T14:34:35.659501+00:00"}]
+PASS  captures DELETE own: allowed (exactly one row returned)
+      HTTP 200 [{"id":"4e4a149e-be0f-44fe-ad21-8384b7e99b86","user_id":"89016456-46d5-4c1b-a57f-c1213eb3801c","status":"recorded","audio_path":null,"duration_ms":null,"captured_at":"2026-08-20T14:34:35.051552+00:00","created_at":"2026-08-20T14:34:35.051552+00:00","updated_at":"2026-08-20T14:34:35.051552+00:00"}]
+
+## Owner CRUD — transcripts (composite-FK child of capture A)
+PASS  transcripts INSERT own (consistent composite FK): allowed
+      HTTP 201 [{"id":"5ba8a6e9-f98b-41cb-b622-a6d0764f58e7","capture_id":"c8913dec-bce7-445b-bc63-041219406ff2","user_id":"89016456-46d5-4c1b-a57f-c1213eb3801c","text":"ctrl004e probe transcript","language":"en","provider":"probe","created_at":"2026-08-20T14:34:36.275556+00:00"}]
+PASS  transcripts INSERT own (second row, for the delete probe): allowed
+      HTTP 201 [{"id":"b726a831-8522-4594-9239-99786031a359","capture_id":"c8913dec-bce7-445b-bc63-041219406ff2","user_id":"89016456-46d5-4c1b-a57f-c1213eb3801c","text":"disposable second transcript","language":null,"provider":null,"created_at":"2026-08-20T14:34:36.573566+00:00"}]
+PASS  transcripts SELECT own: exactly the two own rows
+      HTTP 200 [{"id":"5ba8a6e9-f98b-41cb-b622-a6d0764f58e7","capture_id":"c8913dec-bce7-445b-bc63-041219406ff2","user_id":"89016456-46d5-4c1b-a57f-c1213eb3801c","text":"ctrl004e probe transcript","language":"en","provider":"probe","created_at":"2026-08-20T14:34:36.275556+00:00"},{"id":"b726a831-8522-4594-9239-99786031a359","capture_id":"c8913dec-bce7-445b-bc63-041219406ff2","user_id":"89016456-46d5-4c1b-a57f-c1…(truncated)
+PASS  transcripts REST row keys === types-declared Row columns (probe consistency)
+      row keys: capture_id, created_at, id, language, provider, text, user_id
+PASS  transcripts UPDATE own: allowed
+      HTTP 200 [{"id":"5ba8a6e9-f98b-41cb-b622-a6d0764f58e7","capture_id":"c8913dec-bce7-445b-bc63-041219406ff2","user_id":"89016456-46d5-4c1b-a57f-c1213eb3801c","text":"ctrl004e probe transcript (updated)","language":"en","provider":"probe","created_at":"2026-08-20T14:34:36.275556+00:00"}]
+PASS  transcripts DELETE own: allowed (exactly one row returned)
+      HTTP 200 [{"id":"b726a831-8522-4594-9239-99786031a359","capture_id":"c8913dec-bce7-445b-bc63-041219406ff2","user_id":"89016456-46d5-4c1b-a57f-c1213eb3801c","text":"disposable second transcript","language":null,"provider":null,"created_at":"2026-08-20T14:34:36.573566+00:00"}]
+
+## Cross-user denial — user2 (attacker session) against user1 (victim) rows.
+## The full per-table, per-operation grid: SELECT/UPDATE/DELETE on every
+## table against victim rows, INSERT impersonation on every table, plus the
+## transcripts WITH CHECK isolation probe (distinct from the composite-FK case).
+PASS  cross-user SELECT profiles: RLS-invisible (200, zero rows)
+      HTTP 200 []
+PASS  cross-user SELECT captures: RLS-invisible (200, zero rows)
+      HTTP 200 []
+PASS  cross-user SELECT transcripts: RLS-invisible (200, zero rows)
+      HTTP 200 []
+PASS  cross-user UPDATE profiles: no-op (zero rows affected)
+      HTTP 200 []
+PASS  cross-user UPDATE captures: no-op (zero rows affected)
+      HTTP 200 []
+PASS  cross-user UPDATE transcripts: no-op (zero rows affected)
+      HTTP 200 []
+PASS  cross-user DELETE profiles: no-op (zero rows affected)
+      HTTP 200 []
+PASS  cross-user DELETE captures: no-op (zero rows affected)
+      HTTP 200 []
+PASS  cross-user DELETE transcripts: no-op (zero rows affected)
+      HTTP 200 []
+PASS  cross-user INSERT captures (user_id = user1): denied by WITH CHECK, exactly HTTP 403 code 42501
+      HTTP 403 {"code":"42501","details":null,"hint":null,"message":"new row violates row-level security policy for table \"captures\""}
+PASS  cross-user INSERT profiles (id = user1): denied by WITH CHECK, exactly HTTP 403 code 42501
+      HTTP 403 {"code":"42501","details":null,"hint":null,"message":"new row violates row-level security policy for table \"profiles\""}
+PASS  cross-user INSERT transcripts onto user1 capture (own user_id — WITH CHECK satisfied): composite FK rejects, exactly HTTP 409 code 23503 — the live user_id-consistency guarantee
+      HTTP 409 {"code":"23503","details":"Key is not present in table \"captures\".","hint":null,"message":"insert or update on table \"transcripts\" violates foreign key constraint \"transcripts_capture_id_user_id_fkey\""}
+PASS  cross-user INSERT transcripts with the victim's own valid (capture_id, user_id) pair: denied by RLS WITH CHECK, exactly HTTP 403 code 42501, distinct from the FK case
+      HTTP 403 {"code":"42501","details":null,"hint":null,"message":"new row violates row-level security policy for table \"transcripts\""}
+PASS  cross-user write attempts were true no-ops: user1 profile present, display_name unchanged
+      HTTP 200 [{"id":"89016456-46d5-4c1b-a57f-c1213eb3801c","display_name":"ctrl004e user1"}]
+PASS  cross-user write attempts were true no-ops: capture A present, still status 'ready'
+      HTTP 200 [{"id":"c8913dec-bce7-445b-bc63-041219406ff2","status":"ready"}]
+PASS  cross-user write attempts were true no-ops: transcript 1 present, text unchanged
+      HTTP 200 [{"id":"5ba8a6e9-f98b-41cb-b622-a6d0764f58e7","text":"ctrl004e probe transcript (updated)"}]
+
+## Storage — captures-audio, {user_id}/ scoping
+PASS  user1 upload under own {user_id}/ prefix: allowed
+      HTTP 200 {"Key":"captures-audio/89016456-46d5-4c1b-a57f-c1213eb3801c/probe.bin","Id":"4cdb6a2c-74ca-406e-9370-8cfc0f48e24e"}
+PASS  user1 download own object: allowed, bytes intact
+      HTTP 200 ctrl004e probe audio bytes
+PASS  user1 list own prefix: exactly the one own object
+      HTTP 200 [{"name":"probe.bin","id":"4cdb6a2c-74ca-406e-9370-8cfc0f48e24e","updated_at":"2026-08-20T14:34:43.836Z","created_at":"2026-08-20T14:34:43.836Z","last_accessed_at":"2026-08-20T14:34:43.836Z","metadata":{"eTag":"\"504898973f8e51dc0059efbad1660162\"","size":26,"mimetype":"application/octet-stream","cacheControl":"no-cache","lastModified":"2026-08-20T14:34:44.000Z","contentLength":26,"httpStatusCode"…(truncated)
+PASS  user1 upload under user2's prefix: denied, exactly HTTP 400 code AccessDenied
+      HTTP 400 {"statusCode":"403","error":"Unauthorized","message":"new row violates row-level security policy","code":"AccessDenied"}
+PASS  upload with no {user_id}/ folder segment: denied, exactly HTTP 400 code AccessDenied (fails closed, foldername[1] is null)
+      HTTP 400 {"statusCode":"403","error":"Unauthorized","message":"new row violates row-level security policy","code":"AccessDenied"}
+PASS  user2 download user1's object: denied, exactly HTTP 400 code NoSuchKey (not-found obfuscation)
+      HTTP 400 {"statusCode":"404","error":"not_found","message":"Object not found","code":"NoSuchKey"}
+PASS  user2 list user1's prefix: sees zero objects
+      HTTP 200 []
+PASS  user2 delete user1's object: denied, exactly HTTP 400 code AccessDenied
+      HTTP 400 {"statusCode":"403","error":"Unauthorized","message":"Access denied","code":"AccessDenied"}
+PASS  anon list while an own object exists: still sees zero objects (contrast with user1 list above)
+      HTTP 200 []
+PASS  user1 delete own object: allowed (bucket left with no test objects)
+      HTTP 200 {"message":"Successfully deleted"}
+
+## Residual test state (recorded; cleanup is owner-class — see README.md)
+   auth.users: ctrl004e-user1@example.com, ctrl004e-user2@example.com (disposable, namespaced)
+   profiles: user1 + user2 rows (provisioned / reinserted); captures: capture A
+   (status 'ready', user1); transcripts: transcript 1 (user1); storage: none.
+redaction totality gate: 0 residual occurrences (10 registered values + JWT sweep)
+--- probes: 46 PASS, 0 FAIL ---
+--- exit code: 0 (0 pass; 1 fail/redaction-trip; 2 unconfigured; 3 auth path NOT RUN) ---

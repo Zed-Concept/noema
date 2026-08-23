@@ -1,0 +1,7 @@
+# public-schema table -> Row columns declared by src/lib/database.types.ts
+# (sorted; produced by types-shape.mjs; consumed by rls-probes.mjs)
+captures: audio_path, captured_at, created_at, duration_ms, id, status, updated_at, user_id
+profiles: created_at, display_name, id, locale, updated_at
+transcripts: capture_id, created_at, id, language, provider, text, user_id
+tables: 3
+--- exit code: 0 (0 = extraction succeeded) ---

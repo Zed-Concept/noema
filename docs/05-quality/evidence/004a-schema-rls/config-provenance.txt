@@ -1,0 +1,17 @@
+$ npx --yes supabase@2.115.0 init   # in an empty scratch git repository named noema
+# (git init first: the CLI writes supabase/.gitignore only inside a git work tree)
+Finished supabase init.
+--- exit code: 0 ---
+
+supabase/config.toml vs fresh init output: identical
+supabase/.gitignore vs fresh init output: identical
+
+$ git ls-files supabase/.temp   # machine-local init output must be untracked
+tracked files under supabase/.temp: 0 (0 required)
+$ grep -E '^[.](branches|temp)$' supabase/.gitignore   # and ignored by the committed scaffold
+.branches
+.temp
+--- exit code: 0 (0 = at least one line matched; the enforced check is the conjunction below) ---
+both-lines conjunction (.branches AND .temp each present): exit 0 (0 required)
+
+--- enforced: both files byte-identical, .temp untracked and ignored, or capture.sh exits 1 (fail closed) ---

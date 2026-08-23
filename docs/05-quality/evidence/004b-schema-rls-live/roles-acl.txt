@@ -1,0 +1,115 @@
+# roles-acl — owner-executed staging measurement (REVIEW-011 finding 1, fix cycle 1)
+#
+# Probe: roles-acl.sql (this directory) — a single read-only SELECT over
+# pg_catalog/information_schema, committed at ce59385 and parse-proven a
+# SelectStmt under the pinned PG17 parser before the owner ran it.
+#
+# Run state: executed by the owner (Ahmed) in the noema-staging dashboard
+# SQL editor on 2026-08-20, on request from the fix-cycle-1 builder session
+# (ruling 10 credential class — builders hold no SQL-editor access). The
+# result grid below is the owner's paste, committed verbatim: nothing
+# edited, nothing redacted (the probe emits no credential-class value; the
+# run-context row shows the editor executes as postgres). This artifact is
+# owner-attested and captured once — it is not reproducible by any
+# builder-runnable script in this directory.
+#
+# --- owner-pasted result grid, verbatim, begins ---
+| ord | section        | item                                | detail                                                                  |
+| --- | -------------- | ----------------------------------- | ----------------------------------------------------------------------- |
+| 0   | run-context    | sql-editor session                  | current_user=postgres session_user=postgres current_database=postgres   |
+| 1   | role-attribute | anon                                | rolsuper=f rolbypassrls=f                                               |
+| 1   | role-attribute | authenticated                       | rolsuper=f rolbypassrls=f                                               |
+| 1   | role-attribute | postgres                            | rolsuper=f rolbypassrls=t                                               |
+| 1   | role-attribute | service_role                        | rolsuper=f rolbypassrls=t                                               |
+| 1   | role-attribute | zz-coverage                         | 4 of 4 named roles exist in pg_roles                                    |
+| 2   | effective-priv | anon on public.captures             | select=f insert=f update=f delete=f                                     |
+| 2   | effective-priv | anon on public.profiles             | select=f insert=f update=f delete=f                                     |
+| 2   | effective-priv | anon on public.transcripts          | select=f insert=f update=f delete=f                                     |
+| 2   | effective-priv | authenticated on public.captures    | select=t insert=t update=t delete=t                                     |
+| 2   | effective-priv | authenticated on public.profiles    | select=t insert=t update=t delete=t                                     |
+| 2   | effective-priv | authenticated on public.transcripts | select=t insert=t update=t delete=t                                     |
+| 2   | effective-priv | postgres on public.captures         | select=t insert=t update=t delete=t                                     |
+| 2   | effective-priv | postgres on public.profiles         | select=t insert=t update=t delete=t                                     |
+| 2   | effective-priv | postgres on public.transcripts      | select=t insert=t update=t delete=t                                     |
+| 2   | effective-priv | service_role on public.captures     | select=f insert=f update=f delete=f                                     |
+| 2   | effective-priv | service_role on public.profiles     | select=f insert=f update=f delete=f                                     |
+| 2   | effective-priv | service_role on public.transcripts  | select=f insert=f update=f delete=f                                     |
+| 3   | acl-entry      | public.captures                     | grantee=anon privilege=MAINTAIN grantable=f grantor=postgres            |
+| 3   | acl-entry      | public.captures                     | grantee=anon privilege=REFERENCES grantable=f grantor=postgres          |
+| 3   | acl-entry      | public.captures                     | grantee=anon privilege=TRIGGER grantable=f grantor=postgres             |
+| 3   | acl-entry      | public.captures                     | grantee=anon privilege=TRUNCATE grantable=f grantor=postgres            |
+| 3   | acl-entry      | public.captures                     | grantee=authenticated privilege=DELETE grantable=f grantor=postgres     |
+| 3   | acl-entry      | public.captures                     | grantee=authenticated privilege=INSERT grantable=f grantor=postgres     |
+| 3   | acl-entry      | public.captures                     | grantee=authenticated privilege=MAINTAIN grantable=f grantor=postgres   |
+| 3   | acl-entry      | public.captures                     | grantee=authenticated privilege=REFERENCES grantable=f grantor=postgres |
+| 3   | acl-entry      | public.captures                     | grantee=authenticated privilege=SELECT grantable=f grantor=postgres     |
+| 3   | acl-entry      | public.captures                     | grantee=authenticated privilege=TRIGGER grantable=f grantor=postgres    |
+| 3   | acl-entry      | public.captures                     | grantee=authenticated privilege=TRUNCATE grantable=f grantor=postgres   |
+| 3   | acl-entry      | public.captures                     | grantee=authenticated privilege=UPDATE grantable=f grantor=postgres     |
+| 3   | acl-entry      | public.captures                     | grantee=postgres privilege=DELETE grantable=f grantor=postgres          |
+| 3   | acl-entry      | public.captures                     | grantee=postgres privilege=INSERT grantable=f grantor=postgres          |
+| 3   | acl-entry      | public.captures                     | grantee=postgres privilege=MAINTAIN grantable=f grantor=postgres        |
+| 3   | acl-entry      | public.captures                     | grantee=postgres privilege=REFERENCES grantable=f grantor=postgres      |
+| 3   | acl-entry      | public.captures                     | grantee=postgres privilege=SELECT grantable=f grantor=postgres          |
+| 3   | acl-entry      | public.captures                     | grantee=postgres privilege=TRIGGER grantable=f grantor=postgres         |
+| 3   | acl-entry      | public.captures                     | grantee=postgres privilege=TRUNCATE grantable=f grantor=postgres        |
+| 3   | acl-entry      | public.captures                     | grantee=postgres privilege=UPDATE grantable=f grantor=postgres          |
+| 3   | acl-entry      | public.captures                     | grantee=service_role privilege=MAINTAIN grantable=f grantor=postgres    |
+| 3   | acl-entry      | public.captures                     | grantee=service_role privilege=REFERENCES grantable=f grantor=postgres  |
+| 3   | acl-entry      | public.captures                     | grantee=service_role privilege=TRIGGER grantable=f grantor=postgres     |
+| 3   | acl-entry      | public.captures                     | grantee=service_role privilege=TRUNCATE grantable=f grantor=postgres    |
+| 3   | acl-entry      | public.profiles                     | grantee=anon privilege=MAINTAIN grantable=f grantor=postgres            |
+| 3   | acl-entry      | public.profiles                     | grantee=anon privilege=REFERENCES grantable=f grantor=postgres          |
+| 3   | acl-entry      | public.profiles                     | grantee=anon privilege=TRIGGER grantable=f grantor=postgres             |
+| 3   | acl-entry      | public.profiles                     | grantee=anon privilege=TRUNCATE grantable=f grantor=postgres            |
+| 3   | acl-entry      | public.profiles                     | grantee=authenticated privilege=DELETE grantable=f grantor=postgres     |
+| 3   | acl-entry      | public.profiles                     | grantee=authenticated privilege=INSERT grantable=f grantor=postgres     |
+| 3   | acl-entry      | public.profiles                     | grantee=authenticated privilege=MAINTAIN grantable=f grantor=postgres   |
+| 3   | acl-entry      | public.profiles                     | grantee=authenticated privilege=REFERENCES grantable=f grantor=postgres |
+| 3   | acl-entry      | public.profiles                     | grantee=authenticated privilege=SELECT grantable=f grantor=postgres     |
+| 3   | acl-entry      | public.profiles                     | grantee=authenticated privilege=TRIGGER grantable=f grantor=postgres    |
+| 3   | acl-entry      | public.profiles                     | grantee=authenticated privilege=TRUNCATE grantable=f grantor=postgres   |
+| 3   | acl-entry      | public.profiles                     | grantee=authenticated privilege=UPDATE grantable=f grantor=postgres     |
+| 3   | acl-entry      | public.profiles                     | grantee=postgres privilege=DELETE grantable=f grantor=postgres          |
+| 3   | acl-entry      | public.profiles                     | grantee=postgres privilege=INSERT grantable=f grantor=postgres          |
+| 3   | acl-entry      | public.profiles                     | grantee=postgres privilege=MAINTAIN grantable=f grantor=postgres        |
+| 3   | acl-entry      | public.profiles                     | grantee=postgres privilege=REFERENCES grantable=f grantor=postgres      |
+| 3   | acl-entry      | public.profiles                     | grantee=postgres privilege=SELECT grantable=f grantor=postgres          |
+| 3   | acl-entry      | public.profiles                     | grantee=postgres privilege=TRIGGER grantable=f grantor=postgres         |
+| 3   | acl-entry      | public.profiles                     | grantee=postgres privilege=TRUNCATE grantable=f grantor=postgres        |
+| 3   | acl-entry      | public.profiles                     | grantee=postgres privilege=UPDATE grantable=f grantor=postgres          |
+| 3   | acl-entry      | public.profiles                     | grantee=service_role privilege=MAINTAIN grantable=f grantor=postgres    |
+| 3   | acl-entry      | public.profiles                     | grantee=service_role privilege=REFERENCES grantable=f grantor=postgres  |
+| 3   | acl-entry      | public.profiles                     | grantee=service_role privilege=TRIGGER grantable=f grantor=postgres     |
+| 3   | acl-entry      | public.profiles                     | grantee=service_role privilege=TRUNCATE grantable=f grantor=postgres    |
+| 3   | acl-entry      | public.transcripts                  | grantee=anon privilege=MAINTAIN grantable=f grantor=postgres            |
+| 3   | acl-entry      | public.transcripts                  | grantee=anon privilege=REFERENCES grantable=f grantor=postgres          |
+| 3   | acl-entry      | public.transcripts                  | grantee=anon privilege=TRIGGER grantable=f grantor=postgres             |
+| 3   | acl-entry      | public.transcripts                  | grantee=anon privilege=TRUNCATE grantable=f grantor=postgres            |
+| 3   | acl-entry      | public.transcripts                  | grantee=authenticated privilege=DELETE grantable=f grantor=postgres     |
+| 3   | acl-entry      | public.transcripts                  | grantee=authenticated privilege=INSERT grantable=f grantor=postgres     |
+| 3   | acl-entry      | public.transcripts                  | grantee=authenticated privilege=MAINTAIN grantable=f grantor=postgres   |
+| 3   | acl-entry      | public.transcripts                  | grantee=authenticated privilege=REFERENCES grantable=f grantor=postgres |
+| 3   | acl-entry      | public.transcripts                  | grantee=authenticated privilege=SELECT grantable=f grantor=postgres     |
+| 3   | acl-entry      | public.transcripts                  | grantee=authenticated privilege=TRIGGER grantable=f grantor=postgres    |
+| 3   | acl-entry      | public.transcripts                  | grantee=authenticated privilege=TRUNCATE grantable=f grantor=postgres   |
+| 3   | acl-entry      | public.transcripts                  | grantee=authenticated privilege=UPDATE grantable=f grantor=postgres     |
+| 3   | acl-entry      | public.transcripts                  | grantee=postgres privilege=DELETE grantable=f grantor=postgres          |
+| 3   | acl-entry      | public.transcripts                  | grantee=postgres privilege=INSERT grantable=f grantor=postgres          |
+| 3   | acl-entry      | public.transcripts                  | grantee=postgres privilege=MAINTAIN grantable=f grantor=postgres        |
+| 3   | acl-entry      | public.transcripts                  | grantee=postgres privilege=REFERENCES grantable=f grantor=postgres      |
+| 3   | acl-entry      | public.transcripts                  | grantee=postgres privilege=SELECT grantable=f grantor=postgres          |
+| 3   | acl-entry      | public.transcripts                  | grantee=postgres privilege=TRIGGER grantable=f grantor=postgres         |
+| 3   | acl-entry      | public.transcripts                  | grantee=postgres privilege=TRUNCATE grantable=f grantor=postgres        |
+| 3   | acl-entry      | public.transcripts                  | grantee=postgres privilege=UPDATE grantable=f grantor=postgres          |
+| 3   | acl-entry      | public.transcripts                  | grantee=service_role privilege=MAINTAIN grantable=f grantor=postgres    |
+| 3   | acl-entry      | public.transcripts                  | grantee=service_role privilege=REFERENCES grantable=f grantor=postgres  |
+| 3   | acl-entry      | public.transcripts                  | grantee=service_role privilege=TRIGGER grantable=f grantor=postgres     |
+| 3   | acl-entry      | public.transcripts                  | grantee=service_role privilege=TRUNCATE grantable=f grantor=postgres    |
+| 4   | public-grants  | public.captures                     | information_schema.role_table_grants rows with grantee PUBLIC: 0        |
+| 4   | public-grants  | public.profiles                     | information_schema.role_table_grants rows with grantee PUBLIC: 0        |
+| 4   | public-grants  | public.transcripts                  | information_schema.role_table_grants rows with grantee PUBLIC: 0        |
+| 5   | rls-flag       | public.captures                     | relrowsecurity=t relforcerowsecurity=t                                  |
+| 5   | rls-flag       | public.profiles                     | relrowsecurity=t relforcerowsecurity=t                                  |
+| 5   | rls-flag       | public.transcripts                  | relrowsecurity=t relforcerowsecurity=t                                  |
+# --- owner-pasted result grid, verbatim, ends ---

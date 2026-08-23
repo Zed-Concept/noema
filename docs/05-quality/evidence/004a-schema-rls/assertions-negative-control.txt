@@ -1,0 +1,442 @@
+# Permanent neighbor battery / negative control: verify-migrations.mjs must
+# go red on each tampered copy. Each scenario: fresh copy of
+# supabase/migrations into scratch, one mutation, one run. Expected: exit 1
+# and the named assertion FAILs. This is the complete battery — every
+# neighbor class the 004a claims name is enumerated below and run here,
+# and the class cross-check at the end is what entitles README.md to name
+# a class at all.
+
+== group 1: removals and narrowings ==
+
+scenario: FORCE ROW LEVEL SECURITY removed from captures
+pinned class: RLS
+expected failing assertion: public.captures: FORCE ROW LEVEL SECURITY
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: transcripts DELETE policy deleted
+pinned class: RLS
+expected failing assertion: public.transcripts delete: one permissive policy TO authenticated, (select auth.uid()) = user_id
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: storage INSERT policy widened to anon
+pinned class: RLS
+expected failing assertion: storage.objects insert: one policy TO authenticated, bucket-pinned and {user_id}/-scoped on WITH CHECK
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: composite FK narrowed to capture_id only (user_id consistency lost)
+pinned class: Foreign keys
+expected failing assertion: user_id-consistency guarantee: composite FK (capture_id, user_id) -> public.captures (id, user_id) ON DELETE CASCADE
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+== group 2: append-class mutations (audit workflow findings) ==
+
+scenario: DISABLE ROW LEVEL SECURITY appended after the enable/force block
+pinned class: RLS
+expected failing assertion: public.captures: ENABLE ROW LEVEL SECURITY
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: schema-unqualified USING (true) policy appended
+pinned class: RLS
+expected failing assertion: every policy names its schema explicitly (public or storage) and the total is exactly 17 — an unqualified or extra policy cannot hide
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+== group 3: exact-value neighbor (REVIEW-011 finding 2) ==
+
+scenario: duration_ms CHECK value shifted to its neighbor (>= -1)
+pinned class: Constraint values and operators
+expected failing assertion: captures.duration_ms integer, nullable, CHECK (duration_ms >= 0)
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+== group 4: absence classes (REVIEW-012 finding 2) ==
+
+scenario: DEFAULT 0 added to captures.duration_ms (declared default-free; REVIEW-012 finding 2 reproduction)
+pinned class: Constraint presence and absence
+expected failing assertion: public.captures: per-column constraint-type multiset is exactly the declared set — no default, check, unique, or other constraint is added to or missing from any column
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: captures.id default mutated to gen_random_uuid(null) — same function name, argument added
+pinned class: Constraint values and operators
+expected failing assertion: captures.id uuid PRIMARY KEY DEFAULT gen_random_uuid()
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: captures.user_id FK referenced-attribute list mutated to (email)
+pinned class: Foreign keys
+expected failing assertion: captures.user_id uuid NOT NULL FK -> auth.users(id) ON DELETE CASCADE
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: ON CONFLICT DO NOTHING appended to the bucket insert (idempotency neighbor)
+pinned class: Storage bucket row
+expected failing assertion: bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false) — exactly one VALUES row of exactly three values, plain insert, no ON CONFLICT (deliberately non-idempotent), no RETURNING
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+== group 5: the remaining fix-cycle-2 absence classes, made permanent
+== (REVIEW-013 finding 3 — these were previously run in scratch only) ==
+
+scenario: captures.user_id FK given ON UPDATE CASCADE (declared NO ACTION)
+pinned class: Foreign keys
+expected failing assertion: captures.user_id uuid NOT NULL FK -> auth.users(id) ON DELETE CASCADE
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: captures.user_id FK match type changed to MATCH FULL (declared MATCH SIMPLE)
+pinned class: Foreign keys
+expected failing assertion: captures.user_id uuid NOT NULL FK -> auth.users(id) ON DELETE CASCADE
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: captures.user_id FK constraint renamed (Phase B evidence keys off the name)
+pinned class: Foreign keys
+expected failing assertion: captures.user_id uuid NOT NULL FK -> auth.users(id) ON DELETE CASCADE
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: profiles grant given WITH GRANT OPTION (re-grantable)
+pinned class: Grants
+expected failing assertion: each of the three tables is granted exactly select,insert,update,delete — table-object grants, no per-column privilege list, no WITH GRANT OPTION
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: captures_user_id_idx made UNIQUE (one capture per user)
+pinned class: Indexes
+expected failing assertion: FK-supporting indexes: captures(user_id), transcripts(capture_id,user_id), transcripts(user_id) — each plain btree, non-unique, unpredicated, no INCLUDE list, expected name
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: captures_user_id_idx made partial (WHERE user_id is not null)
+pinned class: Indexes
+expected failing assertion: FK-supporting indexes: captures(user_id), transcripts(capture_id,user_id), transcripts(user_id) — each plain btree, non-unique, unpredicated, no INCLUDE list, expected name
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: profiles updated_at trigger given a WHEN clause (conditional maintenance)
+pinned class: Triggers
+expected failing assertion: BEFORE UPDATE row triggers run set_updated_at on exactly profiles and captures (transcripts has no updated_at) — unconditional: no WHEN clause and no UPDATE OF column list
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: profiles.created_at given a typmod (timestamptz(3) — precision truncated)
+pinned class: Column types
+expected failing assertion: profiles.created_at timestamptz NOT NULL DEFAULT now()
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: second CHECK added to profiles.locale
+pinned class: Constraint presence and absence
+expected failing assertion: public.profiles: per-column constraint-type multiset is exactly the declared set — no default, check, unique, or other constraint is added to or missing from any column
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: column UNIQUE added to profiles.display_name
+pinned class: Constraint presence and absence
+expected failing assertion: public.profiles: per-column constraint-type multiset is exactly the declared set — no default, check, unique, or other constraint is added to or missing from any column
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: table-level CHECK added to profiles
+pinned class: Constraint presence and absence
+expected failing assertion: public.profiles: table-level constraints are exactly [none] and no INHERITS/PARTITION BY/OF type/tablespace/IF NOT EXISTS clause exists
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: captures UNIQUE (id, user_id) given NULLS NOT DISTINCT
+pinned class: Constraint presence and absence
+expected failing assertion: captures UNIQUE (id, user_id) — the referenced key for the composite FK
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+== group 6: the REVIEW-013 finding 2 classes — parse-valid neighbors the
+== oracle accepted green before this fix cycle ==
+
+scenario: captures.status CHECK inverted to NOT IN (same value list, opposite meaning)
+pinned class: Constraint values and operators
+expected failing assertion: captures.status CHECK (status IN ('recorded','transcribing','ready','failed'))
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: captures SELECT policy subquery given WHERE false (predicate never matches)
+pinned class: RLS
+expected failing assertion: public.captures select: one permissive policy TO authenticated, (select auth.uid()) = user_id
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: profiles SELECT narrowed to a column-only grant, SELECT(id)
+pinned class: Grants
+expected failing assertion: each of the three tables is granted exactly select,insert,update,delete — table-object grants, no per-column privilege list, no WITH GRANT OPTION
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: second VALUES row appended to the bucket insert, creating a public bucket
+pinned class: Storage bucket row
+expected failing assertion: bucket captures-audio created private: INSERT storage.buckets (id, name, public) VALUES ('captures-audio', 'captures-audio', false) — exactly one VALUES row of exactly three values, plain insert, no ON CONFLICT (deliberately non-idempotent), no RETURNING
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: profiles updated_at trigger narrowed to UPDATE OF display_name
+pinned class: Triggers
+expected failing assertion: BEFORE UPDATE row triggers run set_updated_at on exactly profiles and captures (transcripts has no updated_at) — unconditional: no WHEN clause and no UPDATE OF column list
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: INCLUDE (id) added to captures_user_id_idx
+pinned class: Indexes
+expected failing assertion: FK-supporting indexes: captures(user_id), transcripts(capture_id,user_id), transcripts(user_id) — each plain btree, non-unique, unpredicated, no INCLUDE list, expected name
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+== group 7: the REVIEW-015 finding 1 classes — parse-valid neighbors that
+== changed a property a named class SAYS it pins, and still ran green. Two
+== defect shapes: an operator whose AST kind differs while its name does
+== not (IS DISTINCT FROM / IS NOT DISTINCT FROM / ANY / ALL are all named
+== '='), and a grammar clause riding on a node whose shape went unread ==
+
+scenario: core migration timestamp prefix renamed (accepted suffix kept)
+pinned class: Set shape
+expected failing assertion: migration files are exactly the four v1 files, whole filenames, in apply order
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: fifth non-.sql file added to the migrations directory
+pinned class: Set shape
+expected failing assertion: the migrations directory holds exactly those four files and nothing else
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: LIKE pg_catalog.pg_class EXCLUDING ALL added to profiles (columns arrive from a source table, not the compared list)
+pinned class: Entity inventory
+expected failing assertion: every table element is a ColumnDef or a Constraint
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: profiles updated_at trigger renamed
+pinned class: Entity inventory
+expected failing assertion: the three trigger names are exactly profiles_set_updated_at, captures_set_updated_at, on_auth_user_created
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: profiles.display_name given COLLATE "C" (comparison semantics changed beside an unchanged type name)
+pinned class: Column types
+expected failing assertion: every ColumnDef carries only colname/typeName/is_local/constraints
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: captures.audio_path given STORAGE EXTERNAL
+pinned class: Column types
+expected failing assertion: every ColumnDef carries only colname/typeName/is_local/constraints
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: profiles created UNLOGGED (not crash-safe, not replicated)
+pinned class: Constraint presence and absence
+expected failing assertion: CREATE TABLE nodes carry only relation/tableElts/oncommit
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: profiles.locale CHECK given NO INHERIT
+pinned class: Constraint presence and absence
+expected failing assertion: every column and table constraint carries only its declared fields
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: duration_ms CHECK operator changed to >= ANY (array[0]) — same operator NAME, different AST kind
+pinned class: Constraint values and operators
+expected failing assertion: captures.duration_ms integer, nullable, CHECK (duration_ms >= 0)
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: captures_user_id_idx key column given DESC ordering
+pinned class: Indexes
+expected failing assertion: every index key is a plain column in default sort order
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: captures_user_id_idx made CONCURRENTLY
+pinned class: Indexes
+expected failing assertion: every CREATE INDEX carries only idxname/relation/accessMethod/indexParams
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: provisioning trigger given REFERENCING NEW TABLE AS nt
+pinned class: Triggers
+expected failing assertion: the three trigger names are exactly profiles_set_updated_at, captures_set_updated_at, on_auth_user_created
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: provisioning trigger made CREATE OR REPLACE
+pinned class: Triggers
+expected failing assertion: the three trigger names are exactly profiles_set_updated_at, captures_set_updated_at, on_auth_user_created
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: profiles grant given GRANTED BY postgres (grantor changed)
+pinned class: Grants
+expected failing assertion: every GRANT is an object-level, RESTRICT-behaviour grant of whole-table privileges
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: storage SELECT folder-owner equality reversed to IS DISTINCT FROM — the confidentiality predicate inverted (REVIEW-015 finding 1, decisive case)
+pinned class: RLS
+expected failing assertion: storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: storage SELECT bucket equality reversed to IS DISTINCT FROM (policy now matches every OTHER bucket)
+pinned class: RLS
+expected failing assertion: storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: storage UPDATE folder predicate changed to IS NOT DISTINCT FROM (null folder stops failing closed)
+pinned class: RLS
+expected failing assertion: storage.objects update: one policy TO authenticated, bucket-pinned and {user_id}/-scoped on USING and WITH CHECK
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: provisioning policy made AS RESTRICTIVE (the one policy whose permissiveness was never compared)
+pinned class: RLS
+expected failing assertion: every policy carries only its name/table/command/permissiveness/roles/predicates, and all 17 are PERMISSIVE
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: profiles FORCE ROW LEVEL SECURITY given ONLY
+pinned class: RLS
+expected failing assertion: every ALTER TABLE targets a plain table by name — no ONLY, no IF EXISTS, no non-table objtype
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: bucket insert given OVERRIDING USER VALUE
+pinned class: Storage bucket row
+expected failing assertion: the bucket INSERT carries only relation/cols/selectStmt/override
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+== group 8: the REVIEW-016 finding 1 defect shape — a class claims
+== exactness while the assertion reads only PART of a node's structure.
+== The scenarios below are the in-class neighbors this battery runs and
+== the classes they demonstrate; nothing here records a search over the
+== classes where no such neighbor was found, so no all-class audit is
+== claimed. Closed at three structural causes: a subscript list read by
+== position instead of whole; a function-call shape test that existed
+== for column defaults but was not shared with the predicate call
+== sites; and named things compared without the helper that marks their
+== neighbors ==
+
+scenario: storage select folder lookup given a second subscript: (storage.foldername(name))[1][2] — apply-valid (PostgreSQL returns NULL for the wrong number of subscripts), so the owner predicate is UNKNOWN for every row and owners are denied (REVIEW-016 finding 1, decisive case)
+pinned class: RLS
+expected failing assertion: storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: storage insert folder lookup given a second subscript: (storage.foldername(name))[1][2] — apply-valid (PostgreSQL returns NULL for the wrong number of subscripts), so the owner predicate is UNKNOWN for every row and owners are denied (REVIEW-016 finding 1, decisive case)
+pinned class: RLS
+expected failing assertion: storage.objects insert: one policy TO authenticated, bucket-pinned and {user_id}/-scoped on WITH CHECK
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: storage update folder lookup given a second subscript: (storage.foldername(name))[1][2] — apply-valid (PostgreSQL returns NULL for the wrong number of subscripts), so the owner predicate is UNKNOWN for every row and owners are denied (REVIEW-016 finding 1, decisive case)
+pinned class: RLS
+expected failing assertion: storage.objects update: one policy TO authenticated, bucket-pinned and {user_id}/-scoped on USING and WITH CHECK
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: storage delete folder lookup given a second subscript: (storage.foldername(name))[1][2] — apply-valid (PostgreSQL returns NULL for the wrong number of subscripts), so the owner predicate is UNKNOWN for every row and owners are denied (REVIEW-016 finding 1, decisive case)
+pinned class: RLS
+expected failing assertion: storage.objects delete: one policy TO authenticated, bucket-pinned and {user_id}/-scoped
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: storage SELECT folder subscript made the slice [1:1] (uidx still 1; is_slice and lidx went unread)
+pinned class: RLS
+expected failing assertion: storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: storage SELECT folder call given an aggregate clause: storage.foldername(variadic name)
+pinned class: RLS
+expected failing assertion: storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: storage SELECT folder call given an aggregate clause: storage.foldername(distinct name)
+pinned class: RLS
+expected failing assertion: storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: storage SELECT folder call given an aggregate clause: storage.foldername(name order by 1)
+pinned class: RLS
+expected failing assertion: storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: storage SELECT folder call given filter (where true)
+pinned class: RLS
+expected failing assertion: storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: storage SELECT folder call given over ()
+pinned class: RLS
+expected failing assertion: storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: storage SELECT owner cast widened to ::text[] (array neighbor of the pinned scalar cast; the schema qualifier must not erase the array marker)
+pinned class: RLS
+expected failing assertion: storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: storage SELECT owner cast widened to ::pg_catalog.text[] (array neighbor of the pinned scalar cast; the schema qualifier must not erase the array marker)
+pinned class: RLS
+expected failing assertion: storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: storage SELECT initplan call given a star argument: auth.uid(*)
+pinned class: RLS
+expected failing assertion: storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: storage SELECT initplan call given OVER ()
+pinned class: RLS
+expected failing assertion: storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: storage SELECT initplan target given an output alias: (select auth.uid()::text as t)
+pinned class: RLS
+expected failing assertion: storage.objects select: one policy TO authenticated, bucket-pinned and {user_id}/-scoped
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: profiles SELECT initplan target given an output alias: (select auth.uid() as u)
+pinned class: RLS
+expected failing assertion: public.profiles select: one permissive policy TO authenticated, (select auth.uid()) = id
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: profiles SELECT initplan call given a star argument: auth.uid(*)
+pinned class: RLS
+expected failing assertion: public.profiles select: one permissive policy TO authenticated, (select auth.uid()) = id
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: profiles SELECT initplan call given over ()
+pinned class: RLS
+expected failing assertion: public.profiles select: one permissive policy TO authenticated, (select auth.uid()) = id
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: profiles SELECT initplan call given filter (where true)
+pinned class: RLS
+expected failing assertion: public.profiles select: one permissive policy TO authenticated, (select auth.uid()) = id
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: bucket INSERT VALUES row given a fourth expression (the row COUNT was pinned; the row's item count was not)
+pinned class: Storage bucket row
+expected failing assertion: bucket captures-audio created private
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: bucket INSERT target column given subscript indirection: public[1] (the compared name list prints "public" either way)
+pinned class: Storage bucket row
+expected failing assertion: the bucket INSERT carries only relation/cols/selectStmt/override
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: auth.users FKs given a catalog qualifier: references somedb.auth.users (id) — the one relation reference that did not go through isPlainRel, and the compared name drops catalogname
+pinned class: Foreign keys
+expected failing assertion: profiles.id FK -> auth.users(id) ON DELETE CASCADE
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+scenario: composite FK referenced table given a catalog qualifier: references somedb.public.captures (id, user_id)
+pinned class: Foreign keys
+expected failing assertion: user_id-consistency guarantee: composite FK (capture_id, user_id) -> public.captures (id, user_id) ON DELETE CASCADE
+exit code: 1 (1 required); named FAIL line present: yes (yes required)
+
+== class coverage cross-check: what entitles README.md to name a class ==
+# The left list is derived from the class tag on every scenario actually run
+# above; the right list is parsed from README.md's own enumerated list under
+# "What the oracle proves". capture.sh exits 1 unless they are identical, so
+# a class cannot be claimed without a permanent control demonstrating it, and
+# a control cannot silently drop out of the claim.
+
+classes demonstrated by this battery (11):
+  - Column types
+  - Constraint presence and absence
+  - Constraint values and operators
+  - Entity inventory
+  - Foreign keys
+  - Grants
+  - Indexes
+  - RLS
+  - Set shape
+  - Storage bucket row
+  - Triggers
+
+classes claimed by README.md (11):
+  - Column types
+  - Constraint presence and absence
+  - Constraint values and operators
+  - Entity inventory
+  - Foreign keys
+  - Grants
+  - Indexes
+  - RLS
+  - Set shape
+  - Storage bucket row
+  - Triggers
+
+claimed but not demonstrated: <none> (must be <none>)
+demonstrated but not claimed: <none> (must be <none>)
+duplicate class names in README's claimed list: <none> (must be <none>)
+class lists identical: yes (yes required)
+
+scenarios run: 72
+--- enforced: every scenario exits 1 with its named FAIL line; every scenario
+--- carries a class tag; the run count equals the enumerated scenario lines;
+--- and the demonstrated class set equals README's claimed set — or
+--- capture.sh exits 1 ---

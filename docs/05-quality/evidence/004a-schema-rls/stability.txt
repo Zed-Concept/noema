@@ -1,0 +1,14 @@
+run 1: sql-assertions.txt identical
+run 1: assertions-negative-control.txt identical
+run 1: config-provenance.txt identical
+run 1: inventory.txt identical
+run 1: gates.txt identical
+run 1: secret-scan.txt identical
+run 2: sql-assertions.txt identical
+run 2: assertions-negative-control.txt identical
+run 2: config-provenance.txt identical
+run 2: inventory.txt identical
+run 2: gates.txt identical
+run 2: secret-scan.txt identical
+gated artifacts: 6; runs: 2; comparisons differing: 0
+gate: PASS (exit 0)

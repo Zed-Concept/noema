@@ -1,0 +1,27 @@
+# redaction-gate — exact-file-byte scan of each live transcript (post-write,
+# pre-commit) against every value registered in this run's ledger, plus the
+# JWT shape. The sha256 lines bind the committed bytes to the scanned bytes.
+# Exit 1 fails the run on every red path; the transcript is deleted exactly
+# on the residual-match path, while ledger-failure paths (missing, unreadable,
+# implausibly small) return 1 without deleting — nothing was scanned
+# (REVIEW-011 finding 3 rebuild, exactness per REVIEW-012 finding 3; the
+# planted-leak positive control is redaction-control.txt).
+# run date (UTC): 2026-08-20
+
+file: anon-probes.txt
+bytes: 3756
+sha256: 9ba3c2b58ac469d8bd8827bceb6dbf7821fbb7bade3a0f97ede2d2a41d0d643f
+registered values scanned: 10 distinct (raw values never printed)
+jwt-shape sweep: 0 matches
+residual registered-value classes: 0 (occurrences: 0)
+verdict: GREEN (exit 0)
+--- gate exit: 0 (0 green; 1 red — residual match deletes the transcript, ledger-failure returns 1 without deleting) ---
+
+file: auth-probes.txt
+bytes: 12429
+sha256: 059edefac0eb3edbe2e2dd4d8b495973c8d55251cb1281edae8ebcc5d3ff0e34
+registered values scanned: 10 distinct (raw values never printed)
+jwt-shape sweep: 0 matches
+residual registered-value classes: 0 (occurrences: 0)
+verdict: GREEN (exit 0)
+--- gate exit: 0 (0 green; 1 red — residual match deletes the transcript, ledger-failure returns 1 without deleting) ---
