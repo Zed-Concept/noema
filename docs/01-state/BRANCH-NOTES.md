@@ -116,18 +116,6 @@ Model+Effort:       Opus 5 [1m] / Ultracode (xhigh + workflows) / fresh session
                     recorded here because the dispatch instructed that this
                     specific substitution be recorded rather than stopped for.
                     Effort tier per ruling 5 for a build unit.
-
-**Phase transition BUILD -> REVIEW, 2026-08-24, CTRL-005.** Fix cycle 1
-delivered at `bee105f8` (5 ahead / 0 behind main, 56 files, GitHub CI PASS).
-Recorded here because Codex Sol issued a compliant stop on the first REVIEW-020
-dispatch: this block still read `BUILD` with both reviewers unnamed, and line
-122 instructed the controller to name them before review begins. The reviewer
-was correct and started no work. The controller's defect was dispatching review
-before reconciling the lock to the phase being dispatched — the third
-precondition failure of this session and the same root cause each time.
-Adjacent gap for the backlog: AGENTS.md defines no LOCK status vocabulary and
-no phase-transition rule, so BUILD -> REVIEW -> MERGED is used throughout and
-defined nowhere.
 Reviewer of record: Codex Sol / Ultra / fresh session — named by CTRL-005 on
                     2026-08-24 per ruling 4. Authored REVIEW-019; REVIEW-020
                     goes to a fresh session, not a reopened one.
@@ -150,6 +138,17 @@ Dispatch:           Unit D — the v1 CLIENT-SIDE authentication surface only:
                     adding `supabase/.temp` to .prettierignore.
 Evidence:           docs/05-quality/evidence/005a-auth-session/
 ```
+**Phase transition BUILD -> REVIEW, 2026-08-24, CTRL-005.** Fix cycle 1
+delivered at `bee105f8` (5 ahead / 0 behind main, 56 files, GitHub CI PASS).
+Recorded here because Codex Sol issued a compliant stop on the first REVIEW-020
+dispatch: this block still read `BUILD` with both reviewers unnamed, and line
+122 instructed the controller to name them before review begins. The reviewer
+was correct and started no work. The controller's defect was dispatching review
+before reconciling the lock to the phase being dispatched — the third
+precondition failure of this session and the same root cause each time.
+Adjacent gap for the backlog: AGENTS.md defines no LOCK status vocabulary and
+no phase-transition rule, so BUILD -> REVIEW -> MERGED is used throughout and
+defined nowhere.
 
 **This block was written by the builder, not the controller.** The CTRL-005
 opening state commit that would normally register it had not landed when this
