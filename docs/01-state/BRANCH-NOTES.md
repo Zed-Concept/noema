@@ -116,11 +116,28 @@ Model+Effort:       Opus 5 [1m] / Ultracode (xhigh + workflows) / fresh session
                     recorded here because the dispatch instructed that this
                     specific substitution be recorded rather than stopped for.
                     Effort tier per ruling 5 for a build unit.
-Reviewer of record: — not yet named. Ruling 4 seats Codex Sol / Ultra; the
-                    RED-on-arrival auth trigger in ADR-001 and PROJECT-STATE
-                    additionally calls for one advisory reviewer on this diff.
-                    Controller to name both before review begins.
-Status:             BUILD
+
+**Phase transition BUILD -> REVIEW, 2026-08-24, CTRL-005.** Fix cycle 1
+delivered at `bee105f8` (5 ahead / 0 behind main, 56 files, GitHub CI PASS).
+Recorded here because Codex Sol issued a compliant stop on the first REVIEW-020
+dispatch: this block still read `BUILD` with both reviewers unnamed, and line
+122 instructed the controller to name them before review begins. The reviewer
+was correct and started no work. The controller's defect was dispatching review
+before reconciling the lock to the phase being dispatched — the third
+precondition failure of this session and the same root cause each time.
+Adjacent gap for the backlog: AGENTS.md defines no LOCK status vocabulary and
+no phase-transition rule, so BUILD -> REVIEW -> MERGED is used throughout and
+defined nowhere.
+Reviewer of record: Codex Sol / Ultra / fresh session — named by CTRL-005 on
+                    2026-08-24 per ruling 4. Authored REVIEW-019; REVIEW-020
+                    goes to a fresh session, not a reopened one.
+Advisory reviewer:  DeepSeek V4 Pro / fresh session — the ADR-001 auth trigger,
+                    controller's pick of the single advisory seat. Narrow
+                    scope: the concurrency design of the session adapter only,
+                    so it does not duplicate the reviewer of record. Advisory
+                    carries no merge authority; the controller adjudicates
+                    against the RoR record.
+Status:             REVIEW
 Dispatch:           Unit D — the v1 CLIENT-SIDE authentication surface only:
                     email OTP sign-in/sign-up, session persistence behind a
                     chunked expo-secure-store adapter, route protection, and
