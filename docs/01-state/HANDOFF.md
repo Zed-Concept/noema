@@ -1,3 +1,63 @@
+## 2026-08-25 — REVIEW-021 advisory, feat/auth-session-v1 at 7bea41c4
+
+**Controller:** CTRL-005 Auth and session v1.
+**Advisory reviewer:** DeepSeek V4 Pro / fresh session — the ADR-001 auth
+trigger seat, per the LOCK. Reviewer of record: Codex Sol (REVIEW-021).
+Advisory carries no merge authority.
+**Target:** `feat/auth-session-v1` at
+`7bea41c4f8b769ce0e602ea290c2d6b7d8a413ea`.
+**Base:** `main` at `d5b4f8aec3b45e7009a9a7bb2a7119c9758e1bc3`.
+**Outputs:** immutable `docs/04-reviews/REVIEW-021-ADVISORY.md` plus this
+append-only block.
+
+### Scope and verdict
+
+- Narrow scope as dispatched: the auth-client refresh lifecycle only; no
+  duplication of the RoR's full-surface record.
+- **Verdict: DEFECTS_FOUND.** Of the three REVIEW-020 finding-1 probes, one is
+  eliminated and two are relocated. The visibility ticker (probe 1) is
+  eliminated — verified gated on `autoRefreshToken` at `GoTrueClient.js:4693`.
+  The in-flight write (probe 3) is relocated with principled handling: the
+  failed persist is surfaced by the write observer and forced into local
+  re-authentication, which is what ADR-007 actually redefined the property to
+  mean. The recovery refresh (probe 2) is relocated into an ungated load-time
+  path: the app's `onAuthStateChange` registration at mount
+  (`auth-provider.tsx:107`) triggers `_emitInitialSession` → `_useSession` →
+  `__loadSession` → `_callRefreshToken` within the 90s margin, with no
+  `autoRefreshToken` and no foreground gate, joined by the ungated bootstrap
+  `getSession()` (`auth-provider.tsx:117`).
+- The retained on-demand refresh partially reopens what the flag closed: not
+  self-scheduling, but the recovery-refresh door the `_recoverAndRefresh` gate
+  appeared to shut.
+- Detectability of an unpersisted rotated session holds on native by
+  construction (the observer sits at the write), with web unobserved and the
+  removal-refusal residual disclosed; both named in the record.
+- Forced re-authentication is proportionate and not remotely inducible; the
+  remedy shape should survive whatever fix closes the boundary.
+
+### Classification
+
+- **PASS:** probe-1 elimination, probe-3 surfacing, native detectability,
+  proportionality of forced re-auth — each verified against the installed
+  pinned `auth-js` 2.112.3 source, read directly, not from comments.
+- **DEFECTS_FOUND:** the ADR-007 foreground-only initiation boundary
+  (finding 1, HIGH); the ADR-007 surfacing sentence platform-unqualified vs
+  web (finding 2, LOW).
+- **NOT RUN:** live OTP, physical device/keychain lock behaviour, served
+  browser flow — Phase A, as the unit is scoped.
+
+### For the controller
+
+The RoR's REVIEW-021 (`074a8ca`, verdict FAIL) reaches the same root. Where
+the RoR attributes an auth listener to `supabase-js` at construction, this
+record verified `supabase-js` registers none — the verified trigger is the
+app's own registration. Read the two records against each other on that
+point. The remedy direction named here is boundary completion (the gate owns
+every entrance into `__loadSession`, or ADR-007 is narrowed again), not a
+return to `stopAutoRefresh` gating.
+
+---
+
 ## 2026-08-25 — REVIEW-021, feat/auth-session-v1 at 7bea41c4
 
 **Controller:** CTRL-005 Auth and session v1.
