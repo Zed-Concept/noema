@@ -155,7 +155,7 @@ Advisory reviewer:  DeepSeek V4 Pro / fresh session — the ADR-001 auth trigger
                     so it does not duplicate the reviewer of record. Advisory
                     carries no merge authority; the controller adjudicates
                     against the RoR record.
-Status:             REVIEW
+Status:             BUILD
 Dispatch:           Unit D — the v1 CLIENT-SIDE authentication surface only:
                     email OTP sign-in/sign-up, session persistence behind a
                     chunked expo-secure-store adapter, route protection, and
@@ -217,6 +217,33 @@ the reviewer of record independently closed at REVIEW-020 — to the auth-client
 refresh lifecycle, where the live risk now sits. **One fix cycle remains.** If
 cycle 3 arrives with claims still exceeding their instruments, the stop rule
 fires and the remedy is subtraction.
+
+**Phase transition REVIEW -> BUILD, 2026-08-25, CTRL-005 — fix cycle 3 of 3.**
+REVIEW-021 returned **FAIL** and REVIEW-021-ADVISORY returned
+**DEFECTS_FOUND** at `dbf1fb3b`. The two reviewers, working independently and
+in different families, converged on the same core defect: the foreground gate
+does not stand in front of every refresh entrance. The advisory traced the
+exact door — the app's own `onAuthStateChange` registration re-entering through
+`_emitInitialSession` with neither an `autoRefreshToken` gate nor a foreground
+gate — and corrected the reviewer of record on one detail: `supabase-js`
+registers no auth listener; the app's own registration is the trigger.
+
+Controller adjudication: **two findings close by implementation** (the ungated
+entrances; durable re-authentication after a refused rotation) and **five close
+by subtraction** — the reviewer of record framed findings 3 through 7 as
+"delete or narrow" itself, arriving independently at the stop rule's remedy.
+The recurring class across three cycles is claims exceeding instruments; the
+remedy is deleting the claims, not building a sixth instrument to rescue them.
+
+**This is the final cycle. There is no cycle 4.** If REVIEW-022 is not a PASS,
+the options are an owner override merge on a documented FAIL — the Unit C
+precedent — or further subtraction until the evidence suite is smaller and
+entirely true.
+
+This block was edited in the owner's working tree rather than through the
+GitHub API: the controller's Composio project key was revoked mid-session and
+repo write access was lost. The owner commits and pushes it. Recorded because
+the route a state edit took is part of its provenance.
 
 **Fix cycle 2, 2026-08-24 — same builder, same branch, fresh session** (AGENTS.md
 workflow step 5, in response to REVIEW-020 **FAIL**). Model+Effort for this
