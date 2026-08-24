@@ -125,7 +125,7 @@ Advisory reviewer:  DeepSeek V4 Pro / fresh session — the ADR-001 auth trigger
                     so it does not duplicate the reviewer of record. Advisory
                     carries no merge authority; the controller adjudicates
                     against the RoR record.
-Status:             REVIEW
+Status:             BUILD
 Dispatch:           Unit D — the v1 CLIENT-SIDE authentication surface only:
                     email OTP sign-in/sign-up, session persistence behind a
                     chunked expo-secure-store adapter, route protection, and
@@ -168,6 +168,15 @@ tier for a review-fix loop; the build cycle above ran at the Ultracode tier.
 Evidence for this cycle: `docs/05-quality/evidence/005b-auth-session-fix1/`.
 `Status` is left at `BUILD` — REVIEW-019 records status reconciliation as
 controller-owned, and a builder does not flip its own LOCK.
+
+**Phase transition REVIEW -> BUILD, 2026-08-24, CTRL-005 — fix cycle 2 of 3.**
+REVIEW-020 returned **FAIL** at `01b3d825`: REVIEW-019 findings 1-6 closed in
+the implementation and 8-10 closed, finding 7 partially closed, with seven new
+findings led by an ADR-005 lifecycle violation. Reviewer of record and advisory
+seat stay as named above; the advisory seat was **never dispatched** in this
+session and is re-scoped to the auth-client lifecycle for the cycle-2 candidate.
+One fix cycle remains after this one. The stop rule is unchanged: an in-class
+defect recurring after cycle three is remedied by subtraction.
 
 ---
 
