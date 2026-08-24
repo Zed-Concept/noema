@@ -1,3 +1,132 @@
+## 2026-08-24 — REVIEW-020, feat/auth-session-v1 at 4a43f454
+
+**Controller:** CTRL-005 Auth and session v1.
+**Reviewer of record:** Codex Sol / Ultra / fresh session. Authored REVIEW-019;
+this was a new session and did not reopen it. Did not build the unit.
+**Target:** `feat/auth-session-v1` at
+`4a43f454abc596617854edac67cc8cf835fc57c1`.
+**Base:** `main` at `7095267f3891e4d019cc9926b57930107e6e86be`.
+**Outputs:** immutable `docs/04-reviews/REVIEW-020.md` plus this new append-only
+`docs/01-state/HANDOFF.md` block.
+**Verdict:** **FAIL**.
+
+**LOCK status line:** `Status: REVIEW` — verified before review and left
+unchanged. The block names Codex Sol / Ultra / fresh session as reviewer of
+record and DeepSeek V4 Pro / fresh session for the controller-owned narrow
+concurrency advisory.
+
+### Boundary and preconditions
+
+- Exact local and origin target pinned before inspection and rechecked before
+  the record: `4a43f454abc596617854edac67cc8cf835fc57c1`.
+- Exact merge base: `7095267f3891e4d019cc9926b57930107e6e86be`.
+  Range: 7 ahead / 0 behind, 56 files, `+7240/-27`; `git diff --check` PASS.
+- Both commits after `bee105f8` modify only
+  `docs/01-state/BRANCH-NOTES.md`. No product or evidence file changed.
+- Current-head CI independently PASS: Actions run `32675151572`, check run
+  `97281873229`, exact `4a43f454`, conclusion success.
+- RED-lane Git-object boundary PASS: `supabase/`, `.github/`, and generated
+  database types are object-identical to base; controlled scans find no SQL,
+  migration, policy, function, grant, bucket, database RPC, payment, secret, or
+  outward-deployment change. No Supabase/product credential was used, no
+  credential value was exposed to the reviewer or printed, and no live
+  application backend was contacted. An authenticated GitHub lookup read only
+  PR and CI metadata.
+
+### Adversarial fan-out
+
+Three shared-branch-read-only reviewer lanes independently covered the storage
+adapter and a ninth schedule, real auth-js lifecycle behavior, and the
+evidence/mutation harness. Review-only mutations stayed isolated in disposable
+exact-head clones. The clone used for committed `mutants.sh` restored its full
+tracked tree; other disposable scratch clones were not represented as restored.
+No reviewer left a product-code or historical-record change in the shared
+branch.
+
+### REVIEW-019 disposition
+
+1. **CLOSED** — queued reader no longer sees `null` while replacement runs.
+2. **CLOSED** — queued writers no longer form a hybrid.
+3. **CLOSED** — refused deletion makes removal reject after the sweep.
+4. **CLOSED in implementation** — refused and absent reads stay distinct; M4's
+   mutation proof is separately defective.
+5. **CLOSED under ADR-006 / ruling 15** — both exact checksum-disagreement
+   counterexamples return `null`; no tamper-resistance claim is credited.
+6. **CLOSED** — removal sweeps all 64 keys in both generations.
+7. **PARTIALLY CLOSED** — uncaught parsing is detected, but a
+   behavior-preserving `JSON.parse` survives every relevant gate.
+8. **CLOSED** — the three original claim/instrument gaps are now reached.
+9. **CLOSED** — retained 005a count is 28 adapter + 3 platform = 31.
+10. **CLOSED** — historical range and HANDOFF touch figures re-derive exactly.
+
+### Verdict-driving defects
+
+1. **HIGH — ADR-005 lifecycle invariant fails.** The provider calls
+   `stopAutoRefresh` on background, but pinned auth-js initialization can
+   restart the ticker afterward, recovery can refresh despite the stop, and an
+   in-flight refresh can write the rotated session after the stop resolves.
+   Provider tests replace the whole client with spies and cannot observe these
+   behaviors.
+2. **MEDIUM — the new 64-chunk limit is a real refusal boundary.** It fails
+   closed and preserves an old value, but auth-js persists the whole user and
+   permits open-ended metadata. A valid session-shaped value with 100,000
+   metadata characters exceeds the 98,304-byte ceiling and needs 66 chunks.
+   Current live-session sizes are NOT RUN, so “beyond any session payload” is
+   unsupported.
+3. **MEDIUM — token opacity remains under-instrumented.** A caught
+   `JSON.parse(value)` passed all 48 adapter tests, typecheck, lint, and format.
+4. **MEDIUM — removal is absent from the queue mutation boundary.** Exact code
+   passes a stalled-reader/removal schedule; a remove-only queue bypass fails
+   that schedule but passes all 48 committed adapter tests.
+5. **MEDIUM — M4 is an attribution false-red.** It changes the observed error
+   message but does not falsify the named preservation postcondition; relaxing
+   only the message regex leaves the test green under the mutant. Its exact edit
+   also fails typecheck; the Jest-only mutant path accepts a counterfactual that
+   is not build-valid.
+
+Non-driving record findings: the FNV evidence universalizes one unequal pair
+despite a deterministic session-shaped collision; `PROJECT-STATE.md` still
+says BUILD/reviewers unnamed while the LOCK says REVIEW/named; the npm-audit,
+offline-producer, and historical exact-CI descriptions disagree with their
+artifacts.
+
+### Verification and classification
+
+- **PASS** — local typecheck, lint, 7 suites / 89 tests, and format check.
+- **PASS** — exact adapter source closes REVIEW-019 findings 1–6 within the
+  documented one-instance / one-JS-runtime scope.
+- **PASS as execution; FAIL as semantic proof** — fresh committed mutation
+  battery exits 0 and prints 21/21 SENSITIVE. Its normalized transcript matches
+  the committed output and the full tracked digest is identical before/after,
+  but the three oracle defects above survive or false-red.
+- **PASS, bounded** — fresh exact-head stability run exits 0; both captures exit
+  0 and all eight gated artifacts match each other and the committed bytes. The
+  earlier unidentified `gates.txt` mismatch is non-dispositive to this bounded
+  rerun, remains unexplained, and bars a universal determinism claim.
+- **PASS** — checksum corruption/not-tamper distinction appears in code,
+  ADR-006, evidence, and an executable forged-checksum assertion.
+- **PASS** — ADR-005 device-local sign-out passes the exact `{ scope: 'local' }`
+  argument and M18 makes that argument load-bearing. Live multi-device behavior
+  remains NOT RUN.
+- **DISCLOSED / historical event NOT REPLAYABLE** — the first mutation run's
+  all-SURVIVED result came from wrong `node -e` argv indexing plus an ignored
+  edit failure. The retained final harness corrects both; its fresh run applies
+  all 21 declared edits and restores the committed-battery clone.
+- **PASS** — rejecting auth-js `processLock` is reasonable: 2.112.3 marks the
+  path deprecated and for v3 removal. The v2 implementation still invokes a
+  supplied lock, so the upstream “no effect” phrase is not literal non-use.
+- **NOT RUN** — live OTP/Supabase/session sizes, real device/keychain/locked
+  lifecycle, cross-process/native-thread access, and served browser behavior.
+- **NOT RUN in this record** — controller-owned advisory review result.
+
+### Budget and next step
+
+Fix cycle 1 of 3 is consumed; two remain. A response to REVIEW-020 is fix cycle
+2. Keep the LOCK at REVIEW and return the same branch to the same builder if the
+controller elects to continue. The stop rule is unchanged.
+
+---
+
 ## 2026-08-24 — feat/auth-session-v1 (Unit D — fix cycle 1 of 3, REVIEW-019)
 
 **Controller:** CTRL-005 Auth and session v1. **Builder:** Claude Code — same
