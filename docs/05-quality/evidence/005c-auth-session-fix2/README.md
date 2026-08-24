@@ -191,6 +191,7 @@ What follows is what this cycle adds, changes, or withdraws.
 | 14a | A refused index read blocks the write and preserves the live session | PASS | rebuilt load-bearing; safety postcondition asserted before error identity | M4 (rebuilt) |
 | 47 | This cycle adds **no dependency**. ADR-007 is a construction option and two small modules; the token-opacity scan uses the TypeScript compiler already present as a devDependency, and `@types/node` was deliberately **not** added — see **Known limits** 3 | PASS | `deps.txt` | — |
 | 48 | The four CI-equivalent gates pass at this head: typecheck, lint, test, format:check — all exit 0 | PASS | `gates.txt`; 9 suites, 116 tests | — |
+| 48a | GitHub CI passes on the exact pushed head, from a clean checkout on GitHub's runner | PASS | `ci.txt` — run `32730940489`, head `97f1b7d5`, conclusion success. Claimed for that commit only | — |
 | 49 | **Every mutant in the battery is build-valid, and every claim marked with a mutant ID above has one that turns its instrument red.** The battery does **not** cover every behavioural row, and rows without a mutant ID are exactly the rows that have none | PASS | `mutants.txt` — 27 mutants, 27 SENSITIVE, 0 build-invalid | — this row IS the mutation record |
 | 50 | The gated artifacts regenerate byte-for-byte across two fresh `capture.sh` runs, both runs exited 0, and both match the committed copies | PASS | `stability.txt` — 8/8 identical | — |
 
@@ -265,7 +266,7 @@ a banned-API hit, a broken positive control, a RED-lane hit, or a changed
 | `npm-audit.txt` | `capture.sh` | run-varying | **reaches the network.** Tracks the upstream advisory database |
 | `session-sizes.txt` | `session-sizes.sh` | not gated | **new this cycle.** Deterministic by construction — reads two constants from the shipped module and does arithmetic, with no clock, network, or filesystem ordering. Not compared by `stability.sh`, which runs `capture.sh`, and a stability run of a pure function compares it against itself |
 | `mutants.txt` | `mutants.sh` | not gated | its exit status is its contract. Not compared by `stability.sh`: `mutants.sh` rewrites and restores tracked source, and running it twice more doubles that exposure for no information. It verifies its own restoration byte for byte |
-| `ci.txt` | one-off `gh run view` | not gated | GitHub CI on the **exact pushed head**, recorded in a follow-up commit because the head cannot be known before the push that creates it. Bound to that one SHA and to nothing else — see **Record corrections** 3 |
+| `ci.txt` | one-off `gh run view` | not gated | GitHub CI on the **exact pushed head** `97f1b7d5`: workflow run `32730940489`, conclusion **success**, all four steps green. Recorded in a follow-up commit because the head cannot be known before the push that creates it. Bound to that one SHA and to nothing else — if the reviewer's target is a later commit, this artifact does not cover it. See **Record corrections** 3 |
 | `stability.txt` | `stability.sh` | not gated | a gate cannot contain a run of itself. Its exit status is its contract |
 
 ---
