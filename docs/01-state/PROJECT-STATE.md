@@ -111,6 +111,7 @@ explicitly and get it overturned on the record.
 | 14 | The three-cycle fix budget counts only cycles triggered by an external `REVIEW-NNN` record. A builder's own pre-submission adversarial cycle is recorded but not charged — charging it would make self-review cost budget and reward shipping unreviewed. | 2026-08-24 | this row (controller ruling, CTRL-005) |
 | 15 | The session adapter's read-integrity property is narrowed: a read fails closed to `null` when the index is missing, unparseable, out of range, inconsistent in chunk count or total length, **or when a recorded non-cryptographic checksum over the payload disagrees**. That checksum is corruption detection — of truncation, interleaved-writer hybrids, and accidental damage — and explicitly **not** tamper resistance. No claim of resistance to an adversary with write access to the secure store may be made; such an adversary already holds the tokens. | 2026-08-24 | `docs/03-decisions/ADR-006-read-integrity.md` |
 | 16 | An ADR may narrow a single clause of an earlier ADR without superseding it wholesale. The narrowing ADR names the exact sentence it replaces and states that the rest stands; the earlier ADR's `Status` stays `Accepted` and its file is not edited. A deliberate departure from the template's binary Accepted/Superseded model, taken because marking ADR-004 superseded would falsely retire the auth-method decision along with one read-integrity sentence. | 2026-08-24 | this row (controller ruling, CTRL-005) |
+| 17 | The auth client **never self-schedules a refresh**: `autoRefreshToken: false` at construction, refresh initiated only by explicit foreground-gated calls, and a refresh whose persistence fails is **surfaced**, not silently dropped. Locked-device behaviour is NOT RUN and NOT CLAIMED in Phase A; Phase B carries a named physical-device test. Narrows one clause of ADR-005 per ruling 16; ADR-005's `scope: 'local'` and `WHEN_UNLOCKED` decisions stand. | 2026-08-24 | `docs/03-decisions/ADR-007-refresh-lifecycle.md` |
 
 ## Active work
 
@@ -118,7 +119,7 @@ What is in flight, who owns it, and what it is blocked on. One row per stream.
 
 | Stream | Owner | Status | Blocked on |
 |---|---|---|---|
-| Unit D — Auth and session v1 | Claude Code (`feat/auth-session-v1`) | BUILD — **fix cycle 1 of 3 complete**, answering REVIEW-019 FAIL. Main merged in; evidence at `docs/05-quality/evidence/005b-auth-session-fix1/` (005a retained as the build cycle's record). Phase A offline; PR #11 open | Reviewer of record for REVIEW-020 unnamed, and the advisory seat the auth-diff trigger calls for is still unnamed. LOCK status reconciliation remains controller-owned (see HANDOFF)
+| Unit D — Auth and session v1 | Claude Code (`feat/auth-session-v1`) | BUILD — **fix cycle 2 of 3 in progress**, answering REVIEW-020 FAIL under ADR-007. REVIEW-019 FAIL and fix cycle 1 (REVIEW-020 FAIL) are closed history. Main merged in at `d5b4f8ae` for ADR-007, ruling 17, and learnings 16-18; evidence at `docs/05-quality/evidence/005c-auth-session-fix2/` (005a and 005b retained as their cycles' records). Phase A offline; PR #11 open | Nothing. One fix cycle remains after this one. RoR Codex Sol (fresh session, authored REVIEW-019/020, did not build); advisory DeepSeek V4 Pro named but **never dispatched** this session — controller-owned seat
 | Production Supabase project | Owner | Parked by ruling — create in East US (North Virginia) before any launch-facing unit | Free-tier slot or Pro upgrade at that time |
 
 Unit A merged 2026-08-19 at `8d648bb` (PR #2, REVIEW-007 PASS); its full
@@ -243,6 +244,33 @@ selects nothing, and inferring a choice there is manufacturing compliance.
 "Approved" against an explicit recommendation per item resolves cleanly. The
 controller's obligation is therefore to carry a named recommendation into every
 owner decision it can, and to hold — not guess — when it has not.
+
+**16 — A mutant must be build-valid.** A mutation that fails `typecheck` is not
+a counterfactual. Jest's Babel path executes it regardless, and the harness
+scores it red for the wrong reason — REVIEW-020 finding 5 caught exactly this:
+mutant M4 turned red on an error-message mismatch while its actual safety
+postcondition still held, and its edit left TypeScript unable to narrow the
+read union. A mutation battery must typecheck each mutated tree before calling
+any mutant sensitive, and 21/21 SENSITIVE is an execution fact, never a
+semantic one.
+
+**17 — An unverifiable property is a scoping error, not a build target.** When a
+claim's failure mode can only be observed on hardware or in an environment the
+current phase does not have, narrowing the claim and naming the deferred test is
+the correct response; spending fix cycles chasing it is not. ADR-005 required
+that a refresh never fire while the device is locked, while the locked-device
+rejection it guards against was NOT RUN in Phase A for want of a device. Two of
+three fix cycles could have gone to a property no Phase A evidence could ever
+have closed.
+
+**18 — The controller's own preconditions are repo state, not paperwork.** Four
+times in CTRL-005 a dispatch or artifact went out ahead of the state that
+authorised it: ADR-004 cited before it existed, a dispatch naming documents not
+yet on main, a review dispatched against a LOCK still reading BUILD with
+reviewers unnamed, and an Active work row left reading "Not started" for two
+days on a twice-reviewed unit — the last one avoided deliberately to dodge a
+merge conflict, which is how a governance file comes to lie. Reconcile state
+first, dispatch second. A conflict is cheaper than a false record.
 
 ## Known issues
 

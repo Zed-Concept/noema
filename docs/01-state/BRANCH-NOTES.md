@@ -41,6 +41,33 @@ it (REVIEW-013 finding 4, REVIEW-015 finding 3).
 
 ---
 
+## LOCK — chore/state-adr-007-refresh-lifecycle
+
+```
+Project:            Noema
+Branch:             chore/state-adr-007-refresh-lifecycle
+Controller:         CTRL-005 Auth and session v1
+Builder:            Controller (direct state edit via GitHub API; no product
+                    code — controller-only class per AGENTS.md state ownership)
+Model+Effort:       Opus 5 / Max / same session — sanctioned ruling-4
+                    substitution for the Fable 5 controller seat
+Reviewer of record: none (controller-only state edits)
+Status:             BUILD
+Dispatch:           Reconcile the adr-006 LOCK to MERGED (PR #12,
+                    7095267) — first act per learning 5. Record ADR-007,
+                    which narrows one clause of ADR-005 following REVIEW-020
+                    finding 1, plus ruling 17 and learnings 16-17. Correct the
+                    Active work row on main, which has read "Not started" since
+                    2026-08-22 for a unit already twice reviewed. Written
+                    BEFORE the fix cycle 2 dispatch, which cites ADR-007.
+Evidence:           — (documentation-only state edit; the diff is the evidence)
+```
+
+**Known lag.** This block reads `BUILD` after the owner merges until the next
+controller state commit reconciles it.
+
+---
+
 ## LOCK — chore/state-adr-006-read-integrity
 
 ```
@@ -52,7 +79,7 @@ Builder:            Controller (direct state edit via GitHub API; no product
 Model+Effort:       Opus 5 / Max / same session — sanctioned ruling-4
                     substitution for the Fable 5 controller seat
 Reviewer of record: none (controller-only state edits)
-Status:             BUILD
+Status:             MERGED
 Dispatch:           Reconcile the ctrl-005-opening LOCK to MERGED (PR #10,
                     8ab1782) — first act per learning 5. Record ADR-006,
                     which narrows one clause of ADR-004 following REVIEW-019
@@ -65,6 +92,9 @@ Evidence:           — (documentation-only state edit; the diff is the evidence
 
 **Known lag.** This block reads `BUILD` after the owner merges until the next
 controller state commit reconciles it.
+
+**Reconciled 2026-08-24 by CTRL-005** — merged at `7095267f3891e4d019cc9926b57930107e6e86be`
+(PR #12).
 
 ---
 
