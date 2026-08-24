@@ -41,6 +41,31 @@ it (REVIEW-013 finding 4, REVIEW-015 finding 3).
 
 ---
 
+## LOCK — chore/state-adr-008-surfacing-scope
+
+```
+Project:            Noema
+Branch:             chore/state-adr-008-surfacing-scope
+Controller:         CTRL-005 Auth and session v1
+Builder:            Controller (direct state edit via GitHub API; no product
+                    code — controller-only class per AGENTS.md state ownership)
+Model+Effort:       Opus 5 / Max / same session — sanctioned ruling-4
+                    substitution for the Fable 5 controller seat
+Reviewer of record: none (controller-only state edits)
+Status:             BUILD
+Dispatch:           Reconcile the adr-007 LOCK to MERGED (PR #13,
+                    d5b4f8a) — first act per learning 5. Record ADR-008,
+                    narrowing ADR-007's surfacing sentence to native per
+                    REVIEW-021-ADVISORY. Rulings 18 and 19, learning 19.
+                    Written BEFORE the fix cycle 3 dispatch, which cites it.
+Evidence:           — (documentation-only state edit; the diff is the evidence)
+```
+
+**Known lag.** This block reads `BUILD` after the owner merges until the next
+controller state commit reconciles it.
+
+---
+
 ## LOCK — chore/state-adr-007-refresh-lifecycle
 
 ```
@@ -52,7 +77,7 @@ Builder:            Controller (direct state edit via GitHub API; no product
 Model+Effort:       Opus 5 / Max / same session — sanctioned ruling-4
                     substitution for the Fable 5 controller seat
 Reviewer of record: none (controller-only state edits)
-Status:             BUILD
+Status:             MERGED
 Dispatch:           Reconcile the adr-006 LOCK to MERGED (PR #12,
                     7095267) — first act per learning 5. Record ADR-007,
                     which narrows one clause of ADR-005 following REVIEW-020
@@ -65,6 +90,10 @@ Evidence:           — (documentation-only state edit; the diff is the evidence
 
 **Known lag.** This block reads `BUILD` after the owner merges until the next
 controller state commit reconciles it.
+
+**Reconciled 2026-08-25 by CTRL-005** — merged at `d5b4f8aec3b45e7009a9a7bb2a7119c9758e1bc3`
+(PR #13). Branch deleted from origin under RED-lane approval; recreatable at
+`43dd571add7409318603ae4c1e460af2063cfb16`.
 
 ---
 

@@ -112,6 +112,8 @@ explicitly and get it overturned on the record.
 | 15 | The session adapter's read-integrity property is narrowed: a read fails closed to `null` when the index is missing, unparseable, out of range, inconsistent in chunk count or total length, **or when a recorded non-cryptographic checksum over the payload disagrees**. That checksum is corruption detection — of truncation, interleaved-writer hybrids, and accidental damage — and explicitly **not** tamper resistance. No claim of resistance to an adversary with write access to the secure store may be made; such an adversary already holds the tokens. | 2026-08-24 | `docs/03-decisions/ADR-006-read-integrity.md` |
 | 16 | An ADR may narrow a single clause of an earlier ADR without superseding it wholesale. The narrowing ADR names the exact sentence it replaces and states that the rest stands; the earlier ADR's `Status` stays `Accepted` and its file is not edited. A deliberate departure from the template's binary Accepted/Superseded model, taken because marking ADR-004 superseded would falsely retire the auth-method decision along with one read-integrity sentence. | 2026-08-24 | this row (controller ruling, CTRL-005) |
 | 17 | The auth client **never self-schedules a refresh**: `autoRefreshToken: false` at construction, refresh initiated only by explicit foreground-gated calls, and a refresh whose persistence fails is **surfaced**, not silently dropped. Locked-device behaviour is NOT RUN and NOT CLAIMED in Phase A; Phase B carries a named physical-device test. Narrows one clause of ADR-005 per ruling 16; ADR-005's `scope: 'local'` and `WHEN_UNLOCKED` decisions stand. | 2026-08-24 | `docs/03-decisions/ADR-007-refresh-lifecycle.md` |
+| 18 | ADR-007's persistence-failure **surfacing guarantee is native-only**. The write observer wraps the SecureStore-backed adapter; on web, storage is `localStorage` through the `supabase-js` default and no observer exists. No unqualified cross-platform claim of surfacing may be made in code, evidence, or product copy. Web surfacing is deferred and named, not claimed. Narrows one sentence of ADR-007 per ruling 16; ADR-007 otherwise stands. | 2026-08-25 | `docs/03-decisions/ADR-008-surfacing-scope.md` |
+| 19 | Correcting a decision-text **overclaim** — narrowing a sentence so it states only what the architecture enforces — is **controller-class**, not an owner decision. ADR-006, ADR-007 and ADR-008 were the same motion: a reviewer finds an unqualified sentence, the remedy is to state the enforceable scope. That is bookkeeping against principle 4. Genuine trade-offs, where more than one defensible outcome exists, still go to the owner. | 2026-08-25 | this row (owner ruling, CTRL-005) |
 
 ## Active work
 
@@ -271,6 +273,15 @@ reviewers unnamed, and an Active work row left reading "Not started" for two
 days on a twice-reviewed unit — the last one avoided deliberately to dodge a
 merge conflict, which is how a governance file comes to lie. Reconcile state
 first, dispatch second. A conflict is cheaper than a false record.
+
+**19 — Write the scope qualifier into the decision sentence, or a reviewer will
+write it for you three cycles later.** ADR-004 correctly qualified its web
+storage claim. ADR-005 and ADR-007 then stated universals without one, and both
+were narrowed by review — ADR-006 and ADR-008 exist only to add qualifiers that
+belonged in the original sentences. An ADR sentence that says "a read fails
+closed" or "a failure is surfaced" without naming the platform, the phase, and
+the adversary it holds against is an overclaim waiting to be found. Draft the
+qualifier first; it is cheaper than the ADR that adds it.
 
 ## Known issues
 
