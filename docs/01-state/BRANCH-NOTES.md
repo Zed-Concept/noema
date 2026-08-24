@@ -208,6 +208,33 @@ session and is re-scoped to the auth-client lifecycle for the cycle-2 candidate.
 One fix cycle remains after this one. The stop rule is unchanged: an in-class
 defect recurring after cycle three is remedied by subtraction.
 
+**Fix cycle 2, 2026-08-24 — same builder, same branch, fresh session** (AGENTS.md
+workflow step 5, in response to REVIEW-020 **FAIL**). Model+Effort for this
+cycle: **Opus 5 [1m] / Max / fresh session** — the owner-set substitution for
+the dispatched Fable 5, recorded here because the dispatch instructed that this
+specific substitution be recorded rather than stopped for. Max is the ruling-5
+tier for a review-fix loop. **Workflows run: none**, so the ruling-6 fan-out
+disclosure is nil for this cycle.
+
+Main was merged in at `d5b4f8ae` for ADR-007, ruling 17, and learnings 16-18.
+The one merge conflict — PROJECT-STATE's Active work row — was resolved by
+taking this branch's row and bringing it current, as the dispatch directed,
+rather than leaving a stale entry to dodge the conflict (learning 18).
+
+Substance of this cycle: ADR-007 implemented in place of patching the three
+lifecycle paths REVIEW-020 finding 1 proved unpatchable; the chunk ceiling
+re-derived from measurement rather than assertion; three instruments rebuilt
+(a source/AST token-opacity scan, the ninth reader-versus-removal schedule, and
+a build-valid load-bearing M4); one claim **deleted** by subtraction; and the
+records reconciled to the artifacts they describe. Gates all exit 0 — 9 suites,
+116 tests; 27/27 mutants sensitive with 0 build-invalid; 8/8 gated artifacts
+byte-stable.
+
+Evidence for this cycle: `docs/05-quality/evidence/005c-auth-session-fix2/`.
+`Status` is left at `BUILD` — REVIEW-019 records status reconciliation as
+controller-owned, and a builder does not flip its own LOCK. The advisory seat
+remains named above and **never dispatched**.
+
 ---
 
 ## LOCK — chore/state-ctrl-004-closeout

@@ -95,13 +95,29 @@ describe('supabase client — session storage is actually wired in', () => {
     expect(authOptions.persistSession).toBe(true);
   });
 
-  it('leaves auto-refresh enabled for the AppState gate to control', () => {
+  it('never lets the client self-schedule a refresh', () => {
     const { authOptions } = loadClientModule();
 
-    // ADR-005 gates WHEN the ticker runs, in `auth-provider`. Disabling it here
-    // would also disable the on-demand refresh that recovers a long
-    // backgrounded session.
-    expect(authOptions.autoRefreshToken).toBe(true);
+    // ADR-007 / binding ruling 17, and the whole of its first clause. This one
+    // option is the enforcement mechanism: in pinned auth-js 2.112.3 both
+    // restart paths are gated on it — `_recoverAndRefresh` gates its recovery
+    // refresh on `if (this.autoRefreshToken && currentSession.refresh_token)`
+    // (`GoTrueClient.js:4104`), and `_handleVisibilityChange` gates the
+    // non-browser ticker on `if (this.autoRefreshToken)` (`:4693`). With this
+    // false, neither path exists to be raced.
+    //
+    // The predecessor of this test asserted `true`, on the reasoning that
+    // `auth-provider` gated WHEN the ticker ran. REVIEW-020 finding 1 proved
+    // that gate could not hold: `stopAutoRefresh()` clears only the timers that
+    // exist at that moment and cancels neither initialization nor an in-flight
+    // refresh, and the library exposes no cancellation API for either.
+    //
+    // What is deliberately NOT disabled by this is auth-js's on-demand refresh
+    // inside `getSession()` (`:2554`), which is what recovers a long
+    // backgrounded session. That fires only on a call this app makes, and
+    // `auth/foreground-refresh.ts` is the gate that keeps those calls
+    // foreground-only.
+    expect(authOptions.autoRefreshToken).toBe(false);
   });
 
   it('does not parse a session out of the URL', () => {

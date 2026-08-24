@@ -1,3 +1,124 @@
+## 2026-08-24 — Unit D fix cycle 2, feat/auth-session-v1
+
+**Controller:** CTRL-005 Auth and session v1.
+**Builder:** Claude Code. **Dispatched as Fable 5; run as Opus 5 [1m]** at the
+ruling-5 Max effort class — the owner-sanctioned substitution when Fable 5 quota
+is unavailable, recorded here and in the LOCK per the dispatch. The
+harness-fixed `Co-Authored-By` trailer disagrees with this; the LOCK and this
+block are authoritative.
+**Answering:** REVIEW-020 **FAIL**. Fix cycle **2 of 3**; one cycle remains.
+**Base:** `main` at `d5b4f8aec3b45e7009a9a7bb2a7119c9758e1bc3`, merged in.
+**Evidence:** `docs/05-quality/evidence/005c-auth-session-fix2/`.
+**Workflows run: none.** No subagent fan-out. Single session, builder direct.
+
+### Preflight
+
+- Fetched. Origin head `0bc18bb105ed6882fd21adcdc6eec4d547f8fc6d` and
+  `origin/main` `d5b4f8aec3b45e7009a9a7bb2a7119c9758e1bc3` both confirmed
+  before any work; 9 ahead / 2 behind as the dispatch stated.
+- The commit after REVIEW-020, `0bc18bb1`, verified as a controller-only LOCK
+  edit touching `docs/01-state/BRANCH-NOTES.md` **alone** — REVIEW → BUILD. No
+  product or evidence file in it.
+- The two commits behind were exactly PR #13: ADR-007, ruling 17, learnings
+  16–18, and main's Active work correction.
+
+### What was done, by finding
+
+**Finding 1 — ADR-007 implemented; the three lifecycle paths NOT patched.**
+`autoRefreshToken: false` at construction (`src/lib/supabase.ts`); a foreground
+gate as its own module (`src/lib/auth/foreground-refresh.ts`); a session-write
+observer (`src/lib/auth/session-storage.ts`) whose refused write forces
+re-authentication in `auth-provider.tsx`. Verified against the pinned source
+rather than assumed: both restart paths are gated on the construction flag —
+`_recoverAndRefresh` at `GoTrueClient.js:4104`, `_handleVisibilityChange` at
+`:4693` — so the option removes them rather than racing them. auth-js's
+on-demand refresh inside `getSession()` (`:2554`) deliberately remains; it fires
+only on a call this app makes, and the gate keeps those foreground-only.
+**Locked-device behaviour is NOT RUN and NOT CLAIMED**; the claim that used to
+assert it in `secure-store-adapter.ts` is withdrawn in place.
+
+**Finding 2 — the ceiling re-derived by measurement.** `MAX_CHUNKS` 64 → 256,
+justified by `session-sizes.txt`, which reads the constants out of the shipped
+module: Noema's actual session is **2 chunks**, REVIEW-020's counterexample is
+**67**, removal costs exactly **513** deletes. Both constraining findings are
+satisfied — the sweep stays exhaustive and no measured session is refused — and
+the residue is stated: no finite ceiling is provably unreachable, so this is a
+**resource bound on removal, not a safety property**, and the refusal above it
+is a disclosed functional limit that throws before any write.
+
+**Finding 3 — token opacity is now a source/AST scan** with five positive
+controls (learning 14). Verified end to end: with REVIEW-020's disposable
+`try { JSON.parse(value); } catch {}` in the real adapter, all 53 behavioural
+adapter tests stayed **green** and the scan turned **red** — which is the whole
+point, since a behaviour-preserving parse is undetectable by black-box test.
+
+**Finding 4 — the ninth schedule added.** Verified: the exact mutant
+`removeItem: (key) => removeItemBody(key)` is build-valid and turns it red.
+
+**Finding 5 — mutants must now be build-valid.** A typecheck gate was added to
+`mutants.sh` (learning 16). It caught **two further inherited build-invalid
+mutants**, M5 and M16, both previously scored SENSITIVE; both rebuilt. M4 was
+rebuilt on both axes it failed — build-validity and load-bearingness — and its
+test now asserts the no-write safety postcondition **before** the error's
+identity, so the mutant is red because it overwrote a live chunk of generation 0
+rather than because a string mismatched. REVIEW-020's TS2339 claim about the old
+M4 edit was independently reproduced. Claim 49 corrected to say what its table
+shows.
+
+**Finding 6 — SUBTRACTION.** The claim that the checksum "distinguishes
+same-length payloads" is **deleted**. REVIEW-020's two 60-character collision
+strings were reproduced (both `2614443459`) and are kept as an executable record
+so the claim cannot quietly return. The hash is **not** widened — ADR-006 forbids
+the dependency and the crypto call, and 32-bit FNV remains adequate for
+corruption detection. The claim was wrong, not the instrument.
+
+**Finding 7 — records reconciled to their artifacts.** `npm audit` **RAN** in
+cycle 1 and runs here; the cycle-1 record calling it NOT RUN / ENOTFOUND was
+false, and the artifact beside it reported 21 vulnerabilities. `capture.sh` is
+**not offline by construction** and now says so in block capitals, as does
+`stability.sh`. The producer manifest now names five exceptions and the
+directory has five — `ci.txt` was the omission. PROJECT-STATE's Active work row
+was taken from this branch and brought current on merge rather than left stale
+(learning 18).
+
+### Gates and evidence
+
+- `typecheck`, `lint`, `test`, `format:check` — all **exit 0**. 9 suites,
+  **116 tests**.
+- `mutants.sh`: **27 mutants, 27 SENSITIVE, 0 build-invalid**, tree restored
+  byte-identical. That count is an execution fact, not a coverage measure.
+- `stability.sh`: **8/8** gated artifacts identical across two fresh captures;
+  both captures exit 0; all match the committed copies.
+- Every file written was read back after writing (learning 11).
+
+### Disclosures — ruling 6
+
+- Model substitution as above.
+- `npm audit` reaches the network; it is the only step that does. It reports 21
+  upstream vulnerabilities, unchanged, **FAIL pre-existing**, owned by
+  PROJECT-STATE Known issues #2 and out of this cycle's scope.
+- Beyond the battery's 27, five disposable mutations were applied by hand to
+  verify new instruments redden, each restored and digest-verified.
+- No Supabase endpoint was contacted and no credential was read. The `.env` in
+  the working copy is loaded by the Expo CLI during `lint`; only variable NAMES
+  are echoed and `mask()` drops them.
+- **The early `gates.txt` stability anomaly stays DISCLOSED and unexplained.**
+  It did not recur here. It is not written off: it still bars any universal
+  determinism claim, and only the narrow per-run claim is made.
+
+### Out of scope, as dispatched
+
+Duplicated `Sign in · ${APP_NAME}` expression (backlogged); npm audit's 21
+upstream advisories; any edit to REVIEW-019 or REVIEW-020.
+
+### For the reviewer
+
+`Status` is left at **BUILD**. REVIEW-019 records status reconciliation as
+controller-owned, and a builder does not flip its own LOCK. The advisory seat
+remains named but **never dispatched** this session.
+
+---
+
 ## 2026-08-24 — REVIEW-020, feat/auth-session-v1 at 4a43f454
 
 **Controller:** CTRL-005 Auth and session v1.

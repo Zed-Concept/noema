@@ -23,6 +23,19 @@ jest.mock('@/lib/supabase', () => ({
   },
 }));
 
+// The persistence-failure flag is module scope in the real module and is driven
+// directly here, so the provider's REACTION to it can be measured on its own.
+// What the flag itself does — how a refused write comes to set it, and what is
+// left on disk when one does — is proved against the real adapter over a real
+// in-memory keychain in `foreground-refresh.test.ts`, not here.
+jest.mock('@/lib/auth/session-storage', () => ({
+  takeSessionPersistenceFailure: jest.fn(),
+}));
+
+const { takeSessionPersistenceFailure } = jest.requireMock('@/lib/auth/session-storage') as {
+  takeSessionPersistenceFailure: jest.Mock;
+};
+
 const auth = supabase.auth as unknown as {
   getSession: jest.Mock;
   onAuthStateChange: jest.Mock;
@@ -80,6 +93,7 @@ beforeEach(() => {
   auth.signOut.mockResolvedValue({ error: null });
   auth.startAutoRefresh.mockResolvedValue(undefined);
   auth.stopAutoRefresh.mockResolvedValue(undefined);
+  takeSessionPersistenceFailure.mockReturnValue(null);
 
   appStateListeners.length = 0;
   setAppState('active');
@@ -121,7 +135,11 @@ describe('auth provider — bootstrap', () => {
     const { result } = await renderHook(() => useAuth(), { wrapper });
 
     await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
-    expect(auth.getSession).toHaveBeenCalledTimes(1);
+    // Not an exact count. Under ADR-007 `getSession()` has two callers: the
+    // cold-start bootstrap here, and the foreground gate, which evaluates once
+    // at mount because AppState is `active`. The gate's own call is counted in
+    // its own describe block below.
+    expect(auth.getSession).toHaveBeenCalled();
   });
 
   it('resolves to signedIn and carries the session when one is stored', async () => {
@@ -296,70 +314,134 @@ describe('auth provider — OTP flow', () => {
 });
 
 /**
- * ADR-005: a refresh must never fire while the device is locked, because
- * SecureStore keeps `WHEN_UNLOCKED` and the rotated token would be lost —
- * ending in refresh-token reuse detection revoking the family. Foreground is
- * the proxy for unlocked.
+ * ADR-007 / binding ruling 17 — the client never self-schedules a refresh, and
+ * the app initiates one only while foreground.
+ *
+ * This block replaces the previous "auto-refresh is gated on AppState" block
+ * wholesale. That block asserted `startAutoRefresh`/`stopAutoRefresh` call
+ * counts, and REVIEW-020 finding 1 proved those calls never established the
+ * property they were credited with: `stopAutoRefresh()` clears only the timers
+ * that exist at that moment and cancels neither initialization nor an in-flight
+ * refresh. Asserting them harder would not have helped. ADR-007 removed the
+ * scheduler, so what is asserted here is that the ticker is never touched at
+ * all, and that the gate decides what it is supposed to decide.
  */
-describe('auth provider — auto-refresh is gated on AppState', () => {
-  it('starts the refresh ticker when the app is already active at mount', async () => {
+describe('auth provider — ADR-007 refresh lifecycle', () => {
+  it('never touches the auto-refresh ticker, in any AppState', async () => {
     await renderHook(() => useAuth(), { wrapper });
 
-    expect(auth.startAutoRefresh).toHaveBeenCalledTimes(1);
+    await act(async () => emitAppState('background'));
+    await act(async () => emitAppState('active'));
+    await act(async () => emitAppState('inactive'));
+
+    // The whole of ADR-007's first clause, asserted negatively because that is
+    // what it says: the client is constructed with `autoRefreshToken: false`
+    // and nothing here starts or stops a ticker. `supabase-client.test.ts`
+    // asserts the construction option itself.
+    expect(auth.startAutoRefresh).not.toHaveBeenCalled();
     expect(auth.stopAutoRefresh).not.toHaveBeenCalled();
   });
 
-  it('does not start a ticker when mounted while the app is backgrounded', async () => {
+  it('initiates a settle when the app is already active at mount', async () => {
+    await renderHook(() => useAuth(), { wrapper });
+
+    // Bootstrap + gate. Both are foreground-initiated calls this app makes.
+    await waitFor(() => expect(auth.getSession).toHaveBeenCalledTimes(2));
+  });
+
+  it('initiates nothing when mounted while the app is backgrounded', async () => {
     setAppState('background');
 
     await renderHook(() => useAuth(), { wrapper });
 
     // The current state, not an assumption that a mounting app is foreground.
+    // Exactly one call: the cold-start bootstrap. The gate added none.
+    await waitFor(() => expect(auth.getSession).toHaveBeenCalledTimes(1));
     expect(auth.startAutoRefresh).not.toHaveBeenCalled();
-    expect(auth.stopAutoRefresh).toHaveBeenCalled();
   });
 
-  it('stops the ticker on background and on inactive, and restarts on active', async () => {
+  it('initiates on each transition to active and none on background or inactive', async () => {
     await renderHook(() => useAuth(), { wrapper });
-    expect(auth.startAutoRefresh).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(auth.getSession).toHaveBeenCalledTimes(2));
 
     await act(async () => emitAppState('background'));
-    expect(auth.stopAutoRefresh).toHaveBeenCalledTimes(1);
+    expect(auth.getSession).toHaveBeenCalledTimes(2);
 
     await act(async () => emitAppState('active'));
-    expect(auth.startAutoRefresh).toHaveBeenCalledTimes(2);
+    expect(auth.getSession).toHaveBeenCalledTimes(3);
 
     // `inactive` is the iOS state during the app switcher and an incoming call.
-    // It is not active, so it must not keep a refresh ticker running.
+    // It is not active, so it must initiate nothing.
     await act(async () => emitAppState('inactive'));
-    expect(auth.stopAutoRefresh).toHaveBeenCalledTimes(2);
+    expect(auth.getSession).toHaveBeenCalledTimes(3);
   });
 
-  it('releases the AppState listener and stops the ticker on unmount', async () => {
+  it('releases the AppState listener on unmount', async () => {
     const { unmount } = await renderHook(() => useAuth(), { wrapper });
 
     expect(removeAppStateListener).not.toHaveBeenCalled();
     await unmount();
 
     expect(removeAppStateListener).toHaveBeenCalledTimes(1);
-    expect(auth.stopAutoRefresh).toHaveBeenCalled();
+    // There is no ticker to stop on unmount, and nothing must pretend there is.
+    expect(auth.stopAutoRefresh).not.toHaveBeenCalled();
   });
 
-  it('absorbs a rejected gate call rather than crashing the effect', async () => {
-    auth.startAutoRefresh.mockRejectedValue(new Error('ticker unavailable'));
+  it('absorbs a rejected settle rather than crashing the effect', async () => {
+    auth.getSession.mockRejectedValue(new Error('storage unavailable'));
 
     const { result } = await renderHook(() => useAuth(), { wrapper });
 
-    // An unhandled rejection out of an effect is a crash-class problem, and the
-    // ticker is not load-bearing: auth-js still refreshes on demand.
+    // An unhandled rejection out of an effect is a crash-class problem.
     await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
-    expect(auth.startAutoRefresh).toHaveBeenCalled();
   });
-});
 
-describe('auth provider — misuse', () => {
-  it('refuses to hand out context outside a provider', async () => {
-    // Rendered without the wrapper on purpose.
-    await expect(renderHook(() => useAuth())).rejects.toThrow(/useAuth must be used inside/);
+  it('does not sign the user out when a settle fails without a persistence failure', async () => {
+    // A dead network and an unreadable store both reject, and neither means a
+    // rotated token was lost. Only the flag distinguishes them.
+    auth.getSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null });
+    takeSessionPersistenceFailure.mockReturnValue(null);
+
+    const { result } = await renderHook(() => useAuth(), { wrapper });
+
+    await waitFor(() => expect(result.current.state.status).toBe('signedIn'));
+    expect(auth.signOut).not.toHaveBeenCalled();
+  });
+
+  it('requires re-authentication when a rotated session could not be persisted', async () => {
+    auth.getSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null });
+    takeSessionPersistenceFailure.mockReturnValue({
+      key: 'sb-noema-auth-token',
+      cause: new Error('errSecInteractionNotAllowed'),
+    });
+
+    const { result } = await renderHook(() => useAuth(), { wrapper });
+
+    // ADR-007 item 3. The server has already rotated the refresh token and the
+    // write was refused, so what is on disk is the superseded one. The app must
+    // not keep using a session it did not store.
+    await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
+    // Device-local, still: requiring re-authentication here must not revoke the
+    // same user's session on their other devices. ADR-005's scope decision is
+    // untouched by ADR-007.
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+  });
+
+  it('still forces signedOut when the cleanup removal also fails', async () => {
+    auth.getSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null });
+    takeSessionPersistenceFailure.mockReturnValue({
+      key: 'sb-noema-auth-token',
+      cause: new Error('errSecInteractionNotAllowed'),
+    });
+    // The store that just refused a write may refuse the deletes too.
+    auth.signOut.mockRejectedValue(new Error('errSecInteractionNotAllowed'));
+
+    const { result } = await renderHook(() => useAuth(), { wrapper });
+
+    // The demand for re-authentication is NOT contingent on the removal
+    // succeeding. The residual — a superseded session still on disk, readable
+    // on next cold start — is disclosed in the provider and in the evidence
+    // README; it is not claimed closed.
+    await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
   });
 });

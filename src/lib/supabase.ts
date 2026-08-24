@@ -25,16 +25,37 @@ export const supabase = createClient<Database>(supabaseUrl, supabasePublishableK
     persistSession: true,
     storage: authSessionStorage,
 
-    // Keeps the access token current while the app is running. Session state
-    // reaches the UI through onAuthStateChange, which fires on refresh too.
+    // ADR-007 / binding ruling 17: THE CLIENT NEVER SELF-SCHEDULES A REFRESH.
     //
-    // ADR-005 gates WHEN the ticker runs, not whether it exists: `auth-provider`
-    // calls startAutoRefresh/stopAutoRefresh off AppState so a refresh never
-    // fires against a locked device, where SecureStore's WHEN_UNLOCKED class
-    // would lose the rotated token. Turning this off instead would also disable
-    // the on-demand refresh auth-js performs when a caller asks for a session
-    // near expiry, which is the path that recovers a long-backgrounded session.
-    autoRefreshToken: true,
+    // This single option is the whole enforcement mechanism, which is exactly
+    // why ADR-007 preferred it to the three lifecycle patches it replaces. The
+    // property is checkable by reading this line, rather than by reasoning
+    // about the internals of a pinned dependency.
+    //
+    // REVIEW-020 finding 1 proved with three probes that `stopAutoRefresh()`
+    // cannot bound refresh execution while this is `true`: it clears only the
+    // interval and pending timeout that exist at that moment, and cancels
+    // neither initialization nor a refresh already in flight. Pinned auth-js
+    // 2.112.3 exposes no cancellation API for either, so there was nothing to
+    // patch this against.
+    //
+    // Both restart paths are gated on this flag in the pinned source, so
+    // turning it off REMOVES them rather than racing them:
+    //   - `_recoverAndRefresh()` gates its recovery refresh on
+    //     `if (this.autoRefreshToken && currentSession.refresh_token)`
+    //     (`GoTrueClient.js:4104`), so construction no longer refreshes a
+    //     stored session.
+    //   - `_handleVisibilityChange()` on a non-browser runtime gates the ticker
+    //     on `if (this.autoRefreshToken)` (`GoTrueClient.js:4693`), so no
+    //     ticker is ever started and `_autoRefreshTokenTick` never runs.
+    //
+    // What deliberately REMAINS is auth-js's ON-DEMAND refresh: `getSession()`
+    // still calls `_callRefreshToken` when the stored access token is inside
+    // its 90s `EXPIRY_MARGIN_MS` (`GoTrueClient.js:2554`). That is not
+    // self-scheduling — it fires only on a call this app makes — and ADR-007
+    // requires those calls to be foreground-gated. `auth/foreground-refresh.ts`
+    // is that gate and `auth-provider.tsx` is where it is wired to AppState.
+    autoRefreshToken: false,
 
     // No `lock` option, deliberately. The pinned auth-js 2.112.3 marks the only
     // lock it ships for this environment (`processLock`) `@deprecated` —

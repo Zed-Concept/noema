@@ -1,0 +1,15 @@
+# npm audit — run-varying (tracks the upstream advisory database).
+# Recorded to show this cycle added no dependency and did not change the
+# picture; see PROJECT-STATE 'Known issues' #2, which owns this.
+        node_modules/@expo/prebuild-config
+      @expo/inline-modules  >=0.0.2-canary-20260409-6fc2991
+      Depends on vulnerable versions of @expo/config-plugins
+      node_modules/@expo/inline-modules
+
+21 vulnerabilities (10 moderate, 11 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force

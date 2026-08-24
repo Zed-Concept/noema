@@ -6,6 +6,9 @@ import type { AppStateStatus } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
 
+import { refreshWhileForeground } from './foreground-refresh';
+import { takeSessionPersistenceFailure } from './session-storage';
+
 /**
  * Session state as three mutually exclusive cases.
  *
@@ -127,42 +130,86 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  /**
+   * ADR-007 item 3 / binding ruling 17 — a rotated token that was not stored
+   * must not be used.
+   *
+   * By the time this runs the server has already rotated the refresh token, so
+   * what is on disk is the SUPERSEDED one. Continuing against it is precisely
+   * the path that ends days later inside Supabase's refresh-token reuse
+   * detection, with the whole family revoked and no diagnostic trail. ADR-007
+   * is explicit that this — not the fact a refresh fired — was always the
+   * danger.
+   */
+  const requireReauthentication = useCallback(async () => {
+    // Best effort by necessity: the store that just refused a write may refuse
+    // the deletes too, and `removeItem` rejects when it does.
+    //
+    // DISCLOSED RESIDUAL, not a closed hole: if this removal also fails, the
+    // superseded session is still on disk and the next cold start will read it
+    // back. Nothing at this layer can force a store that is refusing to
+    // cooperate; what this layer can do is refuse to keep using the session,
+    // which is what the line below does unconditionally.
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch {
+      // Intentionally swallowed — see above. The demand for re-authentication
+      // is not contingent on the removal succeeding.
+    }
+    setState({ status: 'signedOut' });
+  }, []);
+
   useEffect(() => {
-    // ADR-005: token auto-refresh is gated on AppState.
+    // ADR-007 / binding ruling 17: THE FOREGROUND GATE.
     //
-    // The failure this prevents is silent and device-dependent. SecureStore
-    // keeps `WHEN_UNLOCKED`, so a background refresh on a locked device cannot
-    // write. The rotated token is lost, the next unlock presents a superseded
-    // refresh token, and Supabase's refresh-token reuse detection can revoke
-    // the whole family and sign the user out — arriving as an unreproducible
-    // bug report. Gating on foreground means a refresh only ever fires while
-    // the app is active and the device therefore unlocked, which is why
-    // ADR-005 rejected weakening the accessibility class instead.
+    // This effect starts nothing and stops nothing. There is no ticker to
+    // gate, because `supabase.ts` sets `autoRefreshToken: false` and the
+    // client therefore never schedules a refresh of its own. What is left is
+    // the other half of ADR-007: refresh is initiated only by explicit
+    // foreground-gated calls, and this is the only place that initiates one.
     //
-    // Applied on every platform, as ADR-005 states it, though the mechanism it
-    // protects is native: web has no keychain accessibility class and keeps
-    // its session in `localStorage`. On web this simply stops the refresh
-    // ticker while the tab is hidden.
-    function apply(status: AppStateStatus) {
-      // Not load-bearing for correctness, so failures are absorbed rather than
-      // surfaced: the ticker is an optimisation, and auth-js still refreshes on
-      // demand when a caller asks for a session near expiry. An unhandled
-      // rejection out of an effect, by contrast, is a crash-class problem.
-      const gate =
-        status === 'active' ? supabase.auth.startAutoRefresh() : supabase.auth.stopAutoRefresh();
-      void Promise.resolve(gate).catch(() => {});
+    // Why the previous shape is gone. It called
+    // `startAutoRefresh`/`stopAutoRefresh` off AppState, and REVIEW-020
+    // finding 1 proved with three probes that `stopAutoRefresh()` is not a
+    // lifecycle barrier in pinned auth-js 2.112.3: initialization could
+    // restart the ticker after the app had backgrounded, initial session
+    // recovery could refresh despite the stop, and a refresh already in flight
+    // could persist a rotated session after the stop resolved. The library
+    // offers no cancellation API for either, so there was no version of that
+    // shape that worked. ADR-007 removed the scheduler instead of patching it.
+    let active = true;
+    let inFlight = false;
+
+    async function evaluate(status: AppStateStatus) {
+      // One evaluation at a time. AppState can deliver several transitions
+      // faster than a network round trip completes, and two overlapping
+      // evaluations would race for the same persistence-failure flag — the
+      // second consuming what the first needed to act on.
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        const outcome = await refreshWhileForeground(status, {
+          settleSession: () => supabase.auth.getSession(),
+          takePersistenceFailure: takeSessionPersistenceFailure,
+        });
+        if (active && outcome === 'unpersisted') await requireReauthentication();
+      } finally {
+        inFlight = false;
+      }
     }
 
     // The current state, not an assumption about it: a provider mounted while
-    // the app is already backgrounded must not start a ticker.
-    apply(AppState.currentState);
-    const appStateSubscription = AppState.addEventListener('change', apply);
+    // the app is already backgrounded must not initiate a refresh.
+    void evaluate(AppState.currentState);
+    const appStateSubscription = AppState.addEventListener('change', (status) => {
+      void evaluate(status);
+    });
 
     return () => {
+      active = false;
       appStateSubscription.remove();
-      void Promise.resolve(supabase.auth.stopAutoRefresh()).catch(() => {});
     };
-  }, []);
+  }, [requireReauthentication]);
 
   const sendOtp = useCallback(async (email: string) => {
     return reportRatherThanThrow(async () => {

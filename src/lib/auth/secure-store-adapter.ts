@@ -125,17 +125,62 @@ export const CHUNK_BUDGET_BYTES = 1536;
 
 /**
  * Upper bound on chunks per generation, and so on the sweep in `removeItem`.
- * At the budget above this caps a single value at 96 KiB.
+ * At the budget above this caps a single value at 384 KiB.
  *
- * It was 256 while the sweep stopped at the first absent key and the bound cost
- * nothing. Invariant 3 makes removal sweep the whole range unconditionally, so
- * the bound now has a price: `2 * MAX_CHUNKS + 1` backend deletes per removed
- * key. 64 is the smallest value that is still far beyond any session payload —
- * a Supabase session runs a few kilobytes, so this is an order of magnitude of
- * headroom — and it keeps removal at 129 calls rather than 513. Exceeding it is
- * a thrown error at write time, never a silent truncation.
+ * ---------------------------------------------------------------------------
+ * WHY THIS NUMBER, AND WHAT IT IS NOT
+ * ---------------------------------------------------------------------------
+ *
+ * This constant is pulled in two directions by two review findings that
+ * constrain each other, and the previous value resolved only one of them.
+ *
+ * REVIEW-019 finding 6 required removal to sweep the FULL key space rather
+ * than trust the index, because a first-gap early exit stranded a live token
+ * fragment. That makes removal cost `2 * MAX_CHUNKS + 1` backend deletes, so
+ * the bound acquired a price it did not have before. Fix cycle 1 answered by
+ * lowering it 256 -> 64.
+ *
+ * REVIEW-020 finding 2 then rejected the justification for that. It was
+ * asserted, not measured, and it was false as stated: auth-js persists the
+ * whole `Session.user` when no separate `userStorage` is configured — as here
+ * — and `UserMetadata`/`UserAppMetadata` carry open-ended index signatures, so
+ * a structurally valid session with a 100,000-character metadata value needs
+ * more than 64 chunks. 64 refused a session the pinned client can hand us.
+ *
+ * The number below is chosen from MEASUREMENT instead. `session-sizes.txt` in
+ * this cycle's evidence records the producer and its output:
+ *
+ *   |   chunks | session shape                                        |
+ *   |----------|------------------------------------------------------|
+ *   |        2 | empty `user_metadata` — what Noema v1 actually creates |
+ *   |        2 | small profile (full_name, avatar_url, locale)          |
+ *   |        8 | 10 KiB metadata                                       |
+ *   |       67 | REVIEW-020 finding 2's 100,000-character counterexample |
+ *   |      172 | 256 KiB metadata                                       |
+ *
+ * 256 covers this product's actual session 128x over and finding 2's
+ * counterexample 3.8x over, at a removal cost of exactly 513 backend deletes —
+ * a deterministic figure, asserted by test, paid once per sign-out.
+ *
+ * **WHAT IS NOT CLAIMED.** The previous note said 64 was "far beyond any
+ * session payload". No finite ceiling can honestly claim that, and this one
+ * does not: `UserMetadata` is an open-ended index signature, so for any bound
+ * there exists a structurally valid session above it. This constant is a
+ * RESOURCE BOUND ON REMOVAL, not a safety property, and the refusal above it
+ * is a DISCLOSED FUNCTIONAL LIMIT rather than a guarantee of unreachability.
+ *
+ * What makes that limit safe rather than merely bounded is that exceeding it
+ * is a thrown error at write time, before any backend write: zero writes, a
+ * byte-stable key set, and the previous value still readable. It never
+ * truncates. REVIEW-020 verified that fail-closed behaviour at the exact
+ * module and it is unchanged here.
+ *
+ * Whether the Noema Supabase project will ever return metadata approaching
+ * this size is **NOT RUN** — Phase A makes no live auth call, so no
+ * server-side bound is established, and none is assumed. ADR-007's Phase B
+ * work is where a real session is first measured.
  */
-export const MAX_CHUNKS = 64;
+export const MAX_CHUNKS = 256;
 
 /** The two generations a payload can occupy. */
 export const GENERATIONS = [0, 1] as const;
@@ -207,9 +252,20 @@ export type SecureStoreBackend = {
  * and turns a future weakening into a visible diff. ADR-005 considered and
  * rejected `AFTER_FIRST_UNLOCK`: it would fix a background refresh's lost write
  * by making the session readable while the device is locked, which is exactly
- * the at-rest protection ADR-004 chose SecureStore for. The refresh is gated on
- * AppState instead (`auth-provider.tsx`), so a refresh never fires against a
- * locked device and there is no lost write to fix.
+ * the at-rest protection ADR-004 chose SecureStore for. That rejection stands
+ * unchanged under ADR-007.
+ *
+ * WHAT IS NOT CLAIMED HERE. An earlier version of this note said a refresh
+ * "never fires against a locked device, and there is no lost write to fix".
+ * Both halves are withdrawn. REVIEW-020 finding 1 disproved the first, and
+ * ADR-007 replaced the clause it rested on: the client no longer schedules
+ * refreshes at all (`supabase.ts`, `autoRefreshToken: false`) and the app
+ * initiates them only while foreground (`foreground-refresh.ts`). The second
+ * half was never established in this phase — ADR-007 classifies locked-device
+ * behaviour NOT RUN and NOT CLAIMED in Phase A and carries a named
+ * physical-device test into Phase B. What this codebase does instead of
+ * claiming the write cannot be lost is DETECT that it was: a refused session
+ * write is recorded by `session-storage.ts` and forces re-authentication.
  */
 const secureStoreBackend: SecureStoreBackend = {
   getItemAsync: (key) => SecureStore.getItemAsync(key),
