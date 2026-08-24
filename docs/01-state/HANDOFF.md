@@ -1,3 +1,158 @@
+## 2026-08-25 — REVIEW-021, feat/auth-session-v1 at 7bea41c4
+
+**Controller:** CTRL-005 Auth and session v1.
+**Reviewer of record:** Codex Sol / Ultra / fresh session. Authored REVIEW-019
+and REVIEW-020; reopened neither and did not build this unit.
+**Target:** `feat/auth-session-v1` at
+`7bea41c4f8b769ce0e602ea290c2d6b7d8a413ea`.
+**Base:** `main` at `d5b4f8aec3b45e7009a9a7bb2a7119c9758e1bc3`.
+**Outputs:** immutable `docs/04-reviews/REVIEW-021.md` plus this new append-only
+HANDOFF block.
+**Verdict:** **FAIL**. Fix cycle 2 of 3 is consumed; one remains.
+**Review fan-out:** three read-only subagents: real auth-client lifecycle,
+adapter/mutation sensitivity, and evidence/producers. All mutations were isolated
+in disposable exact-head clones. No review mutation touched the shared checkout;
+its tracked tree was clean before these authorized record writes.
+
+**LOCK status line:** `Status: REVIEW` — verified before review and left
+unchanged. The block names Codex Sol / Ultra / fresh session as reviewer of
+record and DeepSeek V4 Pro / fresh session as the advisory reviewer. No advisory
+result was supplied to this reviewer, so it is NOT RUN in REVIEW-021.
+
+### Boundary and preconditions
+
+- Exact local and origin target pinned before inspection and rechecked before
+  the review record: `7bea41c4f8b769ce0e602ea290c2d6b7d8a413ea`.
+- Exact local/origin main and merge base:
+  `d5b4f8aec3b45e7009a9a7bb2a7119c9758e1bc3`. Range: 13 ahead / 0 behind,
+  79 paths, `+11887/-26`.
+- The sole commit after `ca44c84f` is `7bea41c4`; it changes only
+  `docs/01-state/BRANCH-NOTES.md`. The dispatch stop condition did not fire.
+- Current-head GitHub CI independently PASS: Actions run `32748119490`, check
+  run `97498385034`, exact `7bea41c4`, conclusion success. The committed
+  `ci.txt` honestly claims only `97f1b7d5`; both later commits are documentation.
+- Cumulative `git diff --check` FAIL introduced: trailing whitespace at
+  `docs/05-quality/evidence/005c-auth-session-fix2/mutants.sh:637`.
+- Independent RED-lane boundary PASS: `supabase/`, `.github/`, and generated
+  database types are object-identical to base; controlled exact-range scans find
+  no SQL, migration, policy, function, grant, bucket, database-RPC, payment,
+  secret, or outward-deployment change. No Supabase endpoint or credential was
+  used in review.
+
+### Disposition
+
+**REVIEW-020:**
+
+1. **OPEN / NOT CLOSED** — ADR-007's replacement still has automatic listener
+   refresh and an unconditional background bootstrap `getSession()` path.
+2. **PARTIALLY CLOSED** — 256 admits the named counterexample and constants are
+   read from source, but synthetic “actual session,” universal M29, and per-
+   sign-out cost claims exceed the measurement.
+3. **PARTIALLY CLOSED / recurring** — literal caught `JSON.parse` reddens the
+   AST suite while behavior stays green; an aliased parser survives.
+4. **PARTIALLY CLOSED** — production removal is queued and the bypass reddens,
+   but the committed test fails before establishing its claimed reader stall.
+5. **CLOSED** — M4/M5/M16 build-validity and current 27-mutant execution/
+   restoration are verified.
+6. **CLOSED** — same-length universal claim deleted; collision executable;
+   32-bit FNV unchanged.
+7. **OPEN / recurring** — exact-head stability is red from a stale producer
+   base, and current producer/HANDOFF/state records disagree.
+
+**REVIEW-019:** findings 1–6, 8–10 remain closed at this head. Finding 7 remains
+open as artifact-backed evidence: current adapter source is opaque by direct
+inspection, but the claimed automated oracle accepts alias parsing. REVIEW-019
+has ten numbered findings; REVIEW-021 covers all ten despite the dispatch's
+reference to nine dispositions.
+
+### Verdict-driving findings
+
+1. **HIGH, MUST close — refresh bypasses the foreground gate.** Pinned
+   `supabase-js` registers an auth listener during construction; auth-js's
+   initial-session emission enters `_useSession()` and refreshes a near-expiry
+   stored session with `autoRefreshToken: false`, without any app auth call.
+   A real-client fake-fetch probe reproduced one token refresh and rotated write.
+   Separately, `auth-provider.tsx:116-124` unconditionally calls `getSession()`;
+   its own background-mount test expects that call.
+2. **HIGH, MUST close — refused rotated writes do not reliably force durable
+   re-authentication.** The bounded native explicit-gate path really observes the
+   refused rotated write and moves current provider state to `signedOut`; it
+   does not prove durable re-authentication because best-effort sign-out can
+   reject before removal and the old session can survive a cold start. The same
+   real path creates unhandled promise rejection(s); automatic paths do not
+   immediately reach the consumer; a later successful write can erase the
+   unconsumed flag; web has no native observer signal and returns `settled` on
+   write refusal.
+3. **MEDIUM, DELETE/NARROW — token-opacity claim.** A build-valid
+   `const parsePayload = JSON.parse; parsePayload(value)` survivor passes all
+   eight opacity assertions and all 54 behavioral adapter tests. This is the
+   third claims/instrument cycle; do not extend the syntactic scanner again.
+4. **MEDIUM, DELETE/NARROW — ninth-schedule attribution.** M27 reddens first at
+   `stalled === false`, before the complete-value postcondition. A corrected
+   disposable schedule supports production, not the committed wording.
+5. **MEDIUM, DELETE/NARROW — ceiling record.** The 2-chunk value is synthetic,
+   not a measured live Noema session; M29 falsely says “every session”; and 513
+   is per logical adapter removal, not once per successful sign-out. Pinned
+   auth-js removes at least four logical keys, so the minimum successful path is
+   2,052 backend deletes; a normally producer-maintained five-slot PKCE index
+   yields 4,617. The latter is not an absolute bound for a manually seeded
+   oversized index.
+6. **MEDIUM, correct producer or delete claim 50 — exact-head stability.** Two
+   fresh captures each exit 0 and match one another, but `stability.sh` exits 1
+   because regenerated `red-lane.txt` differs from the committed artifact.
+   `capture.sh` still hard-codes old base `7095267f`, not `d5b4f8ae`.
+7. **LOW, record/tooling — current records disagree.** The producer manifest
+   still omits `session-sizes.txt`; HANDOFF says 53 rather than 54 behavioral
+   adapter tests; the dependency artifact and claim use different ranges;
+   `PROJECT-STATE` says BUILD while the authoritative LOCK says REVIEW; and
+   `mutants.sh:637` carries trailing whitespace.
+
+### Directed verification
+
+- Exact native observer + real pinned auth client: refused write observed;
+  explicit gate returned `unpersisted`; best-effort local sign-out ran and
+  rejected before cleanup; provider state became `signedOut`; the old session
+  survived and unhandled sibling rejections remained. Durable re-authentication
+  was not established.
+- Exact `createClient()` path with `autoRefreshToken: false`: one automatic
+  token refresh with no application auth method call.
+- Directed caught literal `JSON.parse`: 54/54 behavioral adapter assertions
+  green; AST suite red. Alias parse survivor separately green.
+- Exact remove-only queue bypass: build-valid and committed test red; corrected
+  review-only schedule returned `null` under mutant and full value in production.
+- Rebuilt M4: build-valid and red at the no-write preservation postcondition.
+- Full fresh `mutants.sh`: 27/27 sensitive, 0 build-invalid, exit 0. Full tracked
+  digest before/after identical
+  (`0e61e6358a294378a4d98972b7799c653b9f0840084aba4f8ac8f79e7ec5a158`);
+  index tree unchanged; no tracked clone diff remained.
+- `session-sizes.sh` reads both constants from the shipped module. The 100,000-
+  character shape is admitted; 1 MiB is refused before a write; 513 is honestly
+  one logical removal's resource bound, not a safety property.
+- The same-length distinguishing claim is gone rather than reworded. The
+  executable collision remains and the hash was not widened.
+- Early unexplained `gates.txt` anomaly remains disclosed and non-dispositive;
+  it did not recur. The new deterministic committed `red-lane.txt` mismatch is
+  separate and dispositive to claim 50.
+
+### Classification and next step
+
+- **PASS:** exact boundary/LOCK/post-LOCK-only commit; independent RED lane;
+  current GitHub CI; both fresh local capture runs; bounded native observer →
+  forced signed-out behavior; current mutation build/restoration execution;
+  checksum subtraction.
+- **FAIL introduced:** ADR-007 foreground-only lifecycle; whole-lifecycle
+  persistence surfacing and unhandled rejections; categorical evidence claims;
+  exact-head committed stability; `git diff --check`.
+- **FAIL pre-existing:** npm audit's 21 upstream advisories.
+- **NOT RUN:** live OTP/session size/server bounds; physical device/keychain
+  lock behavior; served browser flow; controller-owned advisory result.
+
+The response to REVIEW-021 is fix cycle 3 of 3. The lifecycle findings must
+close or the controller must change the governing decision. The repeated
+claim/instrument findings are subtraction work, not another instrument cycle.
+
+---
+
 ## 2026-08-24 — Unit D fix cycle 2, feat/auth-session-v1
 
 **Controller:** CTRL-005 Auth and session v1.
