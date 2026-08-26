@@ -96,7 +96,7 @@ Advisory reviewer:  DeepSeek V4 Pro / fresh session — the ADR-001 auth trigger
                     not by reading it (learning 20). Advisory carries no merge
                     authority; the controller adjudicates against the RoR
                     record.
-Status:             REVIEW
+Status:             BUILD
 Dispatch:           Unit E — Session durability: close REVIEW-022 finding 3 to
                     ADR-009's three review-gated requirements — purge success
                     observed by read-back, never inferred from the absence of
@@ -233,6 +233,25 @@ files. One fix cycle remains; an in-class recurrence of the exposure defect
 here is remedied by subtraction in cycle 3, not by a further fix. This
 note is the only commit above the builder head and touches this file
 alone. Written through the Composio GitHub connection.
+
+**Phase transition REVIEW -> BUILD (fix cycle 3 of 3 — SUBTRACTION),
+2026-08-26, CTRL-006.** REVIEW-025 (Codex Sol / Ultra, record at
+`214a4508`): **FAIL** — (1) HIGH, third in-class recurrence of the exposure
+defect: the barrier cannot retract state queued before, or standing when,
+a demand rises; `signOut()` under a refused mid-sign-out refresh leaves the
+provider `signedIn`; the lint-level enforcement is bypassable by aliasing
+`useState`; stop rule fired. (2) MEDIUM, the docs-only evidence invariant
+omits inputs (`docs/04-reviews` in the red-lane listing; `.ts` under
+`docs/` typechecked) and fails on the one docs commit every review adds.
+REVIEW-024 finding 1 CLOSED; the ruling-26 deletion HONOURED. **Owner ruling
+28** (recorded on main): cycle 3 changes no behaviour — the exposure
+invariant is withdrawn as a claim and narrowed to the enumerated schedules
+that hold; the two REVIEW-025 schedules ship as HIGH Known Issues with
+their compensating controls; the lint claim narrows to what it enforces;
+the evidence claim narrows to the heads it measured; the subscription-based
+fix gets a follow-up unit after Phase B. Fix cycle 3 dispatched to Claude
+Code, Fable 5 / Max / fresh session, subtraction only. Draft PR #17 stays
+open for CI only. Written through the Composio GitHub connection.
 
 ---
 
