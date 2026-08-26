@@ -4,6 +4,7 @@ import { AppState } from 'react-native';
 import type { AppStateStatus } from 'react-native';
 
 import { AuthProvider, useAuth } from '@/lib/auth/auth-provider';
+import type { AuthState } from '@/lib/auth/auth-provider';
 import { supabase } from '@/lib/supabase';
 
 // The real module reads EXPO_PUBLIC_* at import time and throws when they are
@@ -959,5 +960,112 @@ describe('auth provider — the advisory invariant: no exposure while a demand s
 
     expect(clearReauthDemand).not.toHaveBeenCalled();
     expect(result.current.state.status).toBe('signedOut');
+  });
+});
+
+/**
+ * REVIEW-024 finding 2 — the ONE publication barrier. The listener gate
+ * closed the events; the reviewer then found the same exposure class through
+ * the OTHER publishers: the bootstrap `getSession().then` and the
+ * mid-process resolution re-read, each carrying a session across an await
+ * with no re-check at the publication. Every publisher now goes through
+ * `useAuthStatePublisher`'s `publish`, which re-checks the demand signal and
+ * the write-refusal flag at publication time and resolves a refused
+ * `signedIn` to `signedOut`.
+ *
+ * Coverage of the enumerated publishers (the enumeration itself is pinned in
+ * `auth-state-publisher.test.ts`): the listener is exercised by the advisory
+ * describe above; the bootstrap resolution and the mid-process re-read are
+ * exercised here under signals raised DURING their awaits; the two signedOut
+ * publishers pass through the same barrier in every re-authentication test
+ * in this file.
+ */
+describe('auth provider — the REVIEW-024 publication barrier', () => {
+  const REFUSED = {
+    key: 'zc-auth-session',
+    cause: new Error('errSecInteractionNotAllowed'),
+  };
+
+  async function renderWithHistory() {
+    const history: AuthState[] = [];
+    const hook = await renderHook(
+      () => {
+        const value = useAuth();
+        history.push(value.state);
+        return value;
+      },
+      { wrapper },
+    );
+    return { history, ...hook };
+  }
+
+  it('refuses the bootstrap resolution whose awaited session was refused persistence — the finding-2 schedule', async () => {
+    // The reviewer's shape at this suite's granularity: getSession carries a
+    // session across its await, and by the time it resolves the observer has
+    // refused that session's persist — the flag stands at publication time.
+    // The cycle-1 code published signedIn here; the barrier resolves it to
+    // signedOut, and no render ever holds the session.
+    auth.getSession.mockImplementation(async () => {
+      peekSessionPersistenceFailure.mockReturnValue(REFUSED);
+      return { data: { session: FAKE_SESSION }, error: null };
+    });
+
+    const { result, history } = await renderWithHistory();
+
+    await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
+    expect(history.some((state) => state.status === 'signedIn')).toBe(false);
+  });
+
+  it('refuses the mid-process resolution re-read whose follow-up persist was refused', async () => {
+    // The resolution legitimately clears the old demand on read-back
+    // evidence, then re-reads the session to expose it — and that re-read
+    // can itself refresh the fresh session and have THAT persist refused.
+    // The publication must re-check; the cycle-1 code exposed it.
+    auth.getSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null });
+    takeSessionPersistenceFailure.mockReturnValueOnce(REFUSED).mockReturnValue(null);
+    confirmSessionPurged.mockResolvedValue(false);
+
+    const { result, history } = await renderWithHistory();
+    await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
+
+    // The fresh sign-in persists and reads back; the demand resolves. But
+    // the re-read's own settle is refused persistence mid-await.
+    readBackStoredSession.mockResolvedValue('stored-session-payload');
+    auth.getSession.mockImplementation(async () => {
+      peekSessionPersistenceFailure.mockReturnValue(REFUSED);
+      return { data: { session: FAKE_SESSION }, error: null };
+    });
+    const beforeResolution = history.length;
+    await act(async () => {
+      await result.current.verifyOtp('someone@example.test', '123456');
+    });
+
+    // Resolution ran — the old demand cleared on evidence — but the refused
+    // follow-up may not surface: signedOut, and no render after the
+    // resolution began ever held a session.
+    await waitFor(() => expect(clearReauthDemand).toHaveBeenCalledTimes(1));
+    expect(result.current.state.status).toBe('signedOut');
+    expect(history.slice(beforeResolution).some((state) => state.status === 'signedIn')).toBe(
+      false,
+    );
+  });
+
+  it('an event in the take-to-cache interval finds the demand signal already raised', async () => {
+    // The third window of the class: consuming the flag and raising the
+    // provider's demand cache are ONE synchronous act inside the take. The
+    // microtask-injected TOKEN_REFRESHED lands after the flag was consumed
+    // and before requireReauthentication could run — the interval where,
+    // with the cycle-1 order, neither signal stood.
+    auth.getSession.mockResolvedValue({ data: { session: null }, error: null });
+    takeSessionPersistenceFailure.mockImplementationOnce(() => {
+      queueMicrotask(() => emit('TOKEN_REFRESHED', FAKE_SESSION));
+      return REFUSED;
+    });
+    confirmSessionPurged.mockResolvedValue(false);
+
+    const { result, history } = await renderWithHistory();
+
+    await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
+    expect(history.some((state) => state.status === 'signedIn')).toBe(false);
   });
 });

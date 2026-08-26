@@ -164,25 +164,37 @@ function demandFile(): File {
 
 const fileBackend: DemandStoreBackend = {
   read: async () => {
-    // THE READ LEADS — REVIEW-023-ADVISORY lead 2 (E1). The previous version
-    // gated on `exists` alone: a native layer that reported `exists === false`
-    // under an I/O refusal would have turned that refusal into "no demand",
-    // and the advisory's E1 probe demonstrated the consequence — the residual
-    // session loaded, rotated, and exposed. Now the CONTENT is the answer
-    // whenever it can be read, whatever `exists` says; `exists` corroborates
-    // ABSENCE only, for the failed read of a file that provably is not there
-    // (a fresh install must read as no-demand, so some absence path must
-    // exist). A read failure on a record that exists — or whose existence
-    // cannot be determined — escapes as a rejection, which the provider
-    // treats as outstanding. Whether the INSTALLED expo-file-system can
-    // report `exists === false` on an I/O refusal remains NOT RUN offline;
-    // this shape just stops that answer from being the sole gate.
+    // A THROWN READ IS OUTSTANDING; ABSENCE IS OBSERVED, NEVER CONVERTED FROM
+    // A FAILURE — REVIEW-024 finding 1, tightening REVIEW-023-ADVISORY lead 2
+    // (E1). The previous shape read the content first but, when that read
+    // threw, still returned "no demand" on `exists === false` — the boolean
+    // acting as the absence gate after the read failure, which is what
+    // consequence B forbids: the documented API collapses "no read access"
+    // into `exists === false`, so under a thrown read that answer can be a
+    // refusal wearing absence's face, and the reviewer's schedule exposed the
+    // residual session behind it. Now no read failure is ever excused by the
+    // boolean alone. Absence must be POSITIVELY OBSERVED by a read that
+    // succeeded and returned nothing: the parent directory's listing — the
+    // one read in this API whose target exists on a fresh install — reporting
+    // no entry under the record's name, with `exists` corroborating. A
+    // refused listing, a listed record that cannot be read, or an `exists`
+    // answer contradicting the listing all stay OUTSTANDING, by rethrow of
+    // the original failure. Whether the INSTALLED expo-file-system can
+    // produce any of these answers natively remains NOT RUN offline (Phase
+    // B's physical-device test owns the premise); this shape stops every one
+    // of them from being converted into absence.
     const file = demandFile();
     try {
       return file.textSync();
     } catch (cause) {
-      if (!file.exists) return null;
-      throw cause;
+      let listedNames: string[];
+      try {
+        listedNames = Paths.document.list().map((entry) => entry.name);
+      } catch {
+        throw cause;
+      }
+      if (listedNames.includes(DEMAND_FILE_NAME) || file.exists) throw cause;
+      return null;
     }
   },
   write: async (value) => {

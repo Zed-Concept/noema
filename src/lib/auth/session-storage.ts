@@ -122,11 +122,14 @@ export function clearSessionPersistenceFailure(): void {
  * could consume. The library's throw-and-reject path is not this module's to
  * fix, but it is this module's not to enter.
  *
- * So for the session key the order is now: demand FIRST, in-process flag
- * second, then RESOLVE. By the time auth-js resumes, the refusal is already
- * recorded — durably when any medium answers — and the library is told
- * nothing it would turn into an unhandled rejection. The refusal still
- * surfaces — through the flag to this process's foreground evaluation, and
+ * So for the session key the order is now: the in-process flag FIRST and
+ * SYNCHRONOUSLY — it is the publication barrier's second signal (REVIEW-024
+ * finding 2), so it must exist from the first instant of the refusal, before
+ * any await opens a window no signal covers — then the durable demand, then
+ * RESOLVE. By the time auth-js resumes, the refusal is already recorded —
+ * durably when any medium answers — and the library is told nothing it would
+ * turn into an unhandled rejection. The refusal still surfaces — through the
+ * flag to this process's foreground evaluation and to the barrier, and
  * through the demand to every process after it.
  *
  * ABSORBED IN EVERY CASE — ruling 25 (owner, 2026-08-26). When the DEMAND
@@ -171,6 +174,16 @@ export function observingWrites(
       try {
         await inner.setItem(key, value);
       } catch (cause) {
+        // THE FLAG IS INSTALLED SYNCHRONOUSLY, BEFORE ANY AWAIT — REVIEW-024
+        // finding 2. The flag is the publication barrier's second signal, the
+        // one that covers refusals the provider's demand cache does not yet
+        // reflect. The previous order installed it only after awaiting
+        // `demand.record()`, so an event delivered in that interval was gated
+        // by neither signal. From the first synchronous instant of the
+        // refusal, the flag now stands; the durable record still lands (or is
+        // held, ruling 25) before the refused write resolves back to the
+        // library.
+        lastPersistenceFailure = { key, cause };
         if (key === AUTH_SESSION_STORAGE_KEY) {
           try {
             await demand.record('session-write-refused');
@@ -179,14 +192,12 @@ export function observingWrites(
             // held in memory instead — ruling 25). Absorbed anyway: R3 is
             // unqualified, so no path out of this branch may rethrow.
           }
-          lastPersistenceFailure = { key, cause };
           return;
         }
         // Non-session keys keep the observe-and-rethrow contract: nothing
         // auth-js does with them enters the Deferred path a session persist
         // does, and absorbing their failures would claim more than ADR-009
         // asks for.
-        lastPersistenceFailure = { key, cause };
         throw cause;
       }
       // The demand is NOT cleared on success — see the header. Only the

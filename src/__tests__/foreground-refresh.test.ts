@@ -311,18 +311,54 @@ describe('ADR-009 requirement 3 — the refused session write is recorded, then 
     expect(peekSessionPersistenceFailure()).toMatchObject({ key: SESSION_KEY });
   });
 
-  it('records the durable demand BEFORE it resolves, and before the flag is readable', async () => {
+  it('records the durable demand BEFORE it resolves', async () => {
     const harness = createHarness();
     harness.refuseWrites = true;
 
     await harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v2'));
 
-    // The demand is on "disk".
+    // The demand is on "disk" by the time the refused write resolves back to
+    // the library.
     expect(harness.demandBackend.content).not.toBeNull();
     const record = JSON.parse(harness.demandBackend.content as string) as Record<string, unknown>;
     expect(record.reason).toBe('session-write-refused');
-    // Order: the keychain refusal happened, then the demand write — nothing
-    // between them could have observed a refusal with no durable record.
+    expect(harness.events).toEqual(['keychain-refused-write', 'demand-recorded']);
+  });
+
+  it('installs the flag synchronously at the refusal — before the durable record settles', async () => {
+    // REVIEW-024 finding 2: the flag is the publication barrier's second
+    // signal, the one that covers refusals the provider's demand cache does
+    // not yet reflect — so it must exist from the FIRST instant of the
+    // refusal. The cycle-1 order installed it only after awaiting
+    // `demand.record()`, and an event delivered in that interval was gated by
+    // neither signal. Here the demand write is HELD pending: the flag must
+    // already be peekable while the record has not settled.
+    const harness = createHarness();
+    harness.refuseWrites = true;
+    let releaseRecord: () => void = () => {};
+    const originalWrite = harness.demandBackend.write;
+    harness.demandBackend.write = (value: string) =>
+      new Promise<void>((resolve) => {
+        releaseRecord = () => resolve(originalWrite(value));
+      });
+
+    const pendingWrite = harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v2'));
+    // Drain until the inner refusal has propagated to the observer. The
+    // record write stays parked throughout — no draining releases it.
+    for (let i = 0; i < 20 && peekSessionPersistenceFailure() === null; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+
+    // THE INTERVAL: the record write is parked — nothing durable, nothing
+    // held-resolved — and the flag already stands.
+    expect(peekSessionPersistenceFailure()).toMatchObject({ key: SESSION_KEY });
+    expect(harness.demandBackend.content).toBeNull();
+    expect(harness.events).toEqual(['keychain-refused-write']);
+
+    // Release: the durable record still lands before the write resolves.
+    releaseRecord();
+    await pendingWrite;
+    expect(harness.demandBackend.content).not.toBeNull();
     expect(harness.events).toEqual(['keychain-refused-write', 'demand-recorded']);
   });
 

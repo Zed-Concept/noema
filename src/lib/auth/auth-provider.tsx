@@ -1,19 +1,13 @@
 import type { Session } from '@supabase/supabase-js';
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { AppState } from 'react-native';
 import type { AppStateStatus } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
 
+import type { AuthState } from './auth-state-publisher';
+import { useAuthStatePublisher } from './auth-state-publisher';
 import { refreshWhileForeground } from './foreground-refresh';
 import {
   clearReauthDemand,
@@ -29,19 +23,11 @@ import {
 } from './session-storage';
 
 /**
- * Session state as three mutually exclusive cases.
- *
- * `bootstrapping` is not a flavour of signed out. Until the stored session has
- * been read back and resolved, the answer to "is this user signed in?" is not
- * yet known, and a route guard that collapses the two would redirect a
- * returning signed-in user to the sign-in screen on every cold start. Keeping
- * it a distinct case makes that mistake a type error rather than a judgement
- * call at each call site.
+ * The state type lives beside the one gate that may publish it — the
+ * REVIEW-024 finding-2 publication barrier in `auth-state-publisher.ts` —
+ * and is re-exported here so consumers keep their import path.
  */
-export type AuthState =
-  | { readonly status: 'bootstrapping' }
-  | { readonly status: 'signedIn'; readonly session: Session }
-  | { readonly status: 'signedOut' };
+export type { AuthState } from './auth-state-publisher';
 
 /**
  * Every action reports failure by returning it, never by throwing.
@@ -105,7 +91,13 @@ async function reportRatherThanThrow(
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AuthState>({ status: 'bootstrapping' });
+  // THE ONE PUBLICATION BARRIER — REVIEW-024 finding 2. Every state
+  // publication below goes through `publish`, which re-checks the demand
+  // signal and the write-refusal flag at publication time and refuses to
+  // publish `signedIn` while either stands. The raw setter is a closure
+  // variable of the hook and cannot be named here (`useState` in this file
+  // is additionally lint-banned — see eslint.config.js).
+  const { state, publish, setDemandSignal } = useAuthStatePublisher();
 
   // The bridge between the session effect (which owns the demand state) and
   // the `verifyOtp` action (which is where a fresh sign-in is known to have
@@ -150,10 +142,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let bootstrapTimer: ReturnType<typeof setTimeout> | undefined;
     let subscription: { unsubscribe: () => void } | undefined;
 
+    // The barrier's demand half reads THIS effect's cache, synchronously,
+    // at every publication (REVIEW-024 finding 2). The flag half lives in
+    // the barrier itself. Registered before anything below can publish.
+    setDemandSignal(() => demandOutstanding);
+
     const resolveOnce = (next: AuthState) => {
       if (!active || supersededByEvent || resolved) return;
       resolved = true;
-      setState(next);
+      publish(next);
     };
 
     /**
@@ -179,30 +176,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: { subscription },
       } = supabase.auth.onAuthStateChange((_event, session) => {
         if (!active) return;
-        // THE INVARIANT (REVIEW-023 finding 2 under ruling 25, and
-        // REVIEW-023-ADVISORY lead 1): no path exposes a session while a
-        // re-authentication demand is outstanding — so EVERY setState here is
-        // gated on the demand. Two sources, because the provider's own cache
-        // lags the truth:
+        // THE INVARIANT (REVIEW-023 finding 2 under ruling 25; REVIEW-024
+        // finding 2): no path exposes a session while a re-authentication
+        // demand is outstanding. The ENFORCEMENT is the publication barrier —
+        // `publish` re-checks the demand and the flag for every publisher,
+        // this one included. The drop below is this listener's OWN, narrower
+        // choice, kept in front of the barrier: an event arriving while
+        // either signal stands is stale the moment it is delivered (the
+        // mid-purge TOKEN_REFRESHED carrying the session being purged; the
+        // A2/A3 window where the observer has recorded a refusal this
+        // provider's cache does not yet reflect), and dropping it whole also
+        // keeps it from marking the bootstrap superseded — a refused
+        // publication must not suppress the bootstrap's own resolution.
         //
-        // - `demandOutstanding` — the consulted demand. Bars the mid-purge
-        //   schedule: `signOut()` refreshes the residual on its way out
-        //   (REVIEW-022 finding 2, recorded behaviour) and emits
-        //   TOKEN_REFRESHED with the very session being purged.
-        // - `peekSessionPersistenceFailure()` — the unconsumed write-refusal
-        //   flag, readable synchronously. Bars the advisory's A2/A3 window:
-        //   the observer records the refusal and the demand BEFORE the event
-        //   carrying the unpersisted session fires, but this provider has not
-        //   yet taken the flag, so its cache still says no demand. The flag
-        //   is that record's in-process face; an event arriving under it
-        //   carries a session no medium is known to hold.
-        //
-        // A gated sign-in is not lost: the app's own `verifyOtp` resolves the
-        // demand once the fresh session is persisted AND read back (lead 3),
-        // and events flow again the moment no demand stands.
+        // A dropped sign-in is not lost: the app's own `verifyOtp` resolves
+        // the demand once the fresh session is persisted AND read back (lead
+        // 3), and events flow again the moment no demand stands.
         if (demandOutstanding || peekSessionPersistenceFailure() !== null) return;
         supersededByEvent = true;
-        setState(stateForSession(session));
+        publish(stateForSession(session));
       }));
 
       // Covers the case the promise cannot: not rejecting, but never settling.
@@ -211,7 +203,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       supabase.auth
         .getSession()
         // Ignored if an event already resolved the state: getSession() is the
-        // cold-start bootstrap, not a later source of truth.
+        // cold-start bootstrap, not a later source of truth. THIS is the
+        // publisher REVIEW-024 finding 2 named: the promise carries a session
+        // across its await, and the pinned client can have refreshed — and
+        // failed to persist — that session in the interval. The barrier
+        // re-checks the demand and the flag at the publication itself, so a
+        // session the observer has since refused resolves to signedOut here
+        // rather than being exposed.
         .then(({ data }) => resolveOnce(stateForSession(data.session)))
         // Nothing readable came back. Signed out is the only safe resolution —
         // and it must be a resolution, or bootstrapping would never end.
@@ -294,7 +292,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Deliberately not contingent on anything below: this layer cannot
       // force a refusing store, but it can refuse to keep using a session it
       // could not vouch for — from this moment.
-      if (active) setState({ status: 'signedOut' });
+      if (active) publish({ status: 'signedOut' });
       try {
         await recordReauthDemand('session-purge-pending');
       } catch {
@@ -354,12 +352,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           startBootstrap();
           return;
         }
-        // The mid-process path: the listener was registered but lead 1's
-        // gate dropped the sign-in event. Re-read and expose.
+        // The mid-process path: the listener was registered but the gate
+        // dropped the sign-in event. Re-read and expose — through the
+        // barrier: this getSession() can itself refresh the fresh session
+        // and have THAT persist refused (the REVIEW-024 mid-process reread
+        // schedule), so the publication re-checks the demand and the flag
+        // and resolves to signedOut when either has been raised since.
         const { data } = await supabase.auth.getSession();
         if (active && data.session) {
           supersededByEvent = true;
-          setState(stateForSession(data.session));
+          publish(stateForSession(data.session));
         }
       } finally {
         evaluating = false;
@@ -403,7 +405,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // never-settling fetch must strand the purge retry, not the UI on
           // a frozen splash. If the purge verifies, the bootstrap that
           // follows re-resolves the state from an empty store.
-          if (active) setState({ status: 'signedOut' });
+          if (active) publish({ status: 'signedOut' });
           // Ruling 25's "foreground / purge retry" opportunity: a demand that
           // could only be held in memory — every medium refused at the time —
           // gets its durable record retried here, before the purge below. A
@@ -422,7 +424,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const outcome = await refreshWhileForeground(status, {
           settleSession: () => supabase.auth.getSession(),
-          takePersistenceFailure: takeSessionPersistenceFailure,
+          // Consuming the flag and raising the demand cache are ONE
+          // synchronous act (REVIEW-024 finding 2's class). The take clears
+          // the flag — the barrier's second signal — so if the cache were
+          // raised only later, inside `requireReauthentication` beyond an
+          // await boundary, an event in that interval would find both
+          // signals down while a demand truth stood.
+          takePersistenceFailure: () => {
+            const failure = takeSessionPersistenceFailure();
+            if (failure !== null) {
+              demandConsulted = true;
+              demandOutstanding = true;
+            }
+            return failure;
+          },
         });
         if (!active) return;
 
@@ -443,11 +458,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       active = false;
       resolveDemandBySignInRef.current = async () => {};
+      setDemandSignal(() => false);
       if (bootstrapTimer) clearTimeout(bootstrapTimer);
       appStateSubscription.remove();
       subscription?.unsubscribe();
     };
-  }, []);
+    // Both are stable useCallback([]) values from the publisher hook; listed
+    // so the linter can see it. The effect still runs once.
+  }, [publish, setDemandSignal]);
 
   const sendOtp = useCallback(async (email: string) => {
     return reportRatherThanThrow(async () => {

@@ -257,17 +257,27 @@ describe('reauth demand — every other failure falls closed', () => {
 });
 
 /**
- * REVIEW-023-ADVISORY lead 2 (E1) — the SHIPPED file backend consults by
- * READ. The previous backend gated on `File.exists` alone, so a native layer
- * reporting `exists === false` under an I/O refusal would have read a
- * refusal as "no demand"; the advisory's E1 probe demonstrated the residual
- * session being loaded, rotated, and exposed under exactly that lie. These
- * cases drive the DEFAULT (file) backend through a mocked `expo-file-system`
- * — whether the INSTALLED package can actually produce the lying answer
- * remains NOT RUN offline (Known limit; Phase B's physical device owns it).
+ * REVIEW-024 finding 1, tightening REVIEW-023-ADVISORY lead 2 (E1) — the
+ * SHIPPED file backend consults by READ, ABSOLUTELY. The cycle-1 shape read
+ * content first but, when that read threw, still returned "no demand" on
+ * `exists === false` — the boolean acting as the absence gate after the read
+ * failure; the reviewer's restart schedule exposed the residual session
+ * behind exactly that conversion. Now a thrown read is OUTSTANDING unless
+ * absence is positively observed by a read that SUCCEEDED and returned
+ * nothing: the parent directory's listing with no entry under the record's
+ * name, `exists` corroborating. These cases drive the DEFAULT (file) backend
+ * through a mocked `expo-file-system` — whether the INSTALLED package can
+ * produce any of these answers natively remains NOT RUN offline (Known
+ * limit; Phase B's physical device owns the premise).
  */
-describe('reauth demand — the shipped file backend consults by READ (advisory E1)', () => {
-  function loadFileBackedDemand(impl: { existsImpl: () => boolean; textImpl: () => string }) {
+describe('reauth demand — a thrown read is outstanding; absence is observed (REVIEW-024 finding 1)', () => {
+  const RECORD_NAME = 'zc-auth-reauth-demand.json';
+
+  function loadFileBackedDemand(impl: {
+    existsImpl: () => boolean;
+    textImpl: () => string;
+    listImpl: () => string[];
+  }) {
     let handle: import('@/lib/auth/reauth-demand').ReauthDemandHandle | undefined;
     jest.isolateModules(() => {
       jest.doMock('expo-file-system', () => ({
@@ -281,7 +291,11 @@ describe('reauth demand — the shipped file backend consults by READ (advisory 
           write(_value: string): void {}
           delete(): void {}
         },
-        Paths: { document: {} },
+        Paths: {
+          document: {
+            list: () => impl.listImpl().map((name) => ({ name })),
+          },
+        },
       }));
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       handle = (require('@/lib/auth/reauth-demand') as typeof import('@/lib/auth/reauth-demand'))
@@ -296,17 +310,63 @@ describe('reauth demand — the shipped file backend consults by READ (advisory 
     const demand = loadFileBackedDemand({
       existsImpl: () => false,
       textImpl: () => JSON.stringify({ v: 1, reason: 'session-write-refused', at: 'sometime' }),
+      listImpl: () => [RECORD_NAME],
     });
 
     await expect(demand.isOutstanding()).resolves.toBe(true);
   });
 
-  it('treats an unreadable existing record as outstanding', async () => {
+  it('treats a present record whose read throws as outstanding while `exists` reports false — the reviewer’s schedule', async () => {
+    // REVIEW-024 finding 1, exactly: record present, read throws,
+    // `exists === false`. The cycle-1 shape converted this to absence; the
+    // listing names the record, so the failure stays outstanding.
+    const demand = loadFileBackedDemand({
+      existsImpl: () => false,
+      textImpl: () => {
+        throw new Error('io refusal');
+      },
+      listImpl: () => [RECORD_NAME],
+    });
+
+    await expect(demand.isOutstanding()).rejects.toThrow('io refusal');
+  });
+
+  it('treats the same thrown read identically when `exists` reports true — the reviewer’s control', async () => {
     const demand = loadFileBackedDemand({
       existsImpl: () => true,
       textImpl: () => {
         throw new Error('io refusal');
       },
+      listImpl: () => [RECORD_NAME],
+    });
+
+    await expect(demand.isOutstanding()).rejects.toThrow('io refusal');
+  });
+
+  it('treats a thrown read as outstanding when the listing is also refused', async () => {
+    // No successful read observed anything: nothing may corroborate absence.
+    const demand = loadFileBackedDemand({
+      existsImpl: () => false,
+      textImpl: () => {
+        throw new Error('io refusal');
+      },
+      listImpl: () => {
+        throw new Error('listing refused');
+      },
+    });
+
+    await expect(demand.isOutstanding()).rejects.toThrow('io refusal');
+  });
+
+  it('treats a thrown read as outstanding when `exists` contradicts the empty listing', async () => {
+    // The listing says nothing is there; `exists` says something is. A
+    // contradiction is not an observation of absence.
+    const demand = loadFileBackedDemand({
+      existsImpl: () => true,
+      textImpl: () => {
+        throw new Error('io refusal');
+      },
+      listImpl: () => [],
     });
 
     await expect(demand.isOutstanding()).rejects.toThrow('io refusal');
@@ -320,19 +380,22 @@ describe('reauth demand — the shipped file backend consults by READ (advisory 
       textImpl: () => {
         throw new Error('io refusal');
       },
+      listImpl: () => [],
     });
 
     await expect(demand.isOutstanding()).rejects.toThrow();
   });
 
-  it('reads a provably absent record as no demand', async () => {
-    // The fresh-install case, which must stay a clean no: the read fails AND
-    // `exists` corroborates that there is nothing to read.
+  it('reads an observed-absent record as no demand — the fresh install stays clean', async () => {
+    // Absence, positively observed: the read of the record fails because
+    // nothing is there, the LISTING — a read that succeeded — returns no
+    // entry under the record's name, and `exists` corroborates.
     const demand = loadFileBackedDemand({
       existsImpl: () => false,
       textImpl: () => {
         throw new Error('file does not exist');
       },
+      listImpl: () => ['some-unrelated-file.txt'],
     });
 
     await expect(demand.isOutstanding()).resolves.toBe(false);
