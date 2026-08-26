@@ -1,0 +1,152 @@
+# The session layer's properties: bootstrap, currency, OTP call shapes,
+# device-local sign-out, and ADR-009's persistence guarantee under the
+# REVIEW-023 fixes — the observed purge (read-back as the only proof),
+# signedOut BEFORE the purge await with the mid-purge event gate
+# (finding 2), the durable demand with ruling 25's memory hold and
+# retry (finding 1), and the record-then-absorb write path with no
+# remaining rethrow case.
+#
+# THREE SUITES, split as in 006a: auth-provider proves the provider's
+# wiring over doubles; foreground-refresh runs the REAL adapter, REAL
+# observer, and REAL demand module over in-memory backends;
+# reauth-demand proves the demand module's own contract, the ruling-25
+# hold and retry included. No network call and no credential.
+
+
+> noema@0.1.0 test
+> jest --ci --runInBand --verbose --testPathPattern auth-provider
+
+PASS src/__tests__/auth-provider.test.tsx
+  auth provider — bootstrap
+    ✓ starts in bootstrapping, which is not signed out
+    ✓ resolves to signedOut when there is no stored session
+    ✓ resolves to signedIn and carries the session when one is stored
+    ✓ resolves rather than hanging when the stored session cannot be read
+    ✓ stops waiting on a cold-start read that never settles
+    ✓ subscribes before reading, so an event in flight is not missed
+  auth provider — currency
+    ✓ follows onAuthStateChange into and out of a session
+    ✓ does not let a late cold-start read overwrite a newer event
+    ✓ unsubscribes on unmount
+  auth provider — OTP flow
+    ✓ requests a code that also creates the account, and never a redirect link
+    ✓ verifies the emailed code as an email OTP
+    ✓ reports errors instead of throwing them
+    ✓ returns an error rather than throwing when auth-js throws
+    ✓ ends the session through signOut, device-locally
+  auth provider — ADR-009 refresh lifecycle
+    ✓ never touches the auto-refresh ticker, in any AppState
+    ✓ initiates a settle when the app is already active at mount
+    ✓ initiates nothing at all when mounted while the app is backgrounded
+    ✓ registers no app auth listener until the app is foreground
+    ✓ opens the bootstrap on the first transition to active, and only then
+    ✓ registers the listener exactly once across repeated foregrounds
+    ✓ initiates on each transition to active and none on background or inactive
+    ✓ releases the AppState listener on unmount
+    ✓ absorbs a rejected settle rather than crashing the effect
+    ✓ does not sign the user out when a settle fails without a persistence failure
+    ✓ requires re-authentication when a rotated session could not be persisted
+    ✓ still forces signedOut when the purge cannot be proven
+  auth provider — the observed purge and the durable demand
+    ✓ treats a signOut rejection with a populated key space as NOT purged, and retries
+    ✓ treats a signOut rejection with a PROVEN-empty key space as purged
+    ✓ records the durable demand BEFORE attempting the purge
+    ✓ sets signedOut while the purge is still pending — a hung logout cannot delay it
+    ✓ drops a mid-purge TOKEN_REFRESHED instead of re-exposing the session
+    ✓ stops retrying once the read-back proves the space empty
+    ✓ does not retry a purge the read-back proved the first time
+  auth provider — the durable demand at bootstrap
+    ✓ purges before its own getSession when a demand is outstanding at mount
+    ✓ exposes no session and reads nothing while the demand is unmet
+    ✓ keeps retrying across foregrounds until the read-back proves the purge, then bootstraps
+    ✓ retries the durable record on every foreground while the demand is outstanding
+    ✓ treats a demand store that will not answer as an outstanding demand
+    ✓ consults the durable store once per process, not on every foreground
+  auth provider — the advisory invariant: no exposure while a demand stands
+    ✓ drops a session event arriving under an unconsumed persistence failure
+    ✓ resolves a demand outstanding at mount through a fresh sign-in that reads back
+    ✓ resolves a mid-process demand through a fresh sign-in and re-exposes the session
+    ✓ does not resolve the demand when the sign-in persist was refused
+    ✓ does not resolve the demand when nothing reads back
+
+Test Suites: 1 passed, 1 total
+Tests:       44 passed, 44 total
+Snapshots:   0 total
+Time:        <duration>
+Ran all test suites matching /auth-provider/i.
+
+
+> noema@0.1.0 test
+> jest --ci --runInBand --verbose --testPathPattern foreground-refresh
+
+PASS src/__tests__/foreground-refresh.test.ts
+  the foreground gate initiates nothing while backgrounded
+    ✓ initiates no refresh in AppState "background"
+    ✓ initiates no refresh in AppState "inactive"
+    ✓ initiates exactly one settle when the app is active
+  ADR-009 / ADR-008 — on NATIVE, a rotated session that cannot be stored is surfaced
+    ✓ reports "unpersisted" when the store refuses the rotated write
+    ✓ reports "settled" when the rotated write lands
+    ✓ does not demand re-authentication when a settle fails for any other reason
+    ✓ consumes the failure, so one refused write forces re-authentication once
+    ✓ keeps a refused write outstanding when a later write succeeds
+    ✓ surfaces a refused write exactly once, so re-authentication cannot loop
+  ADR-009 requirement 3 — the refused session write is recorded, then absorbed
+    ✓ resolves a refused SESSION write instead of rethrowing it
+    ✓ records the durable demand BEFORE it resolves, and before the flag is readable
+    ✓ absorbs the refusal even when the demand store ALSO refuses — ruling 25, no path rethrows
+    ✓ retries the held record on the next write once the demand store recovers
+    ✓ lands the demand durably when the demand store recovers but the keychain still refuses
+    ✓ still rethrows a refused write of a NON-session key
+    ✓ keeps the demand outstanding when a later session write succeeds
+    ✓ does not record a refused REMOVAL as a persistence failure
+  ADR-009 requirement 1 — the read-back is the only proof of deletion
+    ✓ reports a populated key space after a refused removal — the residual is real
+    ✓ proves the space empty once a retried removal is accepted
+    ✓ detects stranded chunk material that no getItem would ever return
+    ✓ refuses to call a space empty when the backend refuses to answer
+
+Test Suites: 1 passed, 1 total
+Tests:       21 passed, 21 total
+Snapshots:   0 total
+Time:        <duration>
+Ran all test suites matching /foreground-refresh/i.
+
+
+> noema@0.1.0 test
+> jest --ci --runInBand --verbose --testPathPattern reauth-demand
+
+PASS src/__tests__/reauth-demand.test.ts
+  reauth demand — record, consult, clear
+    ✓ is not outstanding before anything is recorded
+    ✓ records a demand and reports it outstanding
+    ✓ clears a demand, after which nothing is outstanding
+    ✓ survives what a restart resets: a fresh handle over the same backend still sees it
+  reauth demand — the record contains no secret
+    ✓ writes exactly a version, a reason, and a timestamp — nothing else
+  reauth demand — a refused record is held, not lost (ruling 25)
+    ✓ holds the demand in memory when the store refuses the write
+    ✓ reports `durable` and holds nothing when the write lands
+    ✓ retryHeldRecord flushes a held demand once the store recovers — and a fresh handle sees it
+    ✓ a held demand does not survive what a restart resets — the ruling-25 Known limit, stated
+    ✓ reports a held demand outstanding without needing the backend to answer
+    ✓ clear ends a held demand — read-back proof is the one thing that may
+    ✓ retryHeldRecord is a no-op resolving true when nothing is held
+  reauth demand — every other failure falls closed
+    ✓ isOutstanding rejects when the store refuses to answer
+    ✓ clear rejects when the store refuses the removal, and the demand remains
+    ✓ treats unparseable stored content as outstanding, not as absent
+    ✓ treats content of the wrong shape as outstanding through isOutstanding
+  reauth demand — the shipped file backend consults by READ (advisory E1)
+    ✓ reads the record even when `exists` denies it — the boolean is never the sole gate
+    ✓ treats an unreadable existing record as outstanding
+    ✓ treats a record whose existence cannot be determined as outstanding
+    ✓ reads a provably absent record as no demand
+
+Test Suites: 1 passed, 1 total
+Tests:       20 passed, 20 total
+Snapshots:   0 total
+Time:        <duration>
+Ran all test suites matching /reauth-demand/i.
+
+exit: 0

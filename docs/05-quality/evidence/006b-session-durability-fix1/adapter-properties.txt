@@ -1,0 +1,168 @@
+# The storage layer's properties, one line per assertion: the chunked
+# adapter itself (including the exact-address read-back set, REVIEW-023
+# finding 5), the platform split, the keychain accessibility class, and
+# the wiring into the Supabase client. Runs against in-memory doubles:
+# no device, no native module, no credentials.
+
+
+> noema@0.1.0 test
+> jest --ci --runInBand --verbose --testPathPattern secure-store-adapter
+
+PASS src/__tests__/secure-store-adapter.test.ts
+  chunked SecureStore adapter — round trip
+    ✓ returns a payload past the chunk threshold byte-for-byte identical
+    ✓ actually splits that payload across multiple chunk keys
+    ✓ keeps every stored chunk within the byte budget
+    ✓ round-trips multi-byte text without corrupting it
+    ✓ never leaves a lone surrogate in a stored chunk
+    ✓ round-trips an empty string and reports an absent key as null
+    ✓ refuses a value larger than the chunk ceiling instead of truncating it
+  chunked SecureStore adapter — the payload stays opaque
+    ✓ stores and returns a payload that is not valid JSON
+    ✓ stores the payload verbatim, so nothing re-serialises it
+    ✓ writes an index of its own metadata only, with no field off the payload
+  chunked SecureStore adapter — fails closed
+    ✓ returns null, not a truncated prefix, when a middle chunk is gone
+    ✓ returns null when the final chunk is gone
+    ✓ returns null when the index is corrupt
+    ✓ returns null for a plain value written by something other than this adapter
+    ✓ returns null for an index with no recorded checksum
+    ✓ returns null when the reassembled length disagrees with the index
+    ✓ resolves null instead of rejecting when the index read throws
+    ✓ resolves null instead of rejecting when a CHUNK read throws
+    ✓ writes the index last, so an interrupted write is never readable
+    ✓ is unreadable if the write stopped before the index landed
+  chunked SecureStore adapter — the recorded checksum
+    ✓ returns null for corruption that preserves the total length
+    ✓ returns null for a self-consistent index that describes a shorter payload
+    ✓ does NOT detect a forger who recomputes the checksum — this is not tamper resistance
+    ✓ is deterministic and stays inside the 32-bit range the index encodes
+    ✓ collides on same-length session-shaped payloads
+  chunked SecureStore adapter — a refusal is never read as a state
+    ✓ refuses to write, and preserves the live session, when the index read is refused
+    ✓ writes normally when the index is merely absent, which is not a refusal
+    ✓ overwrites an unreadable index without refusing, since nothing readable is lost
+    ✓ reports failure with the session still readable when every delete is refused
+    ✓ reports failure when only the index delete is refused
+    ✓ reports failure when only a chunk delete is refused, after finishing the sweep
+    ✓ resolves and leaves nothing when the store is healthy
+  chunked SecureStore adapter — operations do not interleave
+    ✓ never exposes null to a reader that a writer overtakes
+    ✓ lets no write land between a reader chunk read and the next
+    ✓ does not let two writers commit a payload belonging to neither
+    ✓ serializes a removal against a concurrent read, and the read returns the whole session
+    ✓ keeps running after an operation rejects
+  the chunk ceiling — measured, not asserted
+    ✓ admits REVIEW-020 finding 2's 100,000-character-metadata session
+    ✓ needs only 2 chunks for a session-shaped fixture with empty metadata
+    ✓ still fails closed above the ceiling, writing nothing and keeping the old value
+  chunked SecureStore adapter — removal leaves nothing behind
+    ✓ removes every chunk and the index, leaving no key at all
+    ✓ clears a fragment stranded behind a gap the adapter created itself
+    ✓ purges chunks left in either generation
+    ✓ sweeps the complete enumerable key space, not just the occupied part
+    ✓ pays exactly 513 backend deletes per removal, the measured price of the ceiling
+    ✓ leaves no key behind even when the index was corrupted first
+    ✓ leaves no key behind when a chunk was deleted before sign-out
+    ✓ orphans no chunk when a longer value is replaced by a shorter one
+    ✓ touches no other key while removing its own
+  chunked SecureStore adapter — key derivation
+    ✓ derives chunk keys deterministically from the base key and generation
+    ✓ derives keys SecureStore will accept
+    ✓ cannot collide with the sibling keys auth-js derives
+  chunked SecureStore adapter — generation alternation
+    ✓ leaves only one generation behind after a replacement
+    ✓ alternates generations so a write never touches the one being read
+  chunked SecureStore adapter — confirmRemoved observes, never infers
+    ✓ proves an untouched key space empty by reading exactly the enumerable address set, in order
+    ✓ reads all 513 addresses before disproving on a value at the final one
+    ✓ reports a stored session as present, not removed
+    ✓ proves the space empty after a completed removal
+    ✓ detects stranded chunk material that getItem would never return
+    ✓ refuses to call the space empty when the index read is refused
+    ✓ refuses to call the space empty when any single chunk read is refused
+    ✓ never writes or deletes — observation cannot perturb what it proves
+    ✓ queues behind an in-flight write, so it cannot read a space mid-transition
+
+Test Suites: 1 passed, 1 total
+Tests:       63 passed, 63 total
+Snapshots:   0 total
+Time:        <duration>
+Ran all test suites matching /secure-store-adapter/i.
+
+
+> noema@0.1.0 test
+> jest --ci --runInBand --verbose --testPathPattern token-opacity
+
+PASS src/__tests__/token-opacity.test.ts
+  token opacity — no directly-spelled payload parse or inspection
+    ✓ finds no directly-spelled token inspection in the adapter source
+    ✓ permits exactly one directly-spelled JSON.parse, only inside the index parser
+    positive controls — learning 14
+      ✓ control 0 trips rule "json-parse-outside-index"
+      ✓ control 1 trips rule "decoder-call"
+      ✓ control 2 trips rule "decoder-call"
+      ✓ control 3 trips rule "string-inspection"
+      ✓ control 4 trips rule "regex-literal"
+      ✓ does not fire on the sanctioned index parse
+    the known survivor — an executable record of this scan's limit
+      ✓ does NOT detect an aliased JSON.parse — the claim was narrowed, not rescued
+      ✓ does NOT detect an aliased content inspection either
+
+Test Suites: 1 passed, 1 total
+Tests:       10 passed, 10 total
+Snapshots:   0 total
+Time:        <duration>
+Ran all test suites matching /token-opacity/i.
+
+
+> noema@0.1.0 test
+> jest --ci --runInBand --verbose --testPathPattern supabase-client
+
+PASS src/__tests__/supabase-client.test.ts
+  supabase client — session storage is actually wired in
+    ✓ passes the platform session storage to createClient
+    ✓ gives that storage a complete adapter surface when the platform has one
+    ✓ keeps persistence on, without which the storage option is ignored
+    ✓ never lets the client self-schedule a refresh
+    ✓ persists under the app-constant storage key, not the derived default
+    ✓ does not parse a session out of the URL
+
+Test Suites: 1 passed, 1 total
+Tests:       6 passed, 6 total
+Snapshots:   0 total
+Time:        <duration>
+Ran all test suites matching /supabase-client/i.
+
+
+> noema@0.1.0 test
+> jest --ci --runInBand --verbose --testPathPattern session-storage-platform
+
+PASS src/__tests__/session-storage-platform.test.ts
+  session storage — platform split
+    ✓ gives web no adapter, so supabase-js falls back to localStorage
+    ✓ gives iOS the chunked SecureStore adapter
+    ✓ gives Android the chunked SecureStore adapter
+
+Test Suites: 1 passed, 1 total
+Tests:       3 passed, 3 total
+Snapshots:   0 total
+Time:        <duration>
+Ran all test suites matching /session-storage-platform/i.
+
+
+> noema@0.1.0 test
+> jest --ci --runInBand --verbose --testPathPattern secure-store-accessibility
+
+PASS src/__tests__/secure-store-accessibility.test.ts
+  the default backend — keychain accessibility
+    ✓ writes every key as WHEN_UNLOCKED, never a weaker class
+    ✓ carries the class on chunk keys as well as the index
+
+Test Suites: 1 passed, 1 total
+Tests:       2 passed, 2 total
+Snapshots:   0 total
+Time:        <duration>
+Ran all test suites matching /secure-store-accessibility/i.
+
+exit: 0

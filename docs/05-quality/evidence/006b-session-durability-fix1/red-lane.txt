@@ -1,0 +1,35 @@
+# RED-lane scope: the v1 CLIENT-SIDE auth surface only.
+# No migration, RLS policy, database function, grant, or storage-bucket
+# policy. Measured against the pinned base. Every git invocation below
+# checks its exit status (REVIEW-023 finding 5); every negative scan
+# carries a positive control (learning 14).
+# base: 7caf23e10856601f17d52ae37ae59fbb9dbbac60
+# head: 74024465e2f13f3ca93f4a779de07a9ea3b8f6e3
+
+## Whole-tree object identity — the strongest form of 'unchanged'
+  supabase                     IDENTICAL  2b13461b9abd40f1c00afd316e3321d0931ef2fc
+  .github                      IDENTICAL  173fa30fae4f5f83a35a88ef29914fbf8016c39a
+  src/lib/database.types.ts    IDENTICAL  8c7fc943ffbadaf5a080999c34071a3b7cf3cbcc
+
+## Paths in the range that would be database-layer changes (expect none)
+  paths in range: 37
+  database-layer paths: 0
+  control MATCHED (a synthetic migration path is detected by this filter)
+
+## Added lines in the range that would be database-layer operations
+  docs/ paths excluded from the added-line scan: 24
+  (records of scanning, not scanning targets — see the note in capture.sh)
+  added non-docs lines in range: 2097
+  CREATE[[:space:]]+POLICY                   hits: 0   (control MATCHED)
+  ALTER[[:space:]]+POLICY                    hits: 0   (control MATCHED)
+  DROP[[:space:]]+POLICY                     hits: 0   (control MATCHED)
+  ROW[[:space:]]+LEVEL[[:space:]]+SECURITY   hits: 0   (control MATCHED)
+  SECURITY[[:space:]]+DEFINER                hits: 0   (control MATCHED)
+  ^\+[[:space:]]*(GRANT|REVOKE)[[:space:]]   hits: 0   (control MATCHED)
+  storage\.buckets                           hits: 0   (control MATCHED)
+  storage\.objects                           hits: 0   (control MATCHED)
+  CREATE[[:space:]]+(OR[[:space:]]+REPLACE[[:space:]]+)?FUNCTION hits: 0   (control MATCHED)
+  \.rpc\(                                    hits: 0   (control MATCHED)
+
+  Non-vacuous by construction: every pattern above matched the synthetic
+  control that contains it, through the same grep invocation.

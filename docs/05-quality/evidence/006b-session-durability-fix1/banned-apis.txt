@@ -1,0 +1,50 @@
+# Banned authentication surfaces must not appear in application source.
+# Scope: src/ (tracked application code), THESE LITERAL PATTERNS through
+# the strip_comments pipeline — nothing broader is claimed. Each pattern
+# is checked against src/, then against a synthetic control file that
+# DOES contain it — a pattern that fails its control fails the run.
+
+source files scanned: 13
+
+signInWithPassword       src/ code hits: 0    (control MATCHED)
+signUp                   src/ code hits: 0    (control MATCHED)
+resetPasswordForEmail    src/ code hits: 0    (control MATCHED)
+signInWithOAuth          src/ code hits: 0    (control MATCHED)
+signInWithIdToken        src/ code hits: 0    (control MATCHED)
+signInWithSSO            src/ code hits: 0    (control MATCHED)
+emailRedirectTo          src/ code hits: 0    (control MATCHED)
+magiclink                src/ code hits: 0    (control MATCHED)
+secureTextEntry          src/ code hits: 0    (control MATCHED)
+linkIdentity             src/ code hits: 0    (control MATCHED)
+
+## The OTP surface that IS used, for contrast
+src/app/(app)/index.tsx:9:  const { state, signOut } = useAuth();
+src/app/(app)/index.tsx:18:    const { error: signOutError } = await signOut();
+src/app/(app)/index.tsx:25:    if (signOutError) {
+src/app/(app)/index.tsx:26:      setError(signOutError.message);
+src/app/(auth)/sign-in.tsx:16:  const { sendOtp, verifyOtp } = useAuth();
+src/app/(auth)/sign-in.tsx:40:    const { error: verifyError } = await verifyOtp(email.trim(), code.trim());
+src/lib/auth/secure-store-adapter.ts:663:    // does not emit SIGNED_OUT, `signOut()` rejects, `auth-provider.tsx`
+src/lib/auth/foreground-refresh.ts:19: * refreshes from construction, from session loading, and from `signOut()`,
+src/lib/auth/auth-provider.tsx:51: * instance — straight out of `verifyOtp`/`signOut`. A caller that only expected
+src/lib/auth/auth-provider.tsx:67:  readonly verifyOtp: AuthAction<[email: string, token: string]>;
+src/lib/auth/auth-provider.tsx:68:  readonly signOut: AuthAction<[]>;
+src/lib/auth/auth-provider.tsx:111:  // the `verifyOtp` action (which is where a fresh sign-in is known to have
+src/lib/auth/auth-provider.tsx:189:        //   schedule: `signOut()` refreshes the residual on its way out
+src/lib/auth/auth-provider.tsx:200:        // A gated sign-in is not lost: the app's own `verifyOtp` resolves the
+src/lib/auth/auth-provider.tsx:225:     * `signOut({ scope: 'local' })` asks; the read-back answers. The return
+src/lib/auth/auth-provider.tsx:229:     * finding 3 showed what any weaker rule invites: pinned `signOut()` can
+src/lib/auth/auth-provider.tsx:243:        await supabase.auth.signOut({ scope: 'local' });
+src/lib/auth/auth-provider.tsx:247:        // the verdict. (The user-facing `signOut` action is a different path
+src/lib/auth/auth-provider.tsx:317:     * `verifyOtp` success — the one entrance that mints a new session; no
+src/lib/auth/auth-provider.tsx:454:      const { error } = await supabase.auth.signInWithOtp({
+src/lib/auth/auth-provider.tsx:462:  const verifyOtp = useCallback(async (email: string, token: string) => {
+src/lib/auth/auth-provider.tsx:464:      const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+src/lib/auth/auth-provider.tsx:474:  const signOut = useCallback(async () => {
+src/lib/auth/auth-provider.tsx:485:      const { error } = await supabase.auth.signOut({ scope: 'local' });
+src/lib/auth/auth-provider.tsx:491:    () => ({ state, sendOtp, verifyOtp, signOut }),
+src/lib/auth/auth-provider.tsx:492:    [state, sendOtp, verifyOtp, signOut],
+src/lib/auth/session-storage.ts:149: * that invites: `signOut()` refreshes the residual on its way out
+src/lib/auth/session-storage.ts:252: * returns true only when every read succeeded and found nothing. A `signOut()`
+src/lib/supabase.ts:54:    // that `signOut()` loads, and can refresh, the stored session before
+src/lib/supabase.ts:59:    // from `signOut()`, and from paths not yet identified — are recorded,
