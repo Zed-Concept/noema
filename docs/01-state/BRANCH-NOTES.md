@@ -41,6 +41,34 @@ it (REVIEW-013 finding 4, REVIEW-015 finding 3).
 
 ---
 
+## LOCK — chore/state-ctrl-005-closeout
+
+```
+Project:            Noema
+Branch:             chore/state-ctrl-005-closeout
+Controller:         CTRL-005 Auth and session v1
+Builder:            Controller (direct state edit via GitHub API; no product
+                    code — controller-only class per AGENTS.md state ownership)
+Model+Effort:       Opus 5 / Max / same session — the sanctioned ruling-4
+                    substitution. Fable 5 returned late in the session; the
+                    controller seat deliberately did not switch mid-session with
+                    a close-out pending. CTRL-006 opens on Fable 5.
+Reviewer of record: none (controller-only state edits)
+Status:             BUILD
+Dispatch:           CTRL-005 close-out. Reconcile the Unit D LOCK to MERGED
+                    (PR #11, 6ee4407) and the adr-008 LOCK to MERGED
+                    (PR #14, 6c925d1) — first act per learning 5. Record the
+                    Unit D merge, REVIEW-022's open finding and its
+                    ACCEPT-AND-RECORD set into Known issues, rulings 20-22,
+                    learnings 20-22, and name CTRL-006 from this file.
+Evidence:           — (documentation-only state edit; the diff is the evidence)
+```
+
+**Known lag.** This block reads `BUILD` after the owner merges until the next
+controller state commit reconciles it. CTRL-006's opening commit owns that.
+
+---
+
 ## LOCK — chore/state-adr-008-surfacing-scope
 
 ```
@@ -52,7 +80,7 @@ Builder:            Controller (direct state edit via GitHub API; no product
 Model+Effort:       Opus 5 / Max / same session — sanctioned ruling-4
                     substitution for the Fable 5 controller seat
 Reviewer of record: none (controller-only state edits)
-Status:             BUILD
+Status:             MERGED
 Dispatch:           Reconcile the adr-007 LOCK to MERGED (PR #13,
                     d5b4f8a) — first act per learning 5. Record ADR-008,
                     narrowing ADR-007's surfacing sentence to native per
@@ -63,6 +91,9 @@ Evidence:           — (documentation-only state edit; the diff is the evidence
 
 **Known lag.** This block reads `BUILD` after the owner merges until the next
 controller state commit reconciles it.
+
+**Reconciled 2026-08-26 by CTRL-005 close-out** — merged at
+`6c925d1c5b5e9aa4f8da660028482707e3763c8a` (PR #14).
 
 ---
 
@@ -184,7 +215,7 @@ Advisory reviewer:  DeepSeek V4 Pro / fresh session — the ADR-001 auth trigger
                     so it does not duplicate the reviewer of record. Advisory
                     carries no merge authority; the controller adjudicates
                     against the RoR record.
-Status:             REVIEW
+Status:             MERGED
 Dispatch:           Unit D — the v1 CLIENT-SIDE authentication surface only:
                     email OTP sign-in/sign-up, session persistence behind a
                     chunked expo-secure-store adapter, route protection, and
@@ -308,8 +339,13 @@ B exit**, not before Phase B starts. **ADR-009 is the last re-scope of Unit D**:
 if the follow-up does not close finding 3, it ships as a Known Issue and the
 unit is finished regardless.
 
-This block still reads `REVIEW`; the controller reconciles it to `MERGED` in the
-CTRL-005 close-out state commit, per learning 5.
+**Reconciled 2026-08-26 by CTRL-005 close-out** — **MERGED** at
+`6ee4407da0a95fbe285d5a0b8d6afbcf9843ba71` (PR #11), 20 commits, 99 files,
++16561/-26. Review chain REVIEW-019 through REVIEW-022 by Codex Sol with
+REVIEW-021-ADVISORY by DeepSeek V4 Pro, across three fix cycles. Merged on
+owner override of a REVIEW-022 FAIL, over **one** open finding — finding 3,
+non-durable purge demand — after ADR-009 reclassified findings 1 and 2 as
+recorded library behaviour and finding 4 closed by subtraction.
 
 This block was edited in the owner's working tree rather than through the
 GitHub API: the controller's Composio project key was revoked mid-session and

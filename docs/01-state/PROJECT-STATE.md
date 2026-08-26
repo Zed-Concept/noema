@@ -3,7 +3,7 @@
 The authoritative record of what is true right now. If this file and your
 memory of the project disagree, this file is right and you are stale.
 
-**Last verified:** 2026-08-24, CTRL-005 fix cycle 1 preparation, verified against main at
+**Last verified:** 2026-08-26, CTRL-005 close-out, verified against main at
 `07ad5a51ed597f67bac523e681525c4e87fe644d` (the PR #9 merge of the CTRL-004
 close-out, GitHub-signed, parents `d794328` + `6809dbf`)
 **Verification method:** controller read of main via GitHub API — both state
@@ -114,6 +114,9 @@ explicitly and get it overturned on the record.
 | 17 | The auth client **never self-schedules a refresh**: `autoRefreshToken: false` at construction, refresh initiated only by explicit foreground-gated calls, and a refresh whose persistence fails is **surfaced**, not silently dropped. Locked-device behaviour is NOT RUN and NOT CLAIMED in Phase A; Phase B carries a named physical-device test. Narrows one clause of ADR-005 per ruling 16; ADR-005's `scope: 'local'` and `WHEN_UNLOCKED` decisions stand. | 2026-08-24 | `docs/03-decisions/ADR-007-refresh-lifecycle.md` |
 | 18 | ADR-007's persistence-failure **surfacing guarantee is native-only**. The write observer wraps the SecureStore-backed adapter; on web, storage is `localStorage` through the `supabase-js` default and no observer exists. No unqualified cross-platform claim of surfacing may be made in code, evidence, or product copy. Web surfacing is deferred and named, not claimed. Narrows one sentence of ADR-007 per ruling 16; ADR-007 otherwise stands. | 2026-08-25 | `docs/03-decisions/ADR-008-surfacing-scope.md` |
 | 19 | Correcting a decision-text **overclaim** — narrowing a sentence so it states only what the architecture enforces — is **controller-class**, not an owner decision. ADR-006, ADR-007 and ADR-008 were the same motion: a reviewer finds an unqualified sentence, the remedy is to state the enforceable scope. That is bookkeeping against principle 4. Genuine trade-offs, where more than one defensible outcome exists, still go to the owner. | 2026-08-25 | this row (owner ruling, CTRL-005) |
+| 20 | **Refresh entrances are not enumerated and not gated.** Library-internal refreshes — from construction, from session loading, from `signOut()`, and from paths not yet identified — are recorded, expected behaviour. The guarantee is persistence, not initiation: any rotated session that cannot be persisted is detected and forces re-authentication, durably across process restart. `autoRefreshToken: false` stands. Supersedes ADR-007 in full. | 2026-08-26 | `docs/03-decisions/ADR-009-refresh-lifecycle-supersession.md` |
+| 21 | Unit D merged on **owner override of a REVIEW-022 FAIL**, over exactly one open finding — finding 3, non-durable purge demand. **ADR-009 is the last re-scope of Unit D.** If the CTRL-006 follow-up does not close finding 3, it ships as a Known Issue and the unit is finished regardless. A re-scope that reclassifies findings is legitimate once; twice is budget laundering. | 2026-08-26 | this row (owner ruling, CTRL-005) |
+| 22 | Fable 5 is available again. **Builder seats return to Fable 5** — Ultracode for build-class, Max for fix loops — retiring the Opus 5 substitution from future HANDOFFs and restoring ruling 4. The **controller seat moves to Fable 5 at CTRL-006**, not mid-session: CTRL-005 finishes on the recorded substitution rather than muddying the provenance of its own close-out. | 2026-08-26 | this row (owner ruling, CTRL-005) |
 
 ## Active work
 
@@ -121,7 +124,7 @@ What is in flight, who owns it, and what it is blocked on. One row per stream.
 
 | Stream | Owner | Status | Blocked on |
 |---|---|---|---|
-| Unit D — Auth and session v1 | Claude Code (`feat/auth-session-v1`) | BUILD — **fix cycle 3 of 3 delivered**, answering REVIEW-021 FAIL and REVIEW-021-ADVISORY DEFECTS_FOUND. **This is the final cycle; there is no cycle 4.** REVIEW-019/020 FAILs and fix cycles 1-2 are closed history. Main merged in at `b5c9cee` (origin/main `6c925d1`, PR #14) for ADR-008, rulings 18-19; evidence at `docs/05-quality/evidence/005d-auth-session-fix3/` (005a-005c retained as their cycles' records). Two findings closed by implementation, five by subtraction. Phase A offline; PR #11 open | Nothing. Awaiting REVIEW-022. If it is not a PASS the options are an owner override merge on a documented FAIL (the Unit C precedent) or further subtraction. RoR Codex Sol (fresh session, authored REVIEW-019/020/021, did not build); advisory DeepSeek V4 Pro (fired at REVIEW-021-ADVISORY)
+| Unit D — Auth and session v1 | — | **MERGED** 2026-08-26 at `6ee4407d` (PR #11). Phase B live-credential evidence never ran and is CTRL-006's opening work. | — |
 | Production Supabase project | Owner | Parked by ruling — create in East US (North Virginia) before any launch-facing unit | Free-tier slot or Pro upgrade at that time |
 
 Unit A merged 2026-08-19 at `8d648bb` (PR #2, REVIEW-007 PASS); its full
@@ -140,12 +143,28 @@ every remaining finding was claim-trimming with no security content. The
 merged evidence suite's documented limitations are listed under **Known
 issues**. CTRL-004 closed 2026-08-23.
 
-**Next controller session:** CTRL-005 Auth and session v1 — the successor
-confirms this name against this file before planning anything. Derived from
-`docs/00-master/PRODUCT.md`, whose L0 sequencing puts the auth unit ahead of
-the capture loop; open question 1 (transcription provider) does not gate it.
-RED on arrival: auth-touching diffs re-trigger the advisory seat per ADR-001,
-and standing rulings S1-S3 apply.
+Unit D merged 2026-08-26 at `6ee4407d` (PR #11), 20 commits, 99 files,
++16561/-26. Review chain REVIEW-019 through REVIEW-022 by Codex Sol (reviewer
+of record) with REVIEW-021-ADVISORY (DeepSeek V4 Pro, **DEFECTS_FOUND**),
+across three fix cycles. REVIEW-022 is the final review of record and its
+verdict is **FAIL**. The owner ruled to merge over it on **one** open finding:
+ADR-009 reclassified findings 1 and 2 as recorded library behaviour, finding 4
+closed by subtraction, and finding 3 alone remains open. Twenty of the
+twenty-three findings raised across the chain closed, eight of them by
+deletion rather than by building an instrument to defend them. CTRL-005 closed
+2026-08-26.
+
+**Next controller session:** CTRL-006 Auth Phase B and session durability —
+the successor confirms this name against this file before planning anything.
+Derived from two commitments on this record rather than from the roadmap
+alone: ADR-009 names a physical-device test gating Phase B exit, and REVIEW-022
+finding 3 must close before that exit. `docs/00-master/PRODUCT.md` puts the L0
+capture loop next in roadmap order, but the capture loop cannot be proven
+end-to-end over an auth surface whose live path has never run — Phase B
+evidence was deferred through all three fix cycles and is still owed. Blocked
+on the staging auth posture, which remains unset: confirm-email permanently
+off, plus a ruled test-address domain. RED on arrival: auth-touching diffs
+re-trigger the advisory seat per ADR-001, and standing rulings S1-S3 apply.
 
 ## RED lane
 
@@ -283,7 +302,69 @@ closed" or "a failure is surfaced" without naming the platform, the phase, and
 the adversary it holds against is an overclaim waiting to be found. Draft the
 qualifier first; it is cheaper than the ADR that adds it.
 
+**20 — For library-internal behaviour, run a probe; do not read the source.**
+Two reviewers read pinned `@supabase/supabase-js@2.112.3` and both concluded
+that construction registers no auth listener. REVIEW-021-ADVISORY stated it
+affirmatively as a correction to the reviewer of record, and fix cycle 3 was
+built on it. REVIEW-022 constructed a client with fake storage and an injected
+`fetch`, observed one token request and a persisted rotated session with no
+application auth call, and had the answer in a single attempt. A source reading
+describes what the code appears to do; a probe reports what it did.
+
+**21 — An advisory correction carries no more authority than any other claim.**
+The advisory seat was created for independent judgement, and its first firing
+produced real value — it traced an entrance the reviewer of record missed and
+answered a question written specifically for it. It also asserted a mechanism
+fact that was false, and the controller passed that assertion into a dispatch
+without requiring verification. Independence is a reason to weigh a claim, not
+a reason to skip checking it.
+
+**22 — Enumerating entrances into a third-party library is not an
+architecture.** Three fix cycles gated AppState, removed self-scheduling, and
+deferred the app's own listener and bootstrap; each one found an entrance the
+previous fix had not accounted for, and a pinned dependency can add another on
+any upgrade. It is schedule-patching one level up — the exact error the
+controller told the builder to avoid in adapter code at cycle 2, then wrote
+into ADR-007 without noticing. When a property requires exhaustive knowledge of
+someone else's internals, find the property that does not.
+
 ## Known issues
+
+### Unit D — carried from REVIEW-022 (merged on owner override)
+
+**OPEN — must close before Phase B exit.** REVIEW-022 finding 3: purge success
+is **inferred**, not observed. The observer records only a `removeItem`
+rejection, so the absence of that record cannot distinguish "removal succeeded"
+from "`signOut()` rejected before removal was attempted", and the code clears
+the demand in both cases. Every demand flag is process-local, so a surviving
+superseded session outlives the demand across restart. Pinned auth-js also
+leaves rejected refresh Deferreds unhandled on this path. This is the sole
+subject of the merge override (ruling 21).
+
+**SHOULD DELETE — bookkeeping, no product-code change.** REVIEW-022 finding 4:
+committed `red-lane.txt` is stale, so claim 50 does not reproduce at the exact
+target, and the record's clean cumulative-diff statement is false.
+
+**ACCEPT AND RECORD — known limits, honestly bounded.**
+- The token-opacity scanner detects **directly-spelled constructs only**; an
+  aliased parser passes. Two committed tests preserve that hole as an
+  executable limit rather than rescuing the deleted universal claim.
+- The removal test states only the sequencing fact its first failure observes,
+  not the stalled-reader interleaving originally claimed.
+- Sign-out cost of 2052–4617 backend deletes is **derived by reading** pinned
+  `_removeSession()`, not observed.
+- `ci.txt` is **absent from 005d by design** — a head cannot be known before its
+  own push, and carrying cycle 2's forward would place a green CI artifact
+  beside a different head. Claim 48a is NOT RUN.
+- The early `gates.txt` stability anomaly remains **DISCLOSED and unexplained**
+  across three cycles and was ruled non-dispositive three times. Recorded so
+  that "non-dispositive" is never quietly promoted to "resolved".
+- Persistence-failure surfacing is **native-only** (ADR-008, ruling 18); web
+  surfacing is deferred and unclaimed.
+- Locked-device SecureStore refusal is **NOT RUN** — no device or simulator has
+  participated. ADR-009 names the physical-device test gating Phase B exit.
+- A latent SDK token-provider refresh entrance is recorded, not gated
+  (ADR-009, ruling 20).
 
 **Unit C merged evidence-suite limitations** (documented, carried knowingly;
 each named in REVIEW-018 or self-disclosed and stated in the 004a/004b READMEs):
