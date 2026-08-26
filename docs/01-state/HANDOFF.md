@@ -1,3 +1,132 @@
+## 2026-08-27 — Unit E SUBTRACTION CORRECTION 3b (REVIEW-026 findings 1–3), feat/session-durability
+
+**Controller:** CTRL-006 Auth Phase B and session durability.
+**Builder:** Claude Code, fresh session — scribe-class pass per ruling 5:
+comments and prose only, answering REVIEW-026 **FAIL** under the cycle-3
+transition note's further-subtraction authorisation (ruling 28 unchanged:
+no behaviour, no assertion, no instrument, no mechanism).
+**Model+Effort:** **Fable 5 / High / fresh session** — model check passed at
+session start (model ID `claude-fable-5`).
+**Answering:** the CTRL-006 subtraction-correction-3b dispatch — exactly
+three edits, at the lines REVIEW-026 names.
+**Head:** the pushed substantive head is
+`8b49f314fb19559df9e933fca838a67879ad3185` (the README correction commit);
+the comment-only deletion commit beneath it is
+`811600fa7f184f935dbb0b531c9d6d8bf7e329fc`. The records commit carrying
+this block and `ci.txt` sits on top; a commit cannot name its own SHA —
+the completion report names it.
+
+### Preflight — all three checks passed
+
+- `git fetch origin && git checkout feat/session-durability && git pull
+  --ff-only` landed exactly on the dispatched tip
+  `591f025a3f0d8aa9b90c0521206afad1798c0adf`, tree clean. (The first
+  fetch attempt failed on DNS; the retry succeeded and fast-forwarded
+  `5cfb88a1 → 591f025a`.)
+- `BRANCH-NOTES.md`: the Unit E LOCK read `Status: BUILD` with the
+  "subtraction correction 3b" transition note (2026-08-26, CTRL-006), as
+  dispatched.
+- `AGENTS.md`: 5378 bytes, sha256
+  `0ff02d209247dadd94f217b441732baa87ed9f182f9b734cece668b1c3f0f013`.
+- REVIEW-026 findings 1–3 read in full before anything was touched;
+  ADR-009 and the shipped `auth-provider.tsx` ordering comment read before
+  E2 was worded; the 006c/006d Known-limits bodies diffed directly before
+  E3 was worded.
+
+### The three edits — nothing else
+
+- **E1 — the stale publication universal DELETED (finding 1).**
+  `auth-state-publisher.ts`: the header's "THE ONE …", the unqualified
+  "Every publication … flows through" sentence, and the "single point
+  every publication must pass / a publisher added tomorrow is gated"
+  conclusion are deleted, not qualified — the ruling-28 narrowed
+  paragraph now stands alone; the closing "no publisher exists before
+  then, because every publisher lives inside that effect" clause is
+  likewise deleted. `auth-state-publisher.test.ts`: the header's
+  unqualified every-publication copy deleted the same way. The 006d
+  README SUPERSESSION bullet now says, past tense, that the withdrawal
+  holds at every named site, completed in commit `811600fa`.
+- **E2 — the Known-Issue compensating control 1 narrowed to the measured
+  boundary (finding 2).** "before any session load" is deleted. The
+  control now states: the observed purge runs before the provider's own
+  `getSession()` (claims 13–14), with the ADR-009 qualifier —
+  library-internal loads during client construction can precede the
+  demand consult and are contained by the purge that follows, never
+  prevented. This is the text PROJECT-STATE copies on merge.
+- **E3 — "Known limits carried unchanged" replaced by the itemised carry
+  (finding 3),** in the README's What-is-NOT-withdrawn paragraph and the
+  Known-limits section intro: limit 8 carried byte-verbatim; limits 1,
+  3, 4, 7, 9 verbatim in substance (only "(carried)" provenance
+  parentheticals and limit 4's "costing" trimmed); limit 6 with its
+  REVIEW-025 acceptance recorded in place of the cycle-2 read-path
+  comparison; limits 2, 5, 10, 11 carried with ruling-28 subtraction —
+  limit 2 lost the "narrows the in-process ungated interval to nothing"
+  absolute, limit 5 the "never exposed" resolution explanation, limit 10
+  the web storage-key/ruling-26 provenance clause, and limit 11's old
+  exposure sentence was replaced by the NEXT-publication boundary plus
+  Known Issue 2 (the one limit a REVIEW-025 finding narrowed). The prior
+  cycle-3 HANDOFF block's S4 "carry forward unchanged" sentence is
+  superseded by this block; the append-only record is left in place.
+
+### Verification at the pushed head
+
+- **Comment-stripped token identity vs `9e90fdba` — HOLDS.** For both
+  touched `.ts` files, two independent probes: TypeScript
+  `transpileModule` (`removeComments`, JSX preserved) emitted-JS bytes
+  IDENTICAL, and the trivia-skipped scanner token stream IDENTICAL
+  (`auth-state-publisher.ts` 227 tokens — REVIEW-026's own count;
+  `auth-state-publisher.test.ts` 1114 tokens). No other `.ts`/`.tsx`
+  touched; `auth-provider.tsx` and `eslint.config.js` untouched this
+  pass.
+- **Gates 4/4 at `8b49f31`:** typecheck, lint, test, format:check all
+  exit 0 — **11 suites, 196 tests** (unchanged).
+- **Stability at `8b49f31`:** both fresh captures exit 0; **9/9 gated
+  artifacts pair-identical (run A vs run B)**; against the committed
+  copies, 7/9 match and exactly the two construction-predicted artifacts
+  differ: `binding.txt` (the bound `src` tree OID moved with the
+  comment-deletion commit `811600fa` — the sole changed line) and
+  `red-lane.txt` (the range listing grew 20→21 by exactly
+  `docs/04-reviews/REVIEW-026.md`, and its non-docs added-line count
+  moved 2759→2753, the deleted comment lines). This is the claim-16
+  boundary operating as stated — stability is claimed at the heads the
+  README names; the committed `stability.txt` was restored byte-identical
+  after the run and the tree verified clean. No artifact was regenerated
+  or recommitted; **instruments untouched** (every producer under 006d is
+  blob-identical to `9e90fdba`).
+- **`ci.txt`:** GitHub CI at the pushed substantive head `8b49f31` —
+  **success** (`typecheck, lint, test`, 54s), run
+  `https://github.com/Zed-Concept/noema/actions/runs/33013603097`;
+  PR #17 confirmed still **draft**. The prior binding (afef2b2a, run
+  33002759431) is preserved in git history and in REVIEW-026.
+
+### Workflows run — ruling 6 disclosure
+
+**None.** No workflow, no subagent; every edit, check, gate, and capture
+ran inline in this builder session. The fan-out disclosure is nil.
+
+### Touch-set — recordable deltas (learning 9)
+
+On top of the dispatched tip `591f025a` (the controller's REVIEW-026 LOCK
+overlay):
+
+- `811600fa` chore(auth): 2 files, +13/−19 — comment-only deletions in
+  `src/lib/auth/auth-state-publisher.ts` and
+  `src/__tests__/auth-state-publisher.test.ts` (E1; token-proven).
+- `8b49f31` evidence(006d): 1 file, +56/−14 — the 006d README (E1 past
+  tense with `811600fa` named; E2; E3).
+- The records commit carrying this block: this HANDOFF insert and
+  `ci.txt` — nothing else.
+
+`BRANCH-NOTES.md` changed by zero bytes; nothing under `supabase/`,
+`.github/`, `app.json`, `package.json`, `package-lock.json`, or generated
+types in any commit of this pass; no evidence artifact regenerated; no
+assertion, instrument, mechanism, or behaviour changed.
+
+**LOCK status line:** `Status: BUILD` — read and left untouched
+(controller-owned; REVIEW-027 gates merge).
+
+---
+
 ## 2026-08-27 — REVIEW-026, Unit E fix cycle 3 of 3 (subtraction)
 
 **Reviewer of record:** Codex Sol / Ultra / fresh session; **Controller:**
