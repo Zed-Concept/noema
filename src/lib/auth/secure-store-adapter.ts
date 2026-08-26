@@ -354,12 +354,10 @@ export function splitByUtf8Budget(value: string, budget: number): string[] {
  * Parse an index, returning null for anything not written by this adapter.
  *
  * `c` is required, which makes the index format self-describing: a value
- * written by the pre-checksum version of this adapter parses as "not ours" and
- * the session behind it reads as absent. That is deliberate rather than a
- * migration oversight. This code has never run on a device — there is no EAS
- * project, no store presence, and Phase A is offline — so the installed base
- * this would strand is empty, and the alternative is accepting a payload we
- * cannot verify. Cost if that assumption is ever wrong: one re-authentication.
+ * written by the pre-checksum version of this adapter parses as "not ours"
+ * and the session behind it reads as absent — deliberate rather than a
+ * migration oversight: the alternative is accepting a payload this adapter
+ * cannot verify, and the cost of refusing one is one re-authentication.
  */
 function parseIndex(raw: string): ChunkIndex | null {
   let parsed: unknown;
