@@ -96,7 +96,7 @@ Advisory reviewer:  DeepSeek V4 Pro / fresh session — the ADR-001 auth trigger
                     not by reading it (learning 20). Advisory carries no merge
                     authority; the controller adjudicates against the RoR
                     record.
-Status:             BUILD
+Status:             REVIEW
 Dispatch:           Unit E — Session durability: close REVIEW-022 finding 3 to
                     ADR-009's three review-gated requirements — purge success
                     observed by read-back, never inferred from the absence of
@@ -284,6 +284,19 @@ clean. The three fix cycles are consumed; this pass is the further
 subtraction the cycle-3 transition note authorised, scribe-class per
 ruling 5 (Fable 5 / High / fresh session), prose only. REVIEW-027 is the
 verdict that gates merge. Written through the Composio GitHub connection.
+
+**Phase transition BUILD -> REVIEW (correction-3b review, REVIEW-027),
+2026-08-26, CTRL-006.** Correction head verified reachable at
+`988e7ff3f4bce4767d8a0ad8dc107372b547a575`: three builder commits
+(`811600fa`, `8b49f31`, `988e7ff`) above `591f025a`, five files — two
+source files comments-only (builder-reported token identity against
+`9e90fdba`, REVIEW-027 verifies), the 006d README, HANDOFF, ci.txt; this
+file untouched; CI success at the head (run 33013820445). Scope of
+REVIEW-027: REVIEW-026 findings 1–3 corrected by subtraction, token
+identity, and — on PASS — the merge recommendation with the PROJECT-STATE
+copy block for Known Issues 1–2 and their controls. Reviewer of record
+Codex Sol / Ultra / fresh session; record REVIEW-027 plus HANDOFF
+top-insert, two files. Written through the Composio GitHub connection.
 
 ---
 
