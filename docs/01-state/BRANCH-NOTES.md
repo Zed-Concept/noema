@@ -41,6 +41,92 @@ it (REVIEW-013 finding 4, REVIEW-015 finding 3).
 
 ---
 
+## LOCK — chore/state-ctrl-006-opening
+
+```
+Project:            Noema
+Branch:             chore/state-ctrl-006-opening
+Controller:         CTRL-006 Auth Phase B and session durability
+Builder:            Controller (direct state edit through the Composio GitHub
+                    connection and the Git Data API, after proving byte
+                    identity of both base files against their blob SHAs; no
+                    product code — controller-only class per AGENTS.md state
+                    ownership)
+Model+Effort:       Fable 5 / Max / same session — the controller seat
+                    returned to Fable 5 at this session per ruling 22, as the
+                    owner set it. No session can verify its own effort tier
+                    from inside; this line records the dispatched setting.
+Reviewer of record: none (controller-only state edits)
+Status:             BUILD
+Dispatch:           CTRL-006 opening state commit. Reconcile the
+                    ctrl-005-closeout LOCK to MERGED (PR #15, b95913e1) —
+                    first act per learning 5. Rebaseline PROJECT-STATE's
+                    verification header and Current state, both left stale by
+                    the CTRL-005 close-out. Register the Unit E LOCK
+                    (feat/session-durability) with both reviewers named,
+                    record rulings 23–24 (staging auth posture; test
+                    identities and code relay), open the CTRL-006 governance
+                    ledger, and mark CTRL-006 active. On a branch; owner
+                    merges; the merge ratifies the rulings recorded here.
+Evidence:           — (documentation-only state edit; the diff is the evidence)
+```
+
+**Known lag.** This block reads `BUILD` after the owner merges until the next
+controller state commit reconciles it.
+
+---
+
+## LOCK — feat/session-durability
+
+```
+Project:            Noema
+Branch:             feat/session-durability
+Controller:         CTRL-006 Auth Phase B and session durability
+Builder:            Claude Code
+Model+Effort:       Fable 5 / Ultracode (xhigh + workflows) / fresh session
+                    (fix cycles: Fable 5 / Max per ruling 5, fresh session).
+                    Ruling 22 restores the Fable 5 seat; the Opus 5
+                    substitution recorded on Unit D does not carry forward.
+Reviewer of record: Codex Sol / Ultra / fresh session — named here, ahead of
+                    review, per ruling 4 and the REVIEW-020 stop.
+Advisory reviewer:  DeepSeek V4 Pro / fresh session — the ADR-001 auth trigger
+                    (client auth surface, RED on arrival); the controller's
+                    pick of the single seat. Scope: the durability mechanism
+                    only, established by probe against the pinned package,
+                    not by reading it (learning 20). Advisory carries no merge
+                    authority; the controller adjudicates against the RoR
+                    record.
+Status:             BUILD
+Dispatch:           Unit E — Session durability: close REVIEW-022 finding 3 to
+                    ADR-009's three review-gated requirements — purge success
+                    observed by read-back, never inferred from the absence of
+                    a rejection; a re-authentication demand durable across
+                    process restart, consulted at bootstrap before any
+                    session load; rejected refresh Deferreds on this path
+                    handled, not left unhandled. The durable marker must not
+                    live in the store whose refusal it records and must
+                    contain no secret. One new dependency permitted if the
+                    marker needs a non-keychain store, named and justified in
+                    the HANDOFF. Offline: no live Supabase call, no
+                    credential. The database auth surface stays frozen at
+                    Unit C's merged state. Three-cycle fix budget; the stop
+                    rule applies from the start. Per ruling 21 this is the
+                    last chance to close finding 3 — if it does not close
+                    here, it ships as a Known Issue and Unit D is finished.
+Evidence:           docs/05-quality/evidence/006a-session-durability/
+```
+
+Registered by the controller in the CTRL-006 opening state commit, ahead of
+the builder session. `BUILD` marks the branch owned from the moment this
+merges; the dispatch text is delivered to the builder separately, after the
+merge, naming the post-merge tip (learning 13). Status transitions on this
+branch are controller-owned throughout: the controller flips `BUILD` →
+`REVIEW` when it names the review and `MERGED` after the owner merges; the
+builder leaves the line untouched and reports it in the HANDOFF — the
+REVIEW-019 practice, adopted so no reviewer stops on an unreconciled block.
+
+---
+
 ## LOCK — chore/state-ctrl-005-closeout
 
 ```
@@ -54,7 +140,7 @@ Model+Effort:       Opus 5 / Max / same session — the sanctioned ruling-4
                     controller seat deliberately did not switch mid-session with
                     a close-out pending. CTRL-006 opens on Fable 5.
 Reviewer of record: none (controller-only state edits)
-Status:             BUILD
+Status:             MERGED
 Dispatch:           CTRL-005 close-out. Reconcile the Unit D LOCK to MERGED
                     (PR #11, 6ee4407) and the adr-008 LOCK to MERGED
                     (PR #14, 6c925d1) — first act per learning 5. Record the
@@ -66,6 +152,10 @@ Evidence:           — (documentation-only state edit; the diff is the evidence
 
 **Known lag.** This block reads `BUILD` after the owner merges until the next
 controller state commit reconciles it. CTRL-006's opening commit owns that.
+
+**Reconciled 2026-08-26 by CTRL-006 opening** — merged at
+`b95913e13bb82f97b75441f78c0a93dd0cb0c2e5` (PR #15). The branch was deleted
+from origin at merge; `main` is the sole branch.
 
 ---
 
