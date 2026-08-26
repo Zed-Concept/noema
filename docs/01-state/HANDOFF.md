@@ -1,3 +1,139 @@
+## 2026-08-26 — REVIEW-024, Unit E fix cycle 1 of 3
+
+**Controller:** CTRL-006 Auth Phase B and session durability.
+**Reviewer of record:** Codex Sol / Ultra / fresh session — the dispatched
+seat. The harness does not expose model or effort metadata, so Sol / Ultra
+cannot be independently confirmed from runtime metadata.
+**Code target:** `feat/session-durability` fix-cycle-1 head
+`5f6d2e6ca873ff3b45d9d9a6e52d42bdebed30bd`.
+**Review overlay:** `36321d31e1258a6dacf24a56b35c7a0aeb8a3337`, whose sole
+change above the candidate is the controller-owned LOCK transition.
+**Base:** `main` at `7caf23e10856601f17d52ae37ae59fbb9dbbac60`.
+**Output:** immutable `docs/04-reviews/REVIEW-024.md` plus this required
+append-only top insert; exactly two files in the review commit.
+**Verdict:** **FAIL**.
+
+### Preflight and boundary
+
+- Required sequence passed: fetch; checkout `36321d31…`; diff stat from
+  `5f6d2e6…`. The overlay changes only `docs/01-state/BRANCH-NOTES.md`, 18
+  lines (`+17/-1`). The LOCK reads `Status: REVIEW` and says “cycle-1 review,
+  REVIEW-024.”
+- `AGENTS.md` matched the dispatched 5378 bytes and SHA-256
+  `0ff02d209247dadd94f217b441732baa87ed9f182f9b734cece668b1c3f0f013`
+  before it was trusted. Product/evidence probes then ran at exact detached
+  candidate `5f6d2e6` with a clean tracked tree.
+- Full base range: 13 commits, 61 files, `+11168/-514`. Cycle commits on the
+  advisory record: `f66c451` 8 files `+463/-78`; `7402446` 5 files
+  `+374/-19`; `7d2229b` 23 files `+3937/-0`; `5f6d2e6` 3 files `+254/-1`.
+  `git diff --check` passed.
+- Rulings 25–26 were applied from the dispatch's governing wording. No claim
+  is made that their separate controller state commit was already merged to
+  `origin/main`, which remained at the review base.
+
+### Verdict
+
+The exact REVIEW-023 schedules materially close: the builder's seven-case
+runner was independently rerun at both trees, producing **7/7 RED** at
+`caa31ee2`, **7/7 GREEN** at `5f6d2e6`, and runner exit 0. In particular,
+double refusal now reaches `signedOut` with zero unhandled rejections, holds
+the demand in memory, lands it when a medium recovers, and honours it after
+restart. Pending logout changes state before the await. R3 passes every
+refused-write schedule run. The ruling-25 death-before-recovery schedule is
+the accepted Known limit, not a finding. Ruling 26 governs the old-key/web
+boundary.
+
+The candidate still fails the broader cycle-1 invariant and exact-head
+evidence requirement:
+
+1. **HIGH / MUST CLOSE:** a demand record whose read throws while `exists`
+   reports false is treated as absent. A real pinned-client restart over the
+   fake media exposed the residual as `signedIn`; the `exists=true` control
+   stayed signed out and purged. Consequence B says every read error is
+   outstanding and the boolean is never the sole gate.
+2. **HIGH / MUST CLOSE:** fresh-sign-in resolution can clear the old demand,
+   start bootstrap, then have the bootstrap refresh persist refused. The
+   observer creates a new durable demand and the listener drops the event,
+   but the ungated `getSession().then(...)` path publishes `signedIn` anyway.
+   The no-exposure invariant and consequence C remain open.
+3. **MEDIUM / MUST NARROW OR REGENERATE AT THE ACTUAL FIXED POINT:** committed
+   `binding.txt` and `stability.txt` name `74024465`, not formal candidate
+   `5f6d2e6`. Two candidate captures are mutually identical, but committed
+   `red-lane.txt` measures 37/24 range/docs paths versus fresh 61/48. Running
+   committed `stability.sh` at the candidate exits 1. README claims 20–21,
+   plus semantic closure claims 9–10, overreach.
+
+Two fix cycles remain. The stop rule applies to both recurrences: enforce one
+state-publication boundary after async auth work, and bind/narrow evidence to
+the exact artifact measured rather than adding another selected scanner.
+
+### REVIEW-023 disposition
+
+- **F1 CLOSED** under ruling 25: exact double-refusal/recovery/restart schedule
+  passes; zero unhandled.
+- **F2 OPEN at the governing invariant:** its exact pending-logout schedule is
+  closed, but the same exposure class recurs through promise/state publishers.
+- **F3 CLOSED BY RULING 26 / HONOURED:** named world comments removed; no old
+  key sweep; web localStorage/no-observer wording narrowed.
+- **F4 HONOURED / CONTROLLER-RECONCILED:** zero builder bytes to
+  `BRANCH-NOTES.md` in this cycle.
+- **F5 OPEN:** exit-77, dependency-set, exact-address, and subtraction work
+  passes; exact-head/fixed-point and semantic claims do not.
+- **F6 CLOSED / HONOURED:** original corrected counts and cycle deltas are
+  exact.
+
+### Independent execution and classifications
+
+- Seven-schedule runner: prior candidate 7/7 RED, fix candidate 7/7 GREEN.
+- Independent File control: read throw + `exists=false` **FAIL**; same read
+  throw + `exists=true` **PASS**.
+- Ordinary fresh-sign-in B2 **PASS**; follow-up refresh-persist refusal
+  **FAIL** (`signedIn` with a new demand); clear-refusal edge **PASS** at one
+  conservative restart re-authentication.
+- Held-demand next-write, foreground, and purge retry **PASS**, zero
+  unhandled. Event-before-record injection **PARTIAL**: app window reproduced,
+  same-operation pinned-client reachability unverified.
+- Mutation battery **PASS as execution fact:** 25/25 SENSITIVE, every mutant
+  typechecked, 0 build-invalid, four sources restored byte-identically.
+- Exact-candidate capture gates **PASS:** typecheck, lint, test, format check;
+  10 suites / 180 tests. Exit-77 control **PASS**. Dependency proof
+  **PASS:** 1131/1131 keys, none added/removed. 006a tree byte-identical.
+- 006b fresh pair **PASS** internally; committed fixed point **FAIL**, stability
+  exit 1. GitHub CI run 32973184321 **PASS** at exact `head_sha=5f6d2e6…`.
+- Live Supabase, credentials, physical OS restart, real File failure behavior,
+  locked-device behavior, and real-browser integration are **NOT RUN**.
+
+### Governance, adjacent findings, and workflow disclosure
+
+- `BRANCH-NOTES.md` is the same blob at `27f5d8d6` and `5f6d2e6`; its path log
+  across the cycle is empty. No cycle edit touches `supabase/`, `.github/`,
+  generated types, `app.json`, package manifests, ADRs, or prior reviews.
+  `expo.scheme` is unchanged and no added user-visible `noema` exists.
+- Git objects prove the stale worktree deregistration changed no committed
+  repo content. The historical “no uncommitted work” assertion is
+  **UNVERIFIABLE FROM GIT OBJECTS**.
+- `secure-store-adapter.ts:353-363` is **LOW pre-existing FOLLOW-UP / SHOULD
+  DELETE, non-verdict-driving; not ACCEPT**: the same application-code world
+  assertion ruling 26 rejects, outside this cycle's named scope. The
+  user-facing sign-out read-back gap remains adjacent and untouched. The
+  clear-refusal residue is accepted at its independently measured one-restart
+  re-authentication bound.
+- No orchestrated workflow was invoked. The local Noema governance review
+  procedure, Supabase safety skill, and docs-guard final pass were used. Three
+  supplementary subagents covered runtime schedules, evidence, and governance;
+  the reviewer of record inspected the instruments, reran the verdict-driving
+  checks, and made all dispositions. Probes used the installed pinned auth
+  client over fake stores/fetch only.
+
+This review changed no product code, evidence artifact, ADR, LOCK status,
+prior review, migration, production project, credential, or outward-facing
+system. The review commit contains only REVIEW-024 and this top insert; its
+pushed SHA is reported externally because a commit cannot name itself.
+
+**LOCK status line:** `Status: REVIEW` — read and left untouched.
+
+---
+
 ## 2026-08-26 — Unit E fix cycle 1 of 3, feat/session-durability
 
 **Controller:** CTRL-006 Auth Phase B and session durability.
