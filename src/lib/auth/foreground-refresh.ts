@@ -14,7 +14,18 @@ import type { SessionPersistenceFailure } from './session-storage';
  * REVIEW-020 finding 1 proved the client could not be made to honour that while
  * it scheduled its own refreshes. ADR-007's answer is to stop it scheduling:
  * `supabase.ts` sets `autoRefreshToken: false`, so the only refreshes left are
- * the ones this app asks for. This function is the single place that asks.
+ * the ones this app asks for.
+ *
+ * This function is NOT the only place that asks, and the previous version of
+ * this sentence — "the single place that asks" — was false as written.
+ * REVIEW-021 finding 1 and REVIEW-021-ADVISORY finding 1 both caught it. There
+ * are exactly TWO app-initiated entrances into auth-js's on-demand refresh:
+ * this gate's `settleSession`, and the cold-start bootstrap `getSession()` in
+ * `auth-provider.tsx`. What is true, and what ADR-007 actually requires, is
+ * that BOTH sit behind the same `AppState === 'active'` gate — the bootstrap
+ * because `auth-provider.tsx` defers it, and this one because of the early
+ * return below. The claim is "no app-initiated refresh before the first
+ * foreground", not "one call site".
  *
  * It is a module rather than an inline effect body because of what REVIEW-020
  * finding 1 said about the previous evidence: the provider tests "replace the
@@ -33,6 +44,14 @@ import type { SessionPersistenceFailure } from './session-storage';
  * locked-device behaviour NOT RUN and NOT CLAIMED in Phase A and carries a
  * named physical-device test into Phase B. Nothing here observes a keychain
  * under lock, because nothing in Phase A can.
+ *
+ * It is also not a cross-platform claim. `takePersistenceFailure` can only
+ * report what the write observer saw, and per ADR-008 / binding ruling 18 that
+ * observer exists on NATIVE ONLY: web storage is `localStorage` through the
+ * `supabase-js` default and never reaches the observed adapter. On web this
+ * gate still holds the foreground boundary, but an `unpersisted` outcome is
+ * not available to it, so a refused web write returns `settled`. Web surfacing
+ * is deferred and named in ADR-008, not claimed here.
  */
 
 /**

@@ -59,6 +59,37 @@ const { readFileSync } = require('fs') as {
  * synthetic source that DOES contain what it looks for, and the suite fails if
  * any rule fails to fire on its own control. An instrument that cannot fail
  * cannot pass.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT THIS DOES NOT DETECT — read this before crediting it with anything
+ * ---------------------------------------------------------------------------
+ *
+ * This scanner is SYNTACTIC. It recognises the constructs it names, spelled the
+ * way it names them, and nothing else. REVIEW-021 finding 3 proved the gap with
+ * a build-valid equivalent that survived all eight opacity assertions and all
+ * behavioural adapter tests:
+ *
+ *     const parsePayload = JSON.parse;
+ *     try {
+ *       parsePayload(value);
+ *     } catch {}
+ *
+ * The visitor matches a property access whose receiver is literally the
+ * identifier `JSON`. It does not follow aliases, and the same indirection
+ * defeats the method-name and decoder lists. That survivor is kept as an
+ * EXECUTABLE RECORD at the bottom of this file, so the boundary cannot quietly
+ * be forgotten and the deleted claim cannot quietly return.
+ *
+ * So the claim was cut to fit the instrument. This suite does NOT establish
+ * that the adapter never parses or inspects the payload — that is a
+ * whole-program property and this is a syntactic scan of one file. It
+ * establishes that no DIRECTLY SPELLED parse or inspection is present in the
+ * adapter source. REVIEW-019 finding 7, REVIEW-020 finding 3 and REVIEW-021
+ * finding 3 are the same claim outrunning the same instrument three times; per
+ * the controller's stop rule the remedy is subtraction, not a fourth scanner
+ * with a wider whitelist. The binding opacity property of ADR-004 rests on
+ * source review, and the reviewer of record has confirmed by direct reading, in
+ * each of those three reviews, that the current adapter does not parse tokens.
  */
 
 /** Relative to the jest `rootDir`, which is the project root. */
@@ -203,8 +234,8 @@ const POSITIVE_CONTROLS: readonly { rule: string; source: string }[] = [
   },
 ];
 
-describe('token opacity — the adapter never parses or inspects the payload', () => {
-  it('finds no token inspection anywhere in the adapter source', () => {
+describe('token opacity — no directly-spelled payload parse or inspection', () => {
+  it('finds no directly-spelled token inspection in the adapter source', () => {
     const source = readFileSync(ADAPTER_PATH, 'utf8');
 
     const violations = scanForTokenInspection(source, ADAPTER_PATH);
@@ -214,7 +245,7 @@ describe('token opacity — the adapter never parses or inspects the payload', (
     expect(violations).toEqual([]);
   });
 
-  it('permits exactly one JSON.parse, and only inside the index parser', () => {
+  it('permits exactly one directly-spelled JSON.parse, only inside the index parser', () => {
     const source = readFileSync(ADAPTER_PATH, 'utf8');
     const parsed = ts.createSourceFile(ADAPTER_PATH, source, ts.ScriptTarget.Latest, true);
 
@@ -267,6 +298,49 @@ describe('token opacity — the adapter never parses or inspects the payload', (
       `;
 
       expect(scanForTokenInspection(sanctioned, 'control.ts')).toEqual([]);
+    });
+  });
+
+  describe("the known survivor — an executable record of this scan's limit", () => {
+    /**
+     * REVIEW-021 finding 3's counterexample, kept rather than fixed.
+     *
+     * This is the same device 005c used for the checksum collision: the claim
+     * that outran the instrument is deleted, and the thing that disproved it is
+     * kept as a test so it cannot be quietly re-asserted. A future cycle that
+     * widens the whitelist until this goes green will find this test turn red
+     * and have to say so.
+     *
+     * These assertions are the SHAPE OF THE HOLE, not a passing property. Do
+     * not read a green run here as evidence of opacity.
+     */
+    it('does NOT detect an aliased JSON.parse — the claim was narrowed, not rescued', () => {
+      const aliased = `
+        const parsePayload = JSON.parse;
+        function setItem(key: string, value: string) {
+          try {
+            parsePayload(value);
+          } catch {}
+          return value;
+        }
+      `;
+
+      // Empty. The scanner walks past it, which is exactly why this suite no
+      // longer claims the adapter "never parses" anything.
+      expect(scanForTokenInspection(aliased, 'survivor.ts')).toEqual([]);
+    });
+
+    it('does NOT detect an aliased content inspection either', () => {
+      // The same indirection defeats the method-name list, so the limit is a
+      // property of the approach and not of one missing entry in one set.
+      const aliased = `
+        function peek(value: string) {
+          const inspect = value.split;
+          return inspect.call(value, '.')[1];
+        }
+      `;
+
+      expect(scanForTokenInspection(aliased, 'survivor.ts')).toEqual([]);
     });
   });
 });

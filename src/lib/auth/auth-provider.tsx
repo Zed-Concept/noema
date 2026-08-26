@@ -7,7 +7,11 @@ import type { AppStateStatus } from 'react-native';
 import { supabase } from '@/lib/supabase';
 
 import { refreshWhileForeground } from './foreground-refresh';
-import { takeSessionPersistenceFailure } from './session-storage';
+import {
+  clearSessionPurgeFailure,
+  takeSessionPersistenceFailure,
+  takeSessionPurgeFailure,
+} from './session-storage';
 
 /**
  * Session state as three mutually exclusive cases.
@@ -89,10 +93,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ status: 'bootstrapping' });
 
   useEffect(() => {
+    // ADR-007 / binding ruling 17: THE FOREGROUND GATE, and everything behind it.
+    //
+    // This is ONE effect with ONE AppState subscription on purpose. REVIEW-021
+    // finding 1 and REVIEW-021-ADVISORY finding 1 converged on the same defect
+    // in the previous shape: the gate was real, but it did not stand in front of
+    // every entrance. The cold-start bootstrap registered the auth listener and
+    // called `getSession()` at mount, unconditionally with respect to AppState.
+    //
+    // The advisory traced the exact door, and corrected the reviewer of record
+    // on the mechanism: `supabase-js` registers no auth listener of its own —
+    // THIS APP'S `onAuthStateChange` registration is the trigger. Registration
+    // schedules `_emitInitialSession` (`GoTrueClient.js:3640`), which enters
+    // `_useSession` (`:2477`) → `__loadSession` (`:2496`), which calls
+    // `_callRefreshToken` whenever the stored access token is inside the 90s
+    // `EXPIRY_MARGIN_MS` (`:2521-2547`). Nothing on that path consults
+    // `autoRefreshToken` — the flag gates `_recoverAndRefresh` (`:4104`) and the
+    // ticker (`:4693`) only. The bootstrap `getSession()` was a second ungated
+    // entrance into the same function.
+    //
+    // Because the trigger is this app's own call, the fix is in app code: both
+    // entrances now sit behind the same `status === 'active'` gate as the
+    // refresh evaluation. There are exactly TWO app-initiated entrances into
+    // auth-js's on-demand refresh — the cold-start bootstrap below and the gate
+    // evaluation — and neither can run before the first foreground.
+    //
+    // This effect still starts nothing and stops nothing. There is no ticker to
+    // gate: `supabase.ts` sets `autoRefreshToken: false`, so the client never
+    // schedules a refresh of its own. REVIEW-020 finding 1 proved with three
+    // probes that `stopAutoRefresh()` is not a lifecycle barrier in pinned
+    // auth-js 2.112.3, and the library offers no cancellation API, so ADR-007
+    // removed the scheduler instead of patching it.
     let active = true;
     // Once any auth event has spoken, it is newer than the cold-start read.
     let supersededByEvent = false;
     let resolved = false;
+    let bootstrapStarted = false;
+    let evaluating = false;
+    // ADR-007 item 3: a superseded session the store refused to delete. Held
+    // until a later foreground evaluation actually gets rid of it.
+    let purgeOutstanding = false;
+    let bootstrapTimer: ReturnType<typeof setTimeout> | undefined;
+    let subscription: { unsubscribe: () => void } | undefined;
 
     const resolveOnce = (next: AuthState) => {
       if (!active || supersededByEvent || resolved) return;
@@ -100,106 +142,124 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setState(next);
     };
 
-    // Subscribed before the read below, so an event landing while getSession()
-    // is still in flight is observed rather than dropped.
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!active) return;
-      supersededByEvent = true;
-      setState(stateForSession(session));
-    });
+    /**
+     * The cold-start read, started once and only while foreground.
+     *
+     * Deferred rather than removed: until the stored session has been read back
+     * the answer to "is this user signed in?" is not known, and the app needs
+     * that answer before it can show a screen. While the app is backgrounded it
+     * has no screen to show, so deferring costs nothing the user can observe —
+     * and it is what keeps the listener registration above from refreshing a
+     * near-expiry stored session with no gate in front of it.
+     */
+    function startBootstrap(): void {
+      bootstrapStarted = true;
 
-    // Covers the case the promise cannot: not rejecting, but never settling.
-    const timer = setTimeout(() => resolveOnce({ status: 'signedOut' }), BOOTSTRAP_TIMEOUT_MS);
+      // Subscribed before the read below, so an event landing while
+      // getSession() is still in flight is observed rather than dropped.
+      ({
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (!active) return;
+        supersededByEvent = true;
+        setState(stateForSession(session));
+      }));
 
-    supabase.auth
-      .getSession()
-      // Ignored if an event already resolved the state: getSession() is the
-      // cold-start bootstrap, not a later source of truth.
-      .then(({ data }) => resolveOnce(stateForSession(data.session)))
-      // Nothing readable came back. Signed out is the only safe resolution —
-      // and it must be a resolution, or bootstrapping would never end.
-      .catch(() => resolveOnce({ status: 'signedOut' }))
-      .finally(() => clearTimeout(timer));
+      // Covers the case the promise cannot: not rejecting, but never settling.
+      bootstrapTimer = setTimeout(() => resolveOnce({ status: 'signedOut' }), BOOTSTRAP_TIMEOUT_MS);
 
-    return () => {
-      active = false;
-      clearTimeout(timer);
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  /**
-   * ADR-007 item 3 / binding ruling 17 — a rotated token that was not stored
-   * must not be used.
-   *
-   * By the time this runs the server has already rotated the refresh token, so
-   * what is on disk is the SUPERSEDED one. Continuing against it is precisely
-   * the path that ends days later inside Supabase's refresh-token reuse
-   * detection, with the whole family revoked and no diagnostic trail. ADR-007
-   * is explicit that this — not the fact a refresh fired — was always the
-   * danger.
-   */
-  const requireReauthentication = useCallback(async () => {
-    // Best effort by necessity: the store that just refused a write may refuse
-    // the deletes too, and `removeItem` rejects when it does.
-    //
-    // DISCLOSED RESIDUAL, not a closed hole: if this removal also fails, the
-    // superseded session is still on disk and the next cold start will read it
-    // back. Nothing at this layer can force a store that is refusing to
-    // cooperate; what this layer can do is refuse to keep using the session,
-    // which is what the line below does unconditionally.
-    try {
-      await supabase.auth.signOut({ scope: 'local' });
-    } catch {
-      // Intentionally swallowed — see above. The demand for re-authentication
-      // is not contingent on the removal succeeding.
+      supabase.auth
+        .getSession()
+        // Ignored if an event already resolved the state: getSession() is the
+        // cold-start bootstrap, not a later source of truth.
+        .then(({ data }) => resolveOnce(stateForSession(data.session)))
+        // Nothing readable came back. Signed out is the only safe resolution —
+        // and it must be a resolution, or bootstrapping would never end.
+        .catch(() => resolveOnce({ status: 'signedOut' }))
+        .finally(() => clearTimeout(bootstrapTimer));
     }
-    setState({ status: 'signedOut' });
-  }, []);
 
-  useEffect(() => {
-    // ADR-007 / binding ruling 17: THE FOREGROUND GATE.
-    //
-    // This effect starts nothing and stops nothing. There is no ticker to
-    // gate, because `supabase.ts` sets `autoRefreshToken: false` and the
-    // client therefore never schedules a refresh of its own. What is left is
-    // the other half of ADR-007: refresh is initiated only by explicit
-    // foreground-gated calls, and this is the only place that initiates one.
-    //
-    // Why the previous shape is gone. It called
-    // `startAutoRefresh`/`stopAutoRefresh` off AppState, and REVIEW-020
-    // finding 1 proved with three probes that `stopAutoRefresh()` is not a
-    // lifecycle barrier in pinned auth-js 2.112.3: initialization could
-    // restart the ticker after the app had backgrounded, initial session
-    // recovery could refresh despite the stop, and a refresh already in flight
-    // could persist a rotated session after the stop resolved. The library
-    // offers no cancellation API for either, so there was no version of that
-    // shape that worked. ADR-007 removed the scheduler instead of patching it.
-    let active = true;
-    let inFlight = false;
+    /**
+     * Remove the stored session, and report whether the store actually did it.
+     *
+     * The return value is taken from the purge observer rather than from
+     * whether `signOut()` rejected, because those are different questions.
+     * `signOut({ scope: 'local' })` can reject for reasons that have nothing to
+     * do with the delete — REVIEW-021 finding 2 reproduced exactly that: the
+     * real composition rejected before cleanup ran and left the old session on
+     * disk. The observer records what the STORE did, which is the fact that
+     * decides whether a superseded session is still readable.
+     */
+    async function purgeStoredSession(): Promise<boolean> {
+      clearSessionPurgeFailure();
+      try {
+        await supabase.auth.signOut({ scope: 'local' });
+      } catch {
+        // Best effort by necessity: the store that just refused a write may
+        // refuse the deletes too. The flag below, not this rejection, is what
+        // says whether the session is gone.
+      }
+      return takeSessionPurgeFailure() === null;
+    }
 
-    async function evaluate(status: AppStateStatus) {
+    /**
+     * ADR-007 item 3 / binding ruling 17 — a rotated token that was not stored
+     * must not be used.
+     *
+     * By the time this runs the server has already rotated the refresh token, so
+     * what is on disk is the SUPERSEDED one. Continuing against it is precisely
+     * the path that ends days later inside Supabase's refresh-token reuse
+     * detection, with the whole family revoked and no diagnostic trail.
+     *
+     * REVIEW-021 finding 2 held that the state transition alone is not durable
+     * re-authentication, and it was right: a single best-effort removal that
+     * the store refuses leaves the superseded session readable on the next cold
+     * start. So the demand does not end here. `purgeOutstanding` keeps it alive
+     * and every later foreground evaluation retries the removal until the store
+     * accepts it — which is the point at which the residual actually stops
+     * existing, rather than the point at which this function returns.
+     */
+    async function requireReauthentication(): Promise<void> {
+      purgeOutstanding = !(await purgeStoredSession());
+      // Unconditional, and deliberately not contingent on the removal: this
+      // layer cannot force a refusing store, but it can refuse to keep using a
+      // session it could not vouch for.
+      if (active) setState({ status: 'signedOut' });
+    }
+
+    async function evaluate(status: AppStateStatus): Promise<void> {
       // One evaluation at a time. AppState can deliver several transitions
       // faster than a network round trip completes, and two overlapping
       // evaluations would race for the same persistence-failure flag — the
       // second consuming what the first needed to act on.
-      if (inFlight) return;
-      inFlight = true;
+      if (evaluating) return;
+      evaluating = true;
       try {
+        // THE GATE, for the bootstrap as well as for the refresh. A provider
+        // mounted while the app is already backgrounded initiates nothing at
+        // all — no listener registration, no read, no refresh.
+        if (status === 'active' && !bootstrapStarted) startBootstrap();
+
         const outcome = await refreshWhileForeground(status, {
           settleSession: () => supabase.auth.getSession(),
           takePersistenceFailure: takeSessionPersistenceFailure,
         });
-        if (active && outcome === 'unpersisted') await requireReauthentication();
+        if (!active) return;
+
+        if (outcome === 'unpersisted') {
+          await requireReauthentication();
+        } else if (outcome === 'settled' && purgeOutstanding) {
+          // A refusal that has already forced re-authentication, whose removal
+          // the store would not accept at the time. Retry it now that the store
+          // is answering again.
+          purgeOutstanding = !(await purgeStoredSession());
+        }
       } finally {
-        inFlight = false;
+        evaluating = false;
       }
     }
 
-    // The current state, not an assumption about it: a provider mounted while
-    // the app is already backgrounded must not initiate a refresh.
+    // The current state, not an assumption about it.
     void evaluate(AppState.currentState);
     const appStateSubscription = AppState.addEventListener('change', (status) => {
       void evaluate(status);
@@ -207,9 +267,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       active = false;
+      if (bootstrapTimer) clearTimeout(bootstrapTimer);
       appStateSubscription.remove();
+      subscription?.unsubscribe();
     };
-  }, [requireReauthentication]);
+  }, []);
 
   const sendOtp = useCallback(async (email: string) => {
     return reportRatherThanThrow(async () => {

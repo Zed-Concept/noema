@@ -845,16 +845,32 @@ describe('chunked SecureStore adapter — operations do not interleave', () => {
     expect(letters).toMatch(/^(A+B+|B+A+)$/);
   });
 
-  it('holds a removal behind an in-flight reader, so the reader still sees the whole session', async () => {
-    // THE NINTH SCHEDULE — REVIEW-020 finding 4.
+  it('serializes a removal against a concurrent read, and the read returns the whole session', async () => {
+    // Removal's OWN participation in the queue — REVIEW-020 finding 4.
     //
     // Findings 1 and 2 built reader-versus-writer and writer-versus-writer, and
     // M1-M3 kill a mutant that removes the queue GLOBALLY. None of that makes
-    // removal's OWN participation load-bearing: REVIEW-020 showed that
+    // removal's own participation load-bearing: REVIEW-020 showed that
     // `removeItem: (key) => removeItemBody(key)` — bypassing only removal's
     // queue — returned `null` to a stalled reader while passing all 48
-    // committed adapter tests. A 21/21 mutant count was not a substitute for
-    // the missing schedule, and this is that schedule.
+    // committed adapter tests.
+    //
+    // WHAT THIS TEST ACTUALLY DETECTS, stated precisely because the previous
+    // version of this comment did not. REVIEW-021 finding 4 ran the remove-only
+    // bypass against this test and found that its FIRST failure is
+    // `expect(stalled).toBe(true)` below, not the complete-value postcondition:
+    // an unqueued removal overtakes the reader before it reaches its first
+    // chunk, so the stalled-reader schedule is never constructed at all, and
+    // jest stops before the value and interleaving assertions are reached.
+    //
+    // So the claim that this instrument CONSTRUCTS a stalled-reader/removal
+    // interleaving under the bypass is deleted. It does not. What it detects is
+    // the sequencing fact one step earlier — with the queue in place the stall
+    // happens and the reader completes against a live key space; with removal
+    // unqueued the schedule collapses. That is a real and sufficient signal for
+    // the mutant, and it is a different statement from the one this test used
+    // to make. Per the stop rule, the claim was cut to fit the instrument
+    // rather than a corrected schedule being added to rescue it.
     const fake = createFakeSecureStore();
     const adapter = createChunkedSecureStore(fake.backend);
     const live = sessionLikePayload(5000);
@@ -880,6 +896,9 @@ describe('chunked SecureStore adapter — operations do not interleave', () => {
     const [read] = await Promise.all([readPromise, removePromise]);
     fake.onOperation = undefined;
 
+    // PRECONDITION OF THE SCHEDULE, not a postcondition of the adapter. This is
+    // the assertion the remove-only bypass actually fails, and everything below
+    // it is only reached when the schedule this test describes was built.
     expect(stalled).toBe(true);
     // The COMPLETE old value. Not null, and not a truncated prefix: the reader
     // was already in flight when sign-out began, so it returns what was there.
@@ -961,9 +980,16 @@ describe('the chunk ceiling — measured, not asserted', () => {
     expect(await adapter.getItem(BASE_KEY)).toBe(session);
   });
 
-  it('needs only 2 chunks for the session this product actually creates', async () => {
-    // The measured headroom the ceiling is justified by. Noema v1 is email OTP
-    // with no profile writes, so `user_metadata` is empty.
+  it('needs only 2 chunks for a session-shaped fixture with empty metadata', async () => {
+    // The measured headroom the ceiling is justified by.
+    //
+    // SYNTHETIC, and named as such. The previous title called this "the session
+    // this product actually creates"; REVIEW-021 finding 5 held that no real
+    // OTP or live session has been measured — the same evidence record
+    // classifies that NOT RUN — so "actually creates" was a claim with no
+    // instrument behind it. The shape below is what auth-js persists for an
+    // email-OTP user with no profile writes, constructed here rather than
+    // observed.
     //
     // The shape below is the FULL GoTrue session — timestamps and the
     // `identities` array included — and is byte-identical to the one
@@ -1128,8 +1154,15 @@ describe('chunked SecureStore adapter — removal leaves nothing behind', () => 
     // The LITERAL, not `2 * MAX_CHUNKS + 1`. Every other assertion in this file
     // derives from the constant and would therefore follow it silently to any
     // value; REVIEW-020 finding 2 was about the VALUE being unjustified, so one
-    // assertion has to pin it. Removal cost is the price side of the ceiling
-    // trade-off recorded at `MAX_CHUNKS`, and it is paid once, on sign-out.
+    // assertion has to pin it.
+    //
+    // SCOPE: this is the cost of ONE logical `removeItem`, which is exactly
+    // what this test drives. It is NOT the cost of a sign-out, and the previous
+    // version of this comment said it was. REVIEW-021 finding 5 corrected it:
+    // pinned auth-js `_removeSession()` issues several logical removals through
+    // this adapter, so a sign-out pays this price more than once. The multiplier
+    // is derived from library source in this cycle's evidence README, where it
+    // can be cited; it is not measured here and is not claimed here.
     //
     // If this number changes, the measurement in `session-sizes.txt` and the
     // justification at `MAX_CHUNKS` must change with it. That is the point.

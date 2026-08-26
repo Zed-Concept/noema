@@ -55,6 +55,19 @@ export const supabase = createClient<Database>(supabaseUrl, supabasePublishableK
     // self-scheduling — it fires only on a call this app makes — and ADR-007
     // requires those calls to be foreground-gated. `auth/foreground-refresh.ts`
     // is that gate and `auth-provider.tsx` is where it is wired to AppState.
+    //
+    // THE FLAG ALONE IS NOT THE BOUNDARY, and the previous version of this
+    // comment implied it was. REVIEW-021 finding 1 and REVIEW-021-ADVISORY
+    // finding 1 established that `__loadSession` refreshes a near-expiry stored
+    // session with no `autoRefreshToken` check on the path, and that it is
+    // reachable without any application `getSession()` call: registering an
+    // `onAuthStateChange` listener schedules `_emitInitialSession`
+    // (`GoTrueClient.js:3640`), which enters it. The advisory verified that
+    // `supabase-js` registers no auth listener itself — the app's own
+    // registration at mount was the trigger, which is why the fix is app-side.
+    // `auth-provider.tsx` now defers BOTH that registration and the cold-start
+    // `getSession()` until AppState is `active`. The enforcement of ADR-007 is
+    // therefore this option AND that deferral together, not this option alone.
     autoRefreshToken: false,
 
     // No `lock` option, deliberately. The pinned auth-js 2.112.3 marks the only

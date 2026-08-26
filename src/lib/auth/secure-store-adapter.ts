@@ -150,17 +150,34 @@ export const CHUNK_BUDGET_BYTES = 1536;
  * The number below is chosen from MEASUREMENT instead. `session-sizes.txt` in
  * this cycle's evidence records the producer and its output:
  *
- *   |   chunks | session shape                                        |
+ *   |   chunks | session shape (all SYNTHETIC — see the note below)     |
  *   |----------|------------------------------------------------------|
- *   |        2 | empty `user_metadata` — what Noema v1 actually creates |
+ *   |        2 | session-shaped fixture with empty `user_metadata`     |
  *   |        2 | small profile (full_name, avatar_url, locale)          |
  *   |        8 | 10 KiB metadata                                       |
  *   |       67 | REVIEW-020 finding 2's 100,000-character counterexample |
  *   |      172 | 256 KiB metadata                                       |
  *
- * 256 covers this product's actual session 128x over and finding 2's
- * counterexample 3.8x over, at a removal cost of exactly 513 backend deletes —
- * a deterministic figure, asserted by test, paid once per sign-out.
+ * **These are constructed shapes, not observed sessions.** The previous version
+ * of this note called the 2-chunk row "what Noema v1 actually creates", and
+ * REVIEW-021 finding 5 held that against the same record's own classification
+ * of a real OTP/live session as NOT RUN. No session issued by the Noema
+ * Supabase project has been measured, in this phase or any other. What the row
+ * describes is a hand-built fixture of the shape auth-js persists, with an
+ * empty metadata object; the headroom multiple below is therefore against that
+ * fixture and not against a product session.
+ *
+ * 256 covers the 2-chunk fixture 128x over and finding 2's counterexample 3.8x
+ * over, at a removal cost of exactly 513 backend deletes PER LOGICAL
+ * `removeItem` — a deterministic figure, asserted by test.
+ *
+ * 513 is NOT the cost of a sign-out. REVIEW-021 finding 5 corrected that, and
+ * reading pinned auth-js 2.112.3 confirms it: `_removeSession()` performs
+ * several logical removals through this adapter — the session key,
+ * `removeAllPKCEVerifiers` (one per indexed flow, plus the flow index and the
+ * legacy code-verifier key), and `${storageKey}-user`. The evidence README for
+ * this cycle records the derivation and its bounds; this comment states only
+ * the figure the test measures.
  *
  * **WHAT IS NOT CLAIMED.** The previous note said 64 was "far beyond any
  * session payload". No finite ceiling can honestly claim that, and this one

@@ -51,11 +51,14 @@ export type SessionPersistenceFailure = {
  * uses its own `localStorage`, which this module never sees — a quota-exceeded
  * write there is NOT observed and no claim is made that it is.
  *
- * NOT COVERED: `removeItem`. A refused removal is a failed SIGN-OUT, which the
- * adapter already surfaces by rejecting and `auth-provider.tsx` already turns
- * into an error shown to the user. Recording it here would widen the flag past
- * the claim it exists to support, and learning 12 is explicit that a claim is
- * bound to its instrument.
+ * NOT COVERED BY THIS FLAG: `removeItem`. A refused removal is a different
+ * fact about a different operation, and it is recorded separately below in
+ * `lastPurgeFailure` rather than folded in here. Two flags, because the session
+ * layer must act differently on each: a refused WRITE means a rotated token was
+ * lost and the session must be abandoned; a refused REMOVAL means a session that
+ * has already been abandoned is still on disk and must be deleted again. Merging
+ * them would widen each past the claim it exists to support, and learning 12 is
+ * explicit that a claim is bound to its instrument.
  *
  * Module scope, like the adapter singleton it wraps, and for the same reason:
  * there is exactly one session store per runtime.
@@ -86,6 +89,51 @@ export function clearSessionPersistenceFailure(): void {
 }
 
 /**
+ * The most recent session REMOVAL, remembered only when the store refused it.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS EXISTS — REVIEW-021 finding 2
+ * ---------------------------------------------------------------------------
+ *
+ * Forcing `signedOut` is not the same thing as making a superseded session
+ * stop existing. REVIEW-021 reproduced the gap: the real composition rejected
+ * before cleanup ran and left the old session on disk, and `signOut()`
+ * rejecting tells the caller nothing about whether the delete happened — it
+ * can reject for reasons upstream of the store entirely.
+ *
+ * This flag answers the narrower question the caller actually needs: did the
+ * STORE remove it? `auth-provider.tsx` reads it after every forced
+ * re-authentication and retries the removal on each later foreground
+ * evaluation until it comes back clear.
+ *
+ * Kept separate from `lastPersistenceFailure` on purpose — see the scope note
+ * above.
+ */
+let lastPurgeFailure: SessionPersistenceFailure | null = null;
+
+/** Read the outstanding removal failure without consuming it. */
+export function peekSessionPurgeFailure(): SessionPersistenceFailure | null {
+  return lastPurgeFailure;
+}
+
+/** Read and clear the outstanding removal failure. */
+export function takeSessionPurgeFailure(): SessionPersistenceFailure | null {
+  const failure = lastPurgeFailure;
+  lastPurgeFailure = null;
+  return failure;
+}
+
+/**
+ * Drop any outstanding removal failure.
+ *
+ * Called immediately BEFORE an attempted purge, so that what is read afterwards
+ * describes that attempt rather than an older one. Also a test seam.
+ */
+export function clearSessionPurgeFailure(): void {
+  lastPurgeFailure = null;
+}
+
+/**
  * Record whether each session write landed, then let the result through
  * unchanged.
  *
@@ -107,13 +155,33 @@ export function observingWrites(inner: ChunkedSecureStore): ChunkedSecureStore {
         lastPersistenceFailure = { key, cause };
         throw cause;
       }
-      // Cleared on success so the flag means "the most recent write failed",
-      // not "a write failed once". Without this, one refused write would force
-      // re-authentication forever, including immediately after the user signs
-      // back in and that sign-in persists correctly.
-      lastPersistenceFailure = null;
+      // NOT cleared on success. REVIEW-021 finding 2 reproduced the defect this
+      // removes: a refused rotation of session v2 followed by a successful write
+      // of v3 erased the outstanding failure before the foreground consumer had
+      // read it, and the refusal was never surfaced at all. A later write
+      // succeeding does not un-lose the token that the earlier one dropped.
+      //
+      // The flag is therefore STICKY UNTIL TAKEN, and
+      // `takeSessionPersistenceFailure()` is the only thing that consumes it in
+      // production. That is also why this cannot loop: the consumer clears it as
+      // it acts, so a single refused write forces re-authentication exactly once
+      // and the sign-in that follows is unaffected.
     },
-    removeItem: (key) => inner.removeItem(key),
+    removeItem: async (key) => {
+      try {
+        await inner.removeItem(key);
+      } catch (cause) {
+        // A removal the store refused leaves a session on disk that the session
+        // layer has already decided not to trust — after a refused rotation, the
+        // SUPERSEDED one. `auth-provider.tsx` keeps retrying the removal while
+        // this is set, so the residual stops existing rather than merely being
+        // disclosed. Rethrown, like the write above: this observes, it does not
+        // absorb, and a failed sign-out still reaches the user as an error.
+        lastPurgeFailure = { key, cause };
+        throw cause;
+      }
+      lastPurgeFailure = null;
+    },
   };
 }
 

@@ -1,0 +1,29 @@
+# Dependency delta against the base.
+#
+# SCOPE: this is the WHOLE UNIT delta against main, not this fix cycle.
+# expo-secure-store therefore appears below as added, because the unit
+# added it in Phase A, before any fix cycle existed. REVIEW-021 finding 7
+# caught the previous header calling this a fix-cycle figure while the
+# README claimed the cycle added nothing: two true statements about two
+# different ranges, printed as though they were one. They are separated
+# now, and the per-cycle statement lives in the README beside the claim
+# that makes it, where its range can be read off the claim itself.
+#
+# Authorized for this unit: expo-secure-store, and nothing else.
+# Fix cycles 1, 2 and 3 add NO dependency between them: the checksum
+# ADR-006 requires is computed inline, with no crypto API and no new
+# package, and the token-opacity scan uses the TypeScript compiler that
+# is already a devDependency.
+
+## git diff package.json (dependency lines only)
++    "expo-secure-store": "~57.0.1",
+
+## installed version
+expo-secure-store: 57.0.1
+
+## SDK compatibility — installed via npx expo install, so the SDK 57 pin holds
+package.json range: ~57.0.1
+expo range:         ~57.0.14
+
+## auth-js is pinned through the lockfile, and this unit does not move it
+@supabase/auth-js installed: 2.112.3

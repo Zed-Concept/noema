@@ -274,6 +274,44 @@ GitHub API: the controller's Composio project key was revoked mid-session and
 repo write access was lost. The owner commits and pushes it. Recorded because
 the route a state edit took is part of its provenance.
 
+**Fix cycle 3, 2026-08-25 — same builder, same branch, fresh session** (AGENTS.md
+workflow step 5, in response to REVIEW-021 **FAIL** and REVIEW-021-ADVISORY
+**DEFECTS_FOUND**). **THE FINAL CYCLE — there is no cycle 4.**
+
+**Model+Effort for this cycle: Opus 5 [1m] / Max / fresh session.** The dispatch
+named **Fable 5**; Fable 5 quota was unavailable and the owner set Opus 5 [1m].
+The dispatch authorises exactly this substitution provided it is RECORDED rather
+than passed over, and directs the builder not to stop for it. Recorded here, in
+the HANDOFF, and in the cycle's evidence README. No other dispatch term was
+substituted, and no other mismatch was found.
+
+Preflight, both checks hard, both passed — the second only after a correction
+worth recording. `origin/feat/auth-session-v1` was `c33de65` as dispatched, the
+LOCK read `BUILD`, and `c33de65` touched `BRANCH-NOTES.md` only. ADR-008
+appeared **missing from main** on the first check: the LOCAL `main` ref was two
+commits stale at `d5b4f8ae`. On `origin/main` at `6c925d1` — the PR #14 merge
+commit the dispatch names as BASE — ADR-008 is present. The dispatch was correct
+and the local ref was not. `origin/main` was merged into the branch at `b5c9cee`
+(0 behind), and the same staleness trap is now instrumented: `capture.sh` pins
+its BASE literally and refuses to run if that pin is not an ancestor of HEAD.
+
+Delivered: **two findings closed by implementation** — both refresh entrances
+(the `onAuthStateChange` registration and the cold-start `getSession()`) deferred
+behind the `AppState === 'active'` gate, and re-authentication after a refused
+rotation made durable via a separate purge observer, a sticky write flag, and a
+retry that outlives its first attempt. **Five findings closed by subtraction**:
+the universal token-opacity claim, the stalled-reader schedule claim, the
+synthetic-described-as-actual and 513-per-sign-out figures, the stale stability
+base, and the record inconsistencies. ADR-008 applied throughout — every
+unqualified cross-platform surfacing claim qualified to native-only.
+
+Evidence: `docs/05-quality/evidence/005d-auth-session-fix3/`. Gates 4/4 green
+(9 suites, 130 tests), mutation battery **31/31 SENSITIVE, 0 build-invalid**,
+stability **8/8 identical** across two fresh runs with both captures exiting 0
+and all matching the committed copies — the claim REVIEW-021 finding 6 found
+reproducibly red. The gates.txt anomaly remains **DISCLOSED and unexplained**
+across three cycles and is deliberately not written off.
+
 **Fix cycle 2, 2026-08-24 — same builder, same branch, fresh session** (AGENTS.md
 workflow step 5, in response to REVIEW-020 **FAIL**). Model+Effort for this
 cycle: **Opus 5 [1m] / Max / fresh session** — the owner-set substitution for

@@ -1,3 +1,103 @@
+## 2026-08-25 — Unit D fix cycle 3 of 3 (FINAL), feat/auth-session-v1
+
+**Controller:** CTRL-005 Auth and session v1.
+**Builder:** Claude Code, fresh session, same builder and same branch.
+**Model+Effort:** **Opus 5 [1m] / Max** — the dispatch named **Fable 5**; Fable 5
+quota was unavailable and the owner set Opus 5 [1m]. The dispatch authorises this
+substitution provided it is RECORDED, and directs the builder not to stop for it.
+Recorded here, in the LOCK, and in the evidence README. No other dispatch term
+was substituted.
+**Answering:** REVIEW-021 **FAIL** + REVIEW-021-ADVISORY **DEFECTS_FOUND**.
+**Evidence:** `docs/05-quality/evidence/005d-auth-session-fix3/`.
+
+**THIS IS THE FINAL FIX CYCLE. THERE IS NO CYCLE 4.** The stop rule has fired.
+The recurring class across three reviews is *claims exceeding their instruments*,
+and this cycle's remedy is subtraction.
+
+### Preflight — both hard checks passed, the second after a correction
+
+- `origin/feat/auth-session-v1` was `c33de65` as dispatched; the LOCK read
+  `BUILD`; `c33de65` touched `BRANCH-NOTES.md` only. All three verified.
+- **ADR-008 first appeared MISSING from main — it was not.** The LOCAL `main` ref
+  was two commits stale at `d5b4f8ae`. On `origin/main` at `6c925d1` (the PR #14
+  merge commit the dispatch names as BASE) ADR-008 is present. The dispatch was
+  correct; the local ref was not. **Do not read this as a controller defect.**
+  `origin/main` was merged in at `b5c9cee`, 0 behind.
+- That same staleness is now instrumented rather than remembered: `capture.sh`
+  pins BASE literally and **refuses to run** if the pin is not an ancestor of
+  HEAD. Deriving BASE from `git merge-base main HEAD` was rejected precisely
+  because it reads the local ref that misled this preflight.
+
+### Closed by implementation (2)
+
+- **The ungated entrances.** Both reviewers converged independently. The app's
+  own `onAuthStateChange` registration re-entered the margin refresh through
+  `_emitInitialSession` → `_useSession` → `__loadSession` with neither an
+  `autoRefreshToken` gate nor a foreground gate; the cold-start `getSession()`
+  was a second entrance. **Both now sit behind the same `AppState === 'active'`
+  gate.** The claims at `supabase.ts:46` and `foreground-refresh.ts:17` are now
+  true as written — they were false as written before, not merely unproven.
+  The advisory's correction is preserved in the code comments so it is not
+  re-introduced: **`supabase-js` registers no auth listener**; the app's own
+  registration was the trigger, which is why this was fixable in app code.
+  ADR-007 was NOT narrowed to avoid this.
+- **Durable re-authentication.** Detection was already sound (it sits at the
+  write, not the initiator). The gap was after detection. Three changes: a
+  separate purge observer that reports what the STORE did rather than whether
+  `signOut()` rejected; a write flag that is sticky until taken; and a demand
+  that outlives its first attempt, retried on every later foreground until the
+  store accepts.
+
+### Closed by subtraction (5)
+
+- **Token opacity** — universal claim DELETED, narrowed to "no directly-spelled
+  parse". The aliased-parser survivor is kept as two executable records. An
+  alias-resolving scanner was deliberately NOT built.
+- **Ninth schedule** — the stalled-reader-interleaving claim DELETED. The test
+  detects the sequencing fact one step earlier, and now says so.
+- **Ceiling figures** — every row labelled SYNTHETIC (no live session has ever
+  been measured); 513 corrected to **per logical `removeItem`**. A sign-out is
+  4-9 logical removals, so **2052-4617 backend deletes, not 513** — derived from
+  pinned auth-js `_removeSession()`, and labelled as derived, not observed.
+- **Stability base** — repinned to `6c925d1` with a fail-closed ancestry check.
+  Claim 50 repaired: 8/8 identical, both captures exit 0, all matching committed.
+- **Records** — manifest now names all five exceptions; `deps.txt` scope stated
+  (WHOLE UNIT vs fix cycle — two ranges previously printed as one); **54** adapter
+  tests, not the 53 the cycle-2 HANDOFF said; trailing whitespace removed and
+  `git diff --check` clean; LOCK and PROJECT-STATE reconciled.
+
+**ADR-008 applied**: every unqualified cross-platform surfacing claim qualified
+to native-only. A web write observer is out of scope and remains a named backlog
+unit.
+
+### Gate results
+
+- Gates 4/4 green — typecheck, lint, test, format:check. **9 suites, 130 tests.**
+- Mutation battery **31/31 SENSITIVE, 0 build-invalid** (4 new: M30-M33), tree
+  restored byte-identical. Learning 16 satisfied — every mutant typechecks.
+- Stability **8/8 identical**, both captures exit 0, all match committed copies.
+- RED lane clean: `supabase/`, `.github/`, generated types byte-identical; 0
+  database-layer paths; all positive controls matched.
+
+### Open for the reviewer
+
+- **`ci.txt` is ABSENT from 005d by design.** The head cannot be known before the
+  push. Cycle 2's was deliberately not copied forward — it is bound to `97f1b7d5`
+  and carrying it would put a green CI artifact beside a different head, the
+  overextension REVIEW-020 finding 7 caught. It must be added post-push. Claim
+  48a is **NOT RUN** until then.
+- **The early `gates.txt` anomaly stays DISCLOSED and unexplained** — three
+  cycles now. Ruled non-dispositive twice by the RoR; deliberately **not** written
+  off, and recorded so that "non-dispositive twice" is never quietly promoted to
+  "resolved".
+- **Two tests were ADDED in a subtraction cycle** — the B1 survivor records. They
+  instrument a limit rather than rescue a claim; the distinction is argued in the
+  evidence README rather than assumed.
+- Re-auth cannot force a refusing store. It retries until accepted and refuses to
+  USE the session meanwhile, but cannot delete what the OS will not delete.
+
+---
+
 ## 2026-08-25 — REVIEW-021 advisory, feat/auth-session-v1 at 7bea41c4
 
 **Controller:** CTRL-005 Auth and session v1.
