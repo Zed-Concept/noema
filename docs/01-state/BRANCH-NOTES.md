@@ -96,7 +96,7 @@ Advisory reviewer:  DeepSeek V4 Pro / fresh session — the ADR-001 auth trigger
                     not by reading it (learning 20). Advisory carries no merge
                     authority; the controller adjudicates against the RoR
                     record.
-Status:             BUILD
+Status:             REVIEW
 Dispatch:           Unit E — Session durability: close REVIEW-022 finding 3 to
                     ADR-009's three review-gated requirements — purge success
                     observed by read-back, never inferred from the absence of
@@ -144,6 +144,24 @@ erase a purge-pending demand mid-purge — fixed by subtraction before
 handoff; full adjudication in the HANDOFF block. Evidence:
 `docs/05-quality/evidence/006a-session-durability/`. `ci.txt` follows
 post-push, bound to the pushed SHA.
+
+**Phase transition BUILD -> REVIEW, 2026-08-26, CTRL-006.** Builder head
+verified reachable on origin at `caa31ee2ff77331d7ab976bff5bb7bb4588244c9`:
+five commits on `7caf23e1`, 35 files, +4331/-515, nothing under
+`supabase/`, `app.json` untouched, PROJECT-STATE.md changed in one line
+(the Active work row). The code under review is that head; this note is
+the only commit above it and touches this file alone. Reviewer of record
+Codex Sol / Ultra / fresh session writes REVIEW-023 (immutable record plus
+HANDOFF top-insert, two files, on this branch). Advisory DeepSeek V4 Pro /
+fresh session writes REVIEW-023-ADVISORY on the durability mechanism; no
+merge authority. Accepted preflight deviation, recorded: the owner's local
+`main` lagged one fast-forward behind origin at dispatch; the builder
+fast-forwarded and disclosed rather than stopped, which the controller
+accepts — the dispatch's "stop on any mismatch" applied a rule written for
+origin mismatches to a local lag. A draft PR is opened by the controller so
+CI runs on the branch (`ci.yml` fires on pull_request and push-to-main
+only); the draft state is the merge block, the REVIEW-023 verdict is the
+merge gate. Written through the Composio GitHub connection.
 
 ---
 
