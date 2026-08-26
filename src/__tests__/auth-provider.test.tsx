@@ -880,16 +880,25 @@ describe('auth provider — the durable demand at bootstrap', () => {
 });
 
 /**
- * REVIEW-023-ADVISORY leads 1 and 3, adjudicated into this cycle. One
- * invariant: NO path exposes a session while a re-authentication demand is
- * outstanding, in memory or durable. The listener gates every setState on the
- * demand AND on the unconsumed write-refusal flag (the advisory's A2/A3
- * window: the observer records refusal and demand before the event fires,
- * while this provider's own cache still says no demand). A fresh sign-in is
- * the one thing that resolves a demand — and only once its session is
- * persisted and READ BACK.
+ * REVIEW-023-ADVISORY leads 1 and 3, adjudicated into cycle 1. These are
+ * NAMED-SCHEDULE tests, not an invariant suite (narrowed by ruling 28 after
+ * REVIEW-025 finding 1): "no path exposes a session while a re-authentication
+ * demand is outstanding" is demonstrated ONLY for the enumerated schedules in
+ * the committed probes and suites — REVIEW-023's pending-logout and the
+ * addendum's A2/A3; REVIEW-024's bootstrap, mid-process, event-before-record,
+ * and fresh-sign-in resolution — and is NOT established in general. The two
+ * REVIEW-025 schedules that defeat it (standing signedIn under a refused
+ * mid-sign-out refresh; queued signedIn committing past a rising signal) are
+ * HIGH Known Issues, witnessed expected-RED in
+ * docs/05-quality/evidence/006d-session-durability-fix3/.
+ *
+ * The listener gates each event on the demand AND on the unconsumed
+ * write-refusal flag (the advisory's A2/A3 window: the observer records
+ * refusal and demand before the event fires, while this provider's own cache
+ * still says no demand). A fresh sign-in is the one thing that resolves a
+ * demand — and only once its session is persisted and READ BACK.
  */
-describe('auth provider — the advisory invariant: no exposure while a demand stands', () => {
+describe('auth provider — the enumerated no-exposure schedules (not a general invariant)', () => {
   const REFUSED = {
     key: 'zc-auth-session',
     cause: new Error('errSecInteractionNotAllowed'),

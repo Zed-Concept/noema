@@ -118,15 +118,19 @@ describe('auth state publisher — the publication barrier', () => {
   });
 });
 
-describe('auth state publisher — no route to the setter exists outside the barrier', () => {
-  // REVIEW-024 finding 2: "no caller may reach setState with a session by
-  // another route; make that a type or a lint-level fact, not a convention."
-  // The scope-level fact is the hook closure — the raw setter is never
-  // returned, so no other scope can name it. The lint-level fact is the
-  // eslint.config.js ban on `useState` in auth-provider.tsx. THIS test pins
-  // both source shapes so a bypass cannot land silently: the provider
-  // contains no setter and no setState call at all, and every publication
-  // site it does contain goes through `publish`.
+describe('auth state publisher — the current publisher enumeration and source shape', () => {
+  // NARROWED (ruling 28, REVIEW-025 finding 1). REVIEW-024 finding 2 asked
+  // for "no caller may reach setState with a session by another route" as a
+  // type- or lint-level fact; that claim is WITHDRAWN. What holds: the raw
+  // setter is a closure variable of the hook, never returned, so no other
+  // scope can name THAT variable; the eslint.config.js restriction bars the
+  // direct named `useState` import in auth-provider.tsx (that one shape —
+  // the bypass is documented beside the rule); and THESE tests enumerate the
+  // CURRENT source bytes. REVIEW-025 minted a second setter in the provider
+  // from a default React import destructured under an alias while ESLint and
+  // every assertion below stayed green — so these pins catch drift in the
+  // named shapes, not every possible channel. Enumeration, not
+  // impossibility.
   //
   // THE PUBLISHER ENUMERATION — every state publication in auth-provider.tsx,
   // named; each is exercised through the barrier by the provider suite and

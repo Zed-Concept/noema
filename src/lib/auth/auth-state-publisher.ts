@@ -39,13 +39,30 @@ export type AuthState =
  * every publication must pass, so a publisher added tomorrow is gated on the
  * day it is written.
  *
- * NO OTHER ROUTE TO THE SETTER EXISTS, as a scope-level fact rather than a
- * convention: the raw `useState` setter is a closure variable of this hook
- * and is never returned, so no code outside this function can name it —
- * TypeScript rejects the reference. `eslint.config.js` additionally bans
- * `useState` inside `auth-provider.tsx`, so the provider cannot mint a second
- * setter; and `auth-state-publisher.test.ts` asserts this module contains
- * exactly one `useState` and one `setState` call site.
+ * WHAT THE CHECK IS — publication input, not consumer exposure (narrowed by
+ * ruling 28 after REVIEW-025 finding 1). `publish` samples the two signals
+ * when it is CALLED. A `signedIn` queued while both signals were down still
+ * commits when a signal rises before React flushes, and a signal rising
+ * after a commit does not retract standing state — nothing subscribes the
+ * published state to the signals, and no corrective publication is
+ * scheduled. Both schedules end signedIn with a demand outstanding; they
+ * are the HIGH Known Issues in the 006d evidence README, and a follow-up
+ * unit replaces this gating with subscription.
+ *
+ * THE SETTER'S SCOPE, stated to what is enforced (the "no other route"
+ * claim is withdrawn — ruling 28, REVIEW-025 finding 1). The raw `useState`
+ * setter is a closure variable of this hook and is never returned, so no
+ * code outside this function can name IT — TypeScript rejects the
+ * reference. That fact does not make this the only possible state channel:
+ * REVIEW-025 minted a second setter inside the provider from a default
+ * React import destructured under an alias, with ESLint and the committed
+ * source-shape tests staying green. `eslint.config.js` bars one shape — the
+ * direct named `useState` import in `auth-provider.tsx`; the bypass is
+ * documented beside the rule — and `auth-state-publisher.test.ts`
+ * enumerates the CURRENT source shape: zero useState/setState in the
+ * provider, five `publish(` sites, one `useState` here and two `setState`
+ * calls, both inside `publish`. Enumeration of current bytes, not
+ * impossibility.
  *
  * WHAT REFUSAL DOES. A refused `signedIn` publishes `signedOut` instead —
  * never a silent drop. The two signals both mean exactly that: a session the

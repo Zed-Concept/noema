@@ -176,18 +176,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: { subscription },
       } = supabase.auth.onAuthStateChange((_event, session) => {
         if (!active) return;
-        // THE INVARIANT (REVIEW-023 finding 2 under ruling 25; REVIEW-024
-        // finding 2): no path exposes a session while a re-authentication
-        // demand is outstanding. The ENFORCEMENT is the publication barrier —
-        // `publish` re-checks the demand and the flag for every publisher,
-        // this one included. The drop below is this listener's OWN, narrower
-        // choice, kept in front of the barrier: an event arriving while
-        // either signal stands is stale the moment it is delivered (the
-        // mid-purge TOKEN_REFRESHED carrying the session being purged; the
-        // A2/A3 window where the observer has recorded a refusal this
-        // provider's cache does not yet reflect), and dropping it whole also
-        // keeps it from marking the bootstrap superseded — a refused
-        // publication must not suppress the bootstrap's own resolution.
+        // WITHDRAWN AS AN INVARIANT (ruling 28, after REVIEW-025 finding 1):
+        // "no path exposes a session while a re-authentication demand is
+        // outstanding" is NOT established in general. It is demonstrated only
+        // for the enumerated schedules in the committed probes — REVIEW-023's
+        // pending-logout and the addendum's A2/A3; REVIEW-024's bootstrap,
+        // mid-process, event-before-record, and fresh-sign-in resolution.
+        // What this gate and the barrier check is publication INPUT: a newly
+        // raised demand does not retract state queued before it, or standing
+        // when it rose. The two REVIEW-025 schedules that end signedIn with
+        // a demand outstanding ship as HIGH Known Issues with compensating
+        // controls — the 006d evidence README's Known Issues register.
+        //
+        // The drop below is this listener's OWN, narrower choice, kept in
+        // front of the barrier: an event arriving while either signal stands
+        // is stale the moment it is delivered (the mid-purge TOKEN_REFRESHED
+        // carrying the session being purged; the A2/A3 window where the
+        // observer has recorded a refusal this provider's cache does not yet
+        // reflect), and dropping it whole also keeps it from marking the
+        // bootstrap superseded — a refused publication must not suppress the
+        // bootstrap's own resolution. REVIEW-025's sign-out schedule measured
+        // this drop's cost: dropping SIGNED_OUT(null) whole is part of what
+        // leaves stale signedIn standing (Known Issue 1).
         //
         // A dropped sign-in is not lost: the app's own `verifyOtp` resolves
         // the demand once the fresh session is persisted AND read back (lead
