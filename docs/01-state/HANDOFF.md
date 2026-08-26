@@ -1,3 +1,234 @@
+## 2026-08-26 — Unit E fix cycle 1 of 3, feat/session-durability
+
+**Controller:** CTRL-006 Auth Phase B and session durability.
+**Builder:** Claude Code, fresh session — same builder, same branch (AGENTS.md
+workflow step 5, answering REVIEW-023 **FAIL**).
+**Model+Effort:** **Fable 5 / Max / fresh session** — ruling 5's tier for a
+review-fix loop; the dispatched seat, model check passed at session start.
+**Answering:** the CTRL-006 fix-cycle-1 dispatch (REVIEW-023 findings, owner
+rulings 25 and 26 governing per ruling 7) plus the cycle-1 addendum
+adjudicating REVIEW-023-ADVISORY leads 1–3 into scope.
+**Evidence:** `docs/05-quality/evidence/006b-session-durability-fix1/` — 006a
+is superseded by the 006b README's opening section and stays byte-identical.
+**Head:** the pushed tip is this records commit (HANDOFF + `ci.txt` + the
+Active work row; a commit cannot name its own SHA — the completion report
+names it). The substantive head beneath it is
+`7d2229b910ce9ca81f4795ab2c01f5a1961f918b`.
+
+### Preflight — all four checks passed
+
+- `git fetch origin`; `git checkout feat/session-durability && git pull
+  --ff-only` landed exactly on the dispatched tip
+  `27f5d8d6d58fb3bb03e94300e1cdcf756b111da9`, tree clean. One local worktree
+  held the branch at superseded `fed364d` (the review session's leftover,
+  clean tree); its registration was removed to free the branch — no
+  uncommitted work was lost.
+- `BRANCH-NOTES.md`: the Unit E LOCK read `Status: BUILD` with the
+  "fix cycle 1 of 3" transition note, as dispatched.
+- `AGENTS.md`: 5378 bytes, sha256
+  `0ff02d209247dadd94f217b441732baa87ed9f182f9b734cece668b1c3f0f013`.
+- REVIEW-023 read in full before any code was touched; ADR-009, the
+  REVIEW-023 HANDOFF insert, the Unit E HANDOFF block, and the 006a README
+  likewise.
+
+### Two writers on one branch — the advisory, disclosed
+
+`REVIEW-023-ADVISORY.md` (DeepSeek V4 Pro) landed at `0de2e406` mid-cycle;
+`git pull --rebase` ran before every push as dispatched, and this cycle's
+first commit rebased cleanly onto the advisory record. The controller's
+addendum then adjudicated its leads 1–3 into scope (closures below); nothing
+else in the advisory was acted on.
+
+### REVIEW-023 findings — closure by committed instrument
+
+Every instrument reproduces the reviewer's schedule and is GREEN at this
+head; the `review023-probe.sh` runner additionally pins the REVIEWED
+CANDIDATE `caa31ee2` and requires all seven schedules RED there — the
+learning-14 positive control is the reviewer's own failure, reproduced.
+
+- **F1 (HIGH) CLOSED — ruling 25, cited.** The demand-store-refusal rethrow
+  is withdrawn. `record()` never rejects: a refused backend write HOLDS the
+  demand in the handle's memory and `retryHeldRecord()` retries the durable
+  record at every later opportunity — the next write through the observer,
+  each outstanding-branch foreground, each purge retry — until a medium
+  answers or the process ends. The observer absorbs a refused session write
+  in EVERY case; no path re-enters the pinned client's throw-and-reject
+  Deferred path. Instrument: the probe's finding-1 test — process 1
+  signedOut with ZERO unhandled rejections under double refusal; the demand
+  store recovering BEFORE death lands the record at the next opportunity;
+  the restart finds and honours it. The death-before-recovery branch is
+  DEMONSTRATED as the ruling-25 Known limit in its own probe test, stated
+  with its server-side bound (refresh-token rotation rejects a consumed
+  token outside the reuse interval; Unit F measures it live) in the
+  `reauth-demand.ts` header and the 006b README.
+- **F2 (HIGH) CLOSED.** `requireReauthentication()` sets `signedOut` (and
+  the in-memory outstanding mark) BEFORE any await, as the
+  outstanding-at-bootstrap branch already did; the purge continues and is
+  believed only on read-back. The auth-state listener drops session-bearing
+  events while a demand is outstanding, so `signOut()`'s own
+  internal-refresh TOKEN_REFRESHED cannot re-expose the session being
+  purged. Instrument: the probe's finding-2 test — the reviewer's
+  pending-logout schedule: signedOut with the demand present WHILE the
+  logout leg is held; release; read-back; demand cleared.
+- **F3 (MEDIUM) CLOSED per ruling 26 as written.** The application comments
+  asserting "no installed base / no device has ever run this app" are
+  deleted from `session-storage.ts` and `supabase.ts` (nothing else changed
+  in `supabase.ts`); the ruling is cited in the 006b README, which narrows
+  "web unchanged" to "web keeps localStorage and gains no observer", the
+  namespace change on web accepted under the ruling. No sweep of the old
+  key space was built.
+- **F4 — ZERO bytes.** `docs/01-state/BRANCH-NOTES.md` is untouched by
+  every commit of this cycle
+  (`git log 27f5d8d..HEAD -- docs/01-state/BRANCH-NOTES.md` is empty).
+- **F5 (MEDIUM) CLOSED.** The 006b `capture.sh` checks EVERY git
+  invocation's exit and fails the capture on any non-zero; the reviewer's
+  negative control is committed as `capture-refusal-control.sh` (wrapper
+  self-test: `git diff` exits 77 through it while `rev-parse` passes; the
+  wrapped capture must exit non-zero — it exits 1) with its transcript.
+  `binding.txt` binds the artifact set to the exact candidate SHA and a
+  clean-tree verdict recorded by the producer itself. `deps.txt` proves the
+  lockfile package-key set identical to base (1131 = 1131, 0 added, 0
+  removed; only the root manifest and the authorized expo-file-system
+  resolution changed). The 006b README's opening section subtracts or
+  narrows every 006a claim the finding named: claims 13/15/18 withdrawn (no
+  exception survives ruling 25), claim 22 withdrawn and re-instrumented,
+  claim 1 narrowed to its control-flow reach, claim 2 closed by the
+  committed exact-address instrument, the M14 attribution narrowed with the
+  reviewer's schedule now itself committed, claims 23–24 narrowed to their
+  literal patterns with the name scan gaining a positive control, and Known
+  limit 11 restated as UNVERIFIED with its "demand recorded before the
+  hang" sentence corrected (false under double refusal — advisory D4a
+  observed 0 demand files) and the 006a "adjacent finding" withdrawn as a
+  defect claim.
+- **F6 — exact builder-range counts (correcting the Unit E block's
+  bookkeeping).** The reviewed builder range `7caf23e1..caa31ee2` contains
+  **five commits, 35 files, +4331/−515**: `1693f60`, `5fca7a2`, `5bc1ba4`,
+  `7705a96`, `caa31ee2` — all builder commits. Above it on this branch:
+  `501c163` and `27f5d8d` are the CONTROLLER's LOCK transitions, `fed364d`
+  is the REVIEWER OF RECORD's REVIEW-023 record, and `0de2e406` is the
+  ADVISORY REVIEWER's record. This cycle's builder commits are in the
+  touch-set below.
+
+### Advisory leads A–C — the addendum's invariant, closed
+
+One invariant: NO path exposes a session while a re-authentication demand
+is outstanding, in memory or durable.
+
+- **A (P1/A2, A3).** The listener gates every setState on the consulted
+  demand AND on the unconsumed write-refusal flag (sync-peekable) — the
+  observer records refusal and demand before the event carrying the
+  unpersisted session fires, while the provider's cache is stale. Probe A2
+  (hold-point: no rendered state ever holds a rotated unpersisted session)
+  and A3 (a refused-persist sign-in is never exposed) are committed, GREEN
+  here, RED at `caa31ee2`.
+- **B (E1).** The shipped file backend consults by READ: content first,
+  `exists` corroborating absence only, an unreadable
+  existing-or-indeterminate record outstanding. Native `File.exists`
+  semantics remain NOT RUN — stated in code, tests, and README. Probe E1
+  (the lying-exists schedule) plus four unit cases are committed.
+- **C (P3/B2).** A fresh sign-in RESOLVES the demand once its session is
+  persisted AND read back — resolution rides only the app's own
+  `verifyOtp`, requires no unconsumed refusal and a successful read-back,
+  is serialized against the purge by the evaluating latch, and falls to the
+  conservative consumed-sign-in when evidence is missing. Probe B2: the
+  fresh sign-in is exposed, the demand file cleared, and the stale purge
+  never destroys the new session.
+
+### Evidence — every claim an artifact
+
+- **`review023-probe`:** seven schedules, one probe, two pinned trees —
+  reviewed candidate `caa31ee2` RED (7/7 fail), this head GREEN (7/7
+  pass); runner exit 0 only on that conjunction.
+- **`finding3-probe` re-run at this head** (006a's instrument, output into
+  006b; 006a byte-identical): base `7caf23e1` RED, head GREEN — the
+  original REVIEW-022 finding-3 closure is preserved through this cycle.
+- **Mutation battery: 25/25 SENSITIVE, 0 build-invalid**, every mutant
+  typechecked before being counted, tree restored byte-identical. Re-bases
+  the surviving 006a mutants and adds mutants for the hold/retry (F1), the
+  pre-purge signedOut and both listener-gate halves (F2/A),
+  consult-by-read (B), and both resolution guards (C).
+- **Gates 4/4** — typecheck, lint, test, format:check all exit 0; 10
+  suites, **180 tests** (159 at the reviewed head; +21 this cycle).
+- **Stability 8/8 gated artifacts + `binding.txt`** identical across two
+  fresh captures, both exiting 0, all matching committed copies;
+  binding.txt compared strictly between runs and head-line-masked against
+  the committed copy with both heads printed.
+- **`capture-refusal-control.txt`:** the committed negative control —
+  wrapped `git diff` exits 77; `capture.sh` exits 1 with the git failures
+  named in its transcripts.
+- **RED lane clean** — `supabase/`, `.github/`, generated types
+  object-identical to base; 0 database-layer paths; every scan's positive
+  control matched; every git invocation's exit checked.
+- **`ci.txt`:** GitHub CI on PR #17 (draft — left draft) at the substantive
+  pushed head `7d2229b910ce9ca81f4795ab2c01f5a1961f918b`: **success**
+  (`typecheck, lint, test`), run
+  `https://github.com/Zed-Concept/noema/actions/runs/32971669097`. Bound to
+  that SHA; this records commit necessarily post-dates it and gets its own
+  run, reported in the completion report.
+
+### Workflows run — ruling 6 disclosure
+
+**None.** No workflow, no subagent; every probe, battery, and capture ran
+inline in this builder session. The fan-out disclosure is nil.
+
+### Adjacent findings — reported, not acted on
+
+- `src/lib/auth/secure-store-adapter.ts:353-363` (the `parseIndex` comment)
+  carries the same world-asserting "this code has never run on a device …
+  the installed base this would strand is empty" class that ruling 26
+  ordered deleted from `session-storage.ts` and `supabase.ts`. It is
+  OUTSIDE the file set REVIEW-023 finding 3 names, so it was not touched;
+  flagged for the controller as a candidate for the same ruling-26
+  treatment.
+- Carried from the 006a HANDOFF, still true: the user-facing `signOut`
+  action reports a refused removal as an error without its own read-back;
+  its residual is covered by the demand machinery only when a write refusal
+  preceded it.
+- Lead C's resolution can have its `clear()` refused: the stale durable
+  record then survives into the next process, whose consult purges a valid
+  fresh session — one conservative re-authentication after a restart.
+  Disclosed as 006b Known limit 4 (safe direction); named here so the
+  controller sees the bounded residue of the addendum's "never destroyed"
+  wording.
+
+### Touch-set — recordable deltas (learning 9)
+
+This cycle's builder commits, on top of `0de2e406` (the advisory record):
+
+- `f66c451` fix(auth), REVIEW-023 F1–F3: 8 files, +463/−78 (4 product
+  modules — `reauth-demand.ts`, `session-storage.ts`, `auth-provider.tsx`,
+  `supabase.ts` — and 4 test suites).
+- `7402446` fix(auth), advisory leads A–C: 5 files, +374/−19
+  (`reauth-demand.ts`, `session-storage.ts`, `auth-provider.tsx`, and 2
+  test suites).
+- `7d2229b` evidence(006b): 23 files, +3937/−0 (the evidence directory:
+  6 scripts/probe sources, README, 16 artifacts).
+- The commit carrying this block: `ci.txt`, this HANDOFF insert, and the
+  PROJECT-STATE Active work row — nothing else.
+
+Nothing under `supabase/`, `.github/`, `src/lib/database.types.ts`,
+`app.json`, or `docs/01-state/BRANCH-NOTES.md` in any cycle commit;
+`package.json` and `package-lock.json` untouched (no dependency work this
+cycle).
+
+### Operational disclosures
+
+- The stale review worktree's registration removal (preflight) is the only
+  action taken outside this branch's files, and it deleted no uncommitted
+  work.
+- Every artifact was generated after the code it describes was committed;
+  the capture refuses a dirty tree (beyond its own evidence/output
+  directories) by construction, so no artifact describes an uncommitted
+  program.
+- The probe transcripts name the heads they ran against; the evidence
+  commit carrying them necessarily post-dates those heads — the same
+  boundary as `ci.txt`, stated in each transcript.
+
+**LOCK status line:** `Status: BUILD` — read and left untouched, as
+dispatched; transitions on this branch are controller-owned.
+
+---
+
 ## 2026-08-26 — REVIEW-023-ADVISORY, Unit E session durability (advisory seat)
 
 **Controller:** CTRL-006 Auth Phase B and session durability.
