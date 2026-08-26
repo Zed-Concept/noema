@@ -3,16 +3,17 @@
 The authoritative record of what is true right now. If this file and your
 memory of the project disagree, this file is right and you are stale.
 
-**Last verified:** 2026-08-26, CTRL-005 close-out, verified against main at
-`07ad5a51ed597f67bac523e681525c4e87fe644d` (the PR #9 merge of the CTRL-004
-close-out, GitHub-signed, parents `d794328` + `6809dbf`)
-**Verification method:** controller read of main via GitHub API — both state
-files verbatim, `AGENTS.md` re-hashed and matched byte-exact against the
-recorded sha256 (`0ff02d20…f013`, 5378 bytes), the PR ledger #1–#9 (all merged,
-merge SHAs matching the LOCK record), the branch inventory, and an independent
-audit of the Unit D candidate at `d6dc677` (diff contents, `expo.scheme`
-byte-identity across refs, and HANDOFF byte-preservation established by suffix
-test rather than by builder testimony).
+**Last verified:** 2026-08-26, CTRL-006 opening, verified against main at
+`b95913e13bb82f97b75441f78c0a93dd0cb0c2e5` (the PR #15 merge of the CTRL-005
+close-out, a GitHub web-flow merge of `6ee4407d` + `bcb38a80`)
+**Verification method:** controller read of main via the GitHub API — both
+state files verbatim (byte identity proven against their blob SHAs before
+editing), the PR ledger #1–#15 (all merged, merge SHAs matching the LOCK
+record), the branch inventory (`main` is the sole branch on origin), and
+`AGENTS.md`'s path history: its last change is `71630bba`, the commit whose
+bytes carry the recorded sha256 (`0ff02d20…f013`, 5378 bytes), so the hash
+holds by blob identity rather than by a fresh re-hash. ADR-009, ADR-007 and
+REVIEW-022 read in full.
 
 ## Project facts
 
@@ -45,22 +46,41 @@ runs on, where it is deployed.
 
 ## Current state
 
-As of 2026-08-24:
+As of 2026-08-26, CTRL-006 opening:
 
 - Repository `Zed-Concept/noema` is **private**; `main` is at
-  `07ad5a51ed597f67bac523e681525c4e87fe644d` (PR #9, the CTRL-004 close-out merge).
+  `b95913e13bb82f97b75441f78c0a93dd0cb0c2e5` (PR #15, the CTRL-005 close-out
+  merge). `main` is the **sole branch on origin**; every merged branch has
+  been deleted.
+- **Unit D is merged** at `6ee4407d` (PR #11) — email one-time-code auth, the
+  chunked SecureStore session adapter, route protection, the chrome gate — on
+  owner override of a REVIEW-022 FAIL over one open finding, finding 3 (purge
+  success inferred; re-authentication demand not restart-durable). **Unit E
+  closes it** (ruling 21: the last chance — otherwise it ships as a Known
+  Issue). **Phase B live evidence for the auth surface has never run**: no
+  one-time code has been delivered, no live session measured, no device has
+  participated. Unit F carries it.
+- **Seats at CTRL-006** (ruling 22): controller Fable 5 / Max; primary builder
+  Fable 5 — Ultracode for build units, Max for fix loops; reviewer of record
+  Codex Sol / Ultra, fresh session per review; one advisory seat (DeepSeek V4
+  Pro or Kimi K2.7 Code) on the ADR-001 triggers only. The **Manus
+  investigator seat lapsed 2026-08-25** — the trial end `AGENTS.md` names has
+  passed; no dispatch names it until the owner renews.
+- **Staging auth posture is applied** (rulings 23–24), all owner-executed.
+  Custom SMTP to the owner's Mailtrap Email Sandbox and a one-time-code
+  template rendering `{{ .Token }}` were applied in CTRL-005 and unrecorded
+  until now — evidenced by a captured message to `phaseb-check-1@example.com`
+  at 2026-08-26 05:06Z, subject "Your sign-in code", a six-digit code in the
+  body. Confirm email off and JWT expiry 600 seconds confirmed by the owner
+  2026-08-26. The sandbox meter shows a 50-message ceiling; that is the
+  live-run email budget until the owner states otherwise. **Device for the
+  ADR-named test: the owner's iPhone**, running the app in Expo Go — the
+  Unit F procedure is written for that runtime.
 - **Unit C is merged** at `d794328` (PR #8): `profiles`, `captures`,
   `transcripts` with FORCE RLS and owner-only policies, the
   `handle_new_user()` SECURITY DEFINER provisioning trigger, and the private
   `captures-audio` bucket. Merged on owner override of a REVIEW-018 FAIL whose
   remaining findings were all claim-trimming with no security defect.
-- **Unit D is built and under review, not merged**: `feat/auth-session-v1` at
-  `d6dc677`, one commit, 36 files, ahead 1 / behind 0 from this tip. Phase A
-  is offline by construction — no live Supabase call, no credential read, and
-  no SQL, migration, or policy file in the diff.
-- Two merged branches still survive on origin — `feat/schema-rls-v1` and
-  `chore/state-ctrl-004-closeout`, both 0 ahead. Convention is main as the sole
-  live branch; owner deletion pending.
 - Unit B is merged: `@supabase/supabase-js` 2.112.3; one shared typed
   client reading `EXPO_PUBLIC_SUPABASE_URL` +
   `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, failing loudly when unset;
@@ -82,8 +102,9 @@ As of 2026-08-24:
   rendering remains NOT RUN.
 - Review chain for Unit A: REVIEW-003/004/005/006 FAIL → fix loops →
   REVIEW-007 PASS, all immutable under `docs/04-reviews/`.
-- **Linear mirror is active**: workspace team **NOE**, issues NOE-1..5
-  mirror the LOCK records, one-way repo → Linear, repo wins.
+- **Linear mirror is active**: workspace team **NOE**, one-way repo → Linear,
+  repo wins. The issue inventory was not re-verified at this commit; the
+  CTRL-006 first sync reconciles it against the LOCK record.
 - Scaffold-era facts stand: ADR-001/002/003 accepted; AGENTS.md sha256
   0ff02d20…f013 (5378 bytes); REVIEW-001 (FAIL, resolved) and REVIEW-002
   (PASS) on record.
@@ -117,6 +138,8 @@ explicitly and get it overturned on the record.
 | 20 | **Refresh entrances are not enumerated and not gated.** Library-internal refreshes — from construction, from session loading, from `signOut()`, and from paths not yet identified — are recorded, expected behaviour. The guarantee is persistence, not initiation: any rotated session that cannot be persisted is detected and forces re-authentication, durably across process restart. `autoRefreshToken: false` stands. Supersedes ADR-007 in full. | 2026-08-26 | `docs/03-decisions/ADR-009-refresh-lifecycle-supersession.md` |
 | 21 | Unit D merged on **owner override of a REVIEW-022 FAIL**, over exactly one open finding — finding 3, non-durable purge demand. **ADR-009 is the last re-scope of Unit D.** If the CTRL-006 follow-up does not close finding 3, it ships as a Known Issue and the unit is finished regardless. A re-scope that reclassifies findings is legitimate once; twice is budget laundering. | 2026-08-26 | this row (owner ruling, CTRL-005) |
 | 22 | Fable 5 is available again. **Builder seats return to Fable 5** — Ultracode for build-class, Max for fix loops — retiring the Opus 5 substitution from future HANDOFFs and restoring ruling 4. The **controller seat moves to Fable 5 at CTRL-006**, not mid-session: CTRL-005 finishes on the recorded substitution rather than muddying the provenance of its own close-out. | 2026-08-26 | this row (owner ruling, CTRL-005) |
+| 23 | **Staging auth posture, permanent.** Confirm email **off**. The Magic Link and Confirm signup templates render `{{ .Token }}`, so the one-time code arrives as a code and never as a link (a link needs the scheme frozen by ruling 8). **Custom SMTP** on staging pointed at the owner's Mailtrap Email Sandbox — messages are captured, never delivered — with credentials in the Supabase dashboard only, owner-executed, never in the repo; the default sender's two messages an hour to pre-authorized addresses cannot sustain one review re-run, and a capture sandbox removes recipient constraints entirely. **JWT expiry lowered to 600 seconds** (ten minutes), left low, so the ADR-named device test can force a refresh window by keeping the phone locked longer than that, without a test hook (learning 10). Staging only; production decides each item at its own creation. | 2026-08-26 | this row (owner ruling, CTRL-006) |
+| 24 | **Test identities and code relay.** Live auth evidence signs in as disposable, run-namespaced addresses whose mail the Mailtrap sandbox captures — no real mailbox exists for them, so the recipient domain is whatever staging accepts (a message to `phaseb-check-1@example.com` was captured 2026-08-26 under custom SMTP; the default sender's `@example.com` rejection does not carry over). The one-time code is **relayed by the owner at runtime from the sandbox UI**: the producer reads it from a prompt, never from a committed file, and redacts it at source. No inbox API and no new provider key enters the loop — the sandbox's API tokens stay unused — and an admin-minted code (`service_role`) is not used, even for re-runs. | 2026-08-26 | this row (owner ruling, CTRL-006) |
 
 ## Active work
 
@@ -124,7 +147,8 @@ What is in flight, who owns it, and what it is blocked on. One row per stream.
 
 | Stream | Owner | Status | Blocked on |
 |---|---|---|---|
-| Unit D — Auth and session v1 | — | **MERGED** 2026-08-26 at `6ee4407d` (PR #11). Phase B live-credential evidence never ran and is CTRL-006's opening work. | — |
+| Unit E — Session durability (REVIEW-022 finding 3) | Claude Code | **LOCK registered, BUILD** — `feat/session-durability`; reviewer of record Codex Sol, advisory DeepSeek V4 Pro. Dispatch issued after this commit merges, naming the post-merge tip. Evidence `006a-session-durability/`. | Merge of this commit |
+| Unit F — Auth Phase B live evidence | — | **Not started.** Evidence only, against the tip that includes Unit E: live one-time-code round trip and provisioning, live session size, refresh rotation persisted through the adapter, `scope: 'local'` observed, and the ADR-named locked-device test as an owner attestation. LOCK registered at the state commit that records Unit E's merge. Evidence `007a-auth-phase-b/`. | Unit E merge |
 | Production Supabase project | Owner | Parked by ruling — create in East US (North Virginia) before any launch-facing unit | Free-tier slot or Pro upgrade at that time |
 
 Unit A merged 2026-08-19 at `8d648bb` (PR #2, REVIEW-007 PASS); its full
@@ -154,17 +178,17 @@ twenty-three findings raised across the chain closed, eight of them by
 deletion rather than by building an instrument to defend them. CTRL-005 closed
 2026-08-26.
 
-**Next controller session:** CTRL-006 Auth Phase B and session durability —
-the successor confirms this name against this file before planning anything.
-Derived from two commitments on this record rather than from the roadmap
-alone: ADR-009 names a physical-device test gating Phase B exit, and REVIEW-022
-finding 3 must close before that exit. `docs/00-master/PRODUCT.md` puts the L0
-capture loop next in roadmap order, but the capture loop cannot be proven
-end-to-end over an auth surface whose live path has never run — Phase B
-evidence was deferred through all three fix cycles and is still owed. Blocked
-on the staging auth posture, which remains unset: confirm-email permanently
-off, plus a ruled test-address domain. RED on arrival: auth-touching diffs
-re-trigger the advisory seat per ADR-001, and standing rulings S1-S3 apply.
+**Active controller session:** CTRL-006 Auth Phase B and session durability —
+opened 2026-08-26; the name was confirmed against this file before planning.
+Two units, sequential: Unit E first, because it needs nothing but a dispatch;
+Unit F after Unit E merges, because it is blocked on owner-executed staging
+posture and should measure the final code once. Unit D's Phase B was deferred
+through three fix cycles by living inside a unit whose budget the fix loops
+consumed; separate units keep separate budgets. Unit E is RED on arrival — the
+client auth surface — so the advisory seat fires per ADR-001 and standing
+rulings S1–S3 apply; Unit F changes no product code and needs no advisory seat
+unless the reviewer of record flags high risk. The successor session is named
+at close-out from this file.
 
 ## RED lane
 
@@ -328,6 +352,29 @@ controller told the builder to avoid in adapter code at cycle 2, then wrote
 into ADR-007 without noticing. When a property requires exhaustive knowledge of
 someone else's internals, find the property that does not.
 
+**CTRL-006 governance ledger** (opened 2026-08-26; one inherited defect, none
+open). The CTRL-005 close-out (`bcb38a80`, merged as PR #15) rewrote Active
+work, rulings, learnings and Known issues but left this file's *Last verified*
+line and *Current state* section as the CTRL-005 opening had written them:
+main "at `07ad5a51`", Unit D "built and under review, not merged", two merged
+branches "still survive". From that merge until this commit the file's own
+header contradicted its Active work row — learning-18 class, a governance file
+that lies. Corrected here by rebaselining both sections against `b95913e1`;
+recorded rather than silently overwritten. Environment fact, not a defect: the
+GitHub MCP connector in this Project reads the repository but returned 403 on
+ref creation, so this commit was written through the Composio GitHub
+connection via the Git Data API — the route CTRL-004 and CTRL-005 used — after
+proving byte identity of both base files against their blob SHAs.
+
+A second inherited gap surfaced from the owner's screenshot after this branch
+was cut: CTRL-005 had already pointed staging's custom SMTP at a Mailtrap
+Email Sandbox, customised the one-time-code template, and captured a check
+message at 05:06Z — and recorded none of it, so the close-out's "the staging
+auth posture remains unset" was partly false when written. Corrected in this
+branch's second commit; the first commit's ruling-24 wording (plus-addressed
+owner-mailbox identities) was drafted against the unrecorded state and is
+replaced before merge rather than superseded after it.
+
 ## Known issues
 
 ### Unit D — carried from REVIEW-022 (merged on owner override)
@@ -339,7 +386,8 @@ from "`signOut()` rejected before removal was attempted", and the code clears
 the demand in both cases. Every demand flag is process-local, so a surviving
 superseded session outlives the demand across restart. Pinned auth-js also
 leaves rejected refresh Deferreds unhandled on this path. This is the sole
-subject of the merge override (ruling 21).
+subject of the merge override (ruling 21). **Closing unit: Unit E,
+`feat/session-durability`, CTRL-006** — LOCK registered 2026-08-26.
 
 **SHOULD DELETE — bookkeeping, no product-code change.** REVIEW-022 finding 4:
 committed `red-lane.txt` is stale, so claim 50 does not reproduce at the exact
@@ -400,10 +448,13 @@ written here does not exist to the next session.
   tooling.
 - Staging auth posture requires flipping **Confirm email** off and on around
   every live evidence round (four rounds so far) — find a posture that does
-  not, before the next live-evidence unit.
+  not, before the next live-evidence unit. Ruled 2026-08-26 (ruling 23):
+  permanently off on staging.
 - Staging now rejects `@example.com` signups (`email_address_invalid`) where
   four earlier rounds succeeded; any future live evidence run needs a
-  different address domain.
+  different address domain. Ruled 2026-08-26 (ruling 24): sandbox-captured
+  identities; the rejection was observed under the default sender, and a
+  `@example.com` message was captured under custom SMTP.
 - `004a/capture.sh` runtime grew with the battery (32+ parser runs per
   capture, x2 per stability run) — inside its documented bound, revisit if it
   becomes a drag.
@@ -452,6 +503,9 @@ session.
 - AGENTS.md Roles still reads "Opus, high effort" for the primary
   builder — predates ruling 4. Refresh is its own reviewed chore; edits
   change the tracked sha256.
+- Manus investigator seat: the trial end `AGENTS.md` names, 2026-08-25, has
+  passed. Renew or retire is an owner decision; until ruled, no dispatch names
+  the seat. Batch the Roles-section wording with the refresh chore above.
 
 ## Open questions
 
