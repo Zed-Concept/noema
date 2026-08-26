@@ -96,7 +96,7 @@ Advisory reviewer:  DeepSeek V4 Pro / fresh session — the ADR-001 auth trigger
                     not by reading it (learning 20). Advisory carries no merge
                     authority; the controller adjudicates against the RoR
                     record.
-Status:             BUILD
+Status:             REVIEW
 Dispatch:           Unit E — Session durability: close REVIEW-022 finding 3 to
                     ADR-009's three review-gated requirements — purge success
                     observed by read-back, never inferred from the absence of
@@ -252,6 +252,25 @@ the evidence claim narrows to the heads it measured; the subscription-based
 fix gets a follow-up unit after Phase B. Fix cycle 3 dispatched to Claude
 Code, Fable 5 / Max / fresh session, subtraction only. Draft PR #17 stays
 open for CI only. Written through the Composio GitHub connection.
+
+**Phase transition BUILD -> REVIEW (cycle-3 review, REVIEW-026), 2026-08-26,
+CTRL-006.** Subtraction head verified reachable at
+`9e90fdba7d3e828da5a716a8985957f85e166b82`: three builder commits
+(`5e787a6`, `afef2b2`, `9e90fdb`) above `f72e63fa`, 38 files; two product
+files under `src/lib/auth/` changed, comments only per the builder's
+comment-stripped comparison (REVIEW-026 verifies token identity); this
+file untouched in the range; nothing under `supabase/`, `.github/`,
+`app.json` or the manifests; CI success at the head (run 33003500621).
+Scope of REVIEW-026: is the subtraction honest — no behaviour change,
+every claim bound to its instrument, the two ruling-28 Known Issues
+recorded verbatim with witnesses RED-as-expected and compensating
+controls, the lint and evidence claims narrowed to what holds, stability
+at the two named heads. Reviewer of record Codex Sol / Ultra / fresh
+session; record REVIEW-026 plus HANDOFF top-insert, two files. No fix
+cycles remain: a FAIL here is adjudicated by the controller against
+ruling 28 — subtraction defects are corrected by a further subtraction
+dispatch; no behaviour change is authorised. Written through the Composio
+GitHub connection.
 
 ---
 
