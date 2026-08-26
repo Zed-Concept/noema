@@ -36,14 +36,32 @@ import { Platform } from 'react-native';
  * record's shape is asserted by test, not just described here.
  *
  * ---------------------------------------------------------------------------
- * FAIL CLOSED, IN BOTH DIRECTIONS
+ * A DEMAND IS NEVER LOST TO A REFUSING STORE — ruling 25 (owner, 2026-08-26)
  * ---------------------------------------------------------------------------
  *
- * `record()` rejects when the demand cannot be written — the caller must not
- * proceed as though durability was achieved (see `session-storage.ts` for what
- * the write path does with that rejection). `isOutstanding()` rejects when the
- * store refuses to answer, because a refusal is not evidence of absence
- * (the same invariant the adapter's reads honour); the provider treats that
+ * `record()` never rejects. When the backend refuses the write, the demand is
+ * HELD IN MEMORY inside this handle and its durable record is retried on every
+ * later opportunity — the next foreground evaluation, the next purge retry,
+ * the next write through the session observer — until a medium answers or the
+ * process ends (`retryHeldRecord()` is that retry). An earlier version instead
+ * rejected so the caller could rethrow the original write refusal; REVIEW-023
+ * finding 1 showed what that fallback re-entered — the pinned client's
+ * throw-and-reject Deferred path, two unhandled rejections per refusal — and
+ * ruling 25 withdrew it: R3 admits no exception, and R2 holds whenever any
+ * durable medium accepts a write.
+ *
+ * THE ONE SCHEDULE THIS LEAVES OPEN — the ruling-25 Known limit, recorded, not
+ * a defect: every medium refuses AND the process dies before any recovers.
+ * Then no durable record exists, and the next process can expose the residual
+ * session. The bound is server-side and predates this module: the residual's
+ * refresh token was superseded at rotation, and Supabase's refresh-token
+ * rotation rejects a consumed token outside the reuse interval, so the exposed
+ * session dies at its next refresh. Unit F measures that backstop live.
+ *
+ * The other directions still fall closed. `isOutstanding()` resolves true for
+ * a held demand without consulting the backend; otherwise it rejects when the
+ * store refuses to answer, because a refusal is not evidence of absence (the
+ * same invariant the adapter's reads honour), and the provider treats that
  * rejection as an outstanding demand. `clear()` rejects on refusal, and the
  * demand simply remains for the next consult — clearing is retried after the
  * next observed purge of what is by then an empty key space.
@@ -53,9 +71,12 @@ import { Platform } from 'react-native';
  * ---------------------------------------------------------------------------
  *
  * Per ADR-008 / binding ruling 18 the persistence-failure observer exists on
- * native only, so no demand is ever recorded on web: `record()` there rejects,
- * and `isOutstanding()` resolves false so the web bootstrap is undisturbed.
- * Nothing is claimed about web, deferred exactly as ADR-008 defers surfacing.
+ * native only, so no demand is ever recorded on web: `record()` there can only
+ * hold in memory (the web backend accepts no write, so no record is ever
+ * durable), and `isOutstanding()` resolves false so the web bootstrap is
+ * undisturbed. No production web path calls `record()` — the observer that
+ * feeds it does not exist there. Nothing is claimed about web, deferred
+ * exactly as ADR-008 defers surfacing.
  */
 
 export type ReauthDemandReason =
@@ -88,20 +109,42 @@ export type DemandStoreBackend = {
   remove(): Promise<void>;
 };
 
+/**
+ * What `record()` achieved. `durable` means the backend accepted the write;
+ * `held` means it refused and the demand now lives in this handle's memory,
+ * awaiting `retryHeldRecord()` (ruling 25). Both mean the demand EXISTS.
+ */
+export type ReauthDemandRecordOutcome = 'durable' | 'held';
+
 /** The operations the session layer uses, bound to one backend. */
 export type ReauthDemandHandle = {
-  /** Durably record the demand. Rejects when the store refuses — fail closed. */
-  record(reason: ReauthDemandReason): Promise<void>;
   /**
-   * Is a demand outstanding? ANY stored content answers yes — a half-written
-   * record is still a record that a demand was being made. Rejects when the
-   * store refuses to answer, because refusal is not absence.
+   * Record the demand. NEVER rejects (ruling 25): a refused backend write
+   * holds the demand in memory instead, and the durable record is retried on
+   * every later opportunity until a medium answers or the process ends.
+   */
+  record(reason: ReauthDemandReason): Promise<ReauthDemandRecordOutcome>;
+  /**
+   * Is a demand outstanding? A held in-memory demand answers yes without a
+   * backend read. Otherwise ANY stored content answers yes — a half-written
+   * record is still a record that a demand was being made — and a store that
+   * refuses to answer rejects, because refusal is not absence.
    */
   isOutstanding(): Promise<boolean>;
-  /** The parsed record, or null when absent or not this module's shape. */
+  /** The held or parsed record, or null when absent or not this module's shape. */
   peek(): Promise<ReauthDemand | null>;
-  /** Remove the record. Rejects when the store refuses; the demand remains. */
+  /**
+   * Remove the record, memory hold included. Rejects when the store refuses
+   * to remove an existing durable record; the demand then remains.
+   */
   clear(): Promise<void>;
+  /**
+   * Retry the durable record of a held demand — ruling 25's "every later
+   * opportunity". Resolves true when nothing is held or the flush landed,
+   * false when the backend refused again and the demand stays held. Never
+   * rejects.
+   */
+  retryHeldRecord(): Promise<boolean>;
 };
 
 /**
@@ -140,8 +183,10 @@ const fileBackend: DemandStoreBackend = {
 
 /**
  * Web: no observer feeds a demand (ADR-008), so none is ever recorded and none
- * can be outstanding. `record()` rejecting keeps that true structurally — a
- * future web caller would fail loudly rather than silently record nothing.
+ * can be durable. The write refusing keeps "never durable on web" structurally
+ * true; under ruling 25 a future web `record()` call would HOLD in memory for
+ * the process rather than fail loudly — stated here so that behaviour is a
+ * recorded consequence, not a surprise. No production web path calls it.
  */
 const webBackend: DemandStoreBackend = {
   read: async () => null,
@@ -155,13 +200,35 @@ const webBackend: DemandStoreBackend = {
 export function createReauthDemand(
   backend: DemandStoreBackend = Platform.OS === 'web' ? webBackend : fileBackend,
 ): ReauthDemandHandle {
-  return {
-    record: async (reason) => {
-      const demand: ReauthDemand = { v: 1, reason, at: new Date().toISOString() };
+  // Ruling 25's memory hold. Handle-scope on purpose: a restart constructs a
+  // fresh handle, and everything a restart genuinely loses, this loses —
+  // which is exactly why the retry below exists, and why the death-before-
+  // recovery schedule is the module header's recorded Known limit.
+  let held: ReauthDemand | null = null;
+
+  const writeDurably = async (demand: ReauthDemand): Promise<ReauthDemandRecordOutcome> => {
+    try {
       await backend.write(JSON.stringify(demand));
+    } catch {
+      held = demand;
+      return 'held';
+    }
+    // One durable record satisfies every demand this process has made — the
+    // file's presence, not its count, is what the next process consults — so
+    // a landed write ends any earlier hold too.
+    held = null;
+    return 'durable';
+  };
+
+  return {
+    record: (reason) => writeDurably({ v: 1, reason, at: new Date().toISOString() }),
+    retryHeldRecord: async () => {
+      if (held === null) return true;
+      return (await writeDurably(held)) === 'durable';
     },
-    isOutstanding: async () => (await backend.read()) !== null,
+    isOutstanding: async () => held !== null || (await backend.read()) !== null,
     peek: async () => {
+      if (held !== null) return held;
       const raw = await backend.read();
       if (raw === null) return null;
       try {
@@ -183,7 +250,15 @@ export function createReauthDemand(
         return null;
       }
     },
-    clear: () => backend.remove(),
+    clear: async () => {
+      // The hold drops first: if the backend then refuses to remove an
+      // existing durable record, the rejection propagates and the demand
+      // remains outstanding through that record — the safe direction. A held
+      // demand with an empty backend simply ends here, which is correct: the
+      // only caller is the provider's observed purge, on read-back proof.
+      held = null;
+      await backend.remove();
+    },
   };
 }
 
@@ -198,3 +273,4 @@ export const reauthDemand: ReauthDemandHandle = createReauthDemand();
 export const recordReauthDemand = reauthDemand.record;
 export const isReauthDemandOutstanding = reauthDemand.isOutstanding;
 export const clearReauthDemand = reauthDemand.clear;
+export const retryReauthDemandRecord = reauthDemand.retryHeldRecord;

@@ -7,7 +7,12 @@ import type { AppStateStatus } from 'react-native';
 import { supabase } from '@/lib/supabase';
 
 import { refreshWhileForeground } from './foreground-refresh';
-import { clearReauthDemand, isReauthDemandOutstanding, recordReauthDemand } from './reauth-demand';
+import {
+  clearReauthDemand,
+  isReauthDemandOutstanding,
+  recordReauthDemand,
+  retryReauthDemandRecord,
+} from './reauth-demand';
 import { confirmSessionPurged, takeSessionPersistenceFailure } from './session-storage';
 
 /**
@@ -155,6 +160,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: { subscription },
       } = supabase.auth.onAuthStateChange((_event, session) => {
         if (!active) return;
+        // While a re-authentication demand is outstanding, NO event may
+        // expose a session (REVIEW-023 finding 2; ruling 25: the provider
+        // exposes no session from the moment of the refusal). The concrete
+        // schedule this bars: the observed purge's own `signOut()` refreshes
+        // the residual on its way out (REVIEW-022 finding 2, recorded
+        // behaviour) and emits TOKEN_REFRESHED with the very session being
+        // purged — without this gate that event would flip the state back to
+        // signedIn while the logout leg is still pending. Once the read-back
+        // proves the space empty and the demand ends, events flow again.
+        if (demandOutstanding) return;
         supersededByEvent = true;
         setState(stateForSession(session));
       }));
@@ -224,7 +239,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
      * precisely the path that ends days later inside Supabase's refresh-token
      * reuse detection, with the whole family revoked and no diagnostic trail.
      *
-     * The demand is recorded DURABLY, FIRST — before the purge is attempted —
+     * EXPOSURE ENDS FIRST — REVIEW-023 finding 2, under ruling 25: signedOut
+     * is set BEFORE any await in this function, exactly as the
+     * outstanding-at-bootstrap branch already does. The purge's network legs
+     * have no application timeout, so a logout held pending indefinitely must
+     * strand the purge retry, never the state change — the reviewer's
+     * schedule held the logout fetch open and watched the provider keep
+     * exposing signedIn until it settled. Setting `demandOutstanding` in the
+     * same breath closes the listener door: the purge's own internal refresh
+     * emits TOKEN_REFRESHED, and the gate in `startBootstrap` drops it while
+     * the demand stands.
+     *
+     * Then the demand is recorded DURABLY — before the purge is attempted —
      * so a crash mid-purge leaves the record, not just the residual. (The
      * write path in `session-storage.ts` normally recorded it already, at the
      * refused write itself; this record is what makes the flag-driven path
@@ -232,20 +258,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
      * as the read-back proves it.
      */
     async function requireReauthentication(): Promise<void> {
+      demandConsulted = true;
+      demandOutstanding = true;
+      // Deliberately not contingent on anything below: this layer cannot
+      // force a refusing store, but it can refuse to keep using a session it
+      // could not vouch for — from this moment.
+      if (active) setState({ status: 'signedOut' });
       try {
         await recordReauthDemand('session-purge-pending');
       } catch {
-        // The demand store refused. Durability across restart is lost for
-        // this event — the recorded fallback, not a silent one: the purge
-        // below still runs now, and `demandOutstanding` keeps THIS process
-        // retrying. Nothing here proceeds to trust a session.
+        // record() never rejects by contract (ruling 25: a refused backend
+        // write is held in memory and retried). Absorbed anyway — nothing on
+        // this path may throw, and nothing here proceeds to trust a session.
       }
-      demandConsulted = true;
       demandOutstanding = !(await observedPurge());
-      // Unconditional, and deliberately not contingent on the purge: this
-      // layer cannot force a refusing store, but it can refuse to keep using
-      // a session it could not vouch for.
-      if (active) setState({ status: 'signedOut' });
     }
 
     async function evaluate(status: AppStateStatus): Promise<void> {
@@ -285,6 +311,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // a frozen splash. If the purge verifies, the bootstrap that
           // follows re-resolves the state from an empty store.
           if (active) setState({ status: 'signedOut' });
+          // Ruling 25's "foreground / purge retry" opportunity: a demand that
+          // could only be held in memory — every medium refused at the time —
+          // gets its durable record retried here, before the purge below. A
+          // no-op when nothing is held; never rejects.
+          await retryReauthDemandRecord();
           // The observed purge comes BEFORE this provider's own
           // `getSession()`. REVIEW-022 found the order reversed — the
           // provider loaded (and could refresh) the very session it refused

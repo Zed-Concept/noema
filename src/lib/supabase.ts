@@ -32,8 +32,8 @@ export const supabase = createClient<Database>(supabaseUrl, supabasePublishableK
     // target the app cannot name without re-deriving library internals would
     // be the reading-of-internals learning 20 warns against. A documented
     // public option, shared by the client, the session layer, and the
-    // evidence probes. No installed base is stranded by the rename: no device
-    // or simulator has ever run this app.
+    // evidence probes. The transition from the derived default is out of
+    // scope by owner ruling 26, recorded in the evidence README.
     storageKey: AUTH_SESSION_STORAGE_KEY,
 
     // ADR-009 / binding ruling 20: THE CLIENT NEVER SELF-SCHEDULES A REFRESH —

@@ -288,10 +288,12 @@ describe('ADR-009 / ADR-008 — on NATIVE, a rotated session that cannot be stor
  * REVIEW-022 observed what rethrowing did inside the pinned client: one
  * refused write produced TWO unhandled `refused-session-write` rejections,
  * because `_callRefreshToken` both rejects its internal Deferred and throws to
- * the initiating chain. The observer now records the refusal — durable demand
- * FIRST, in-process flag second — and resolves, so the library never enters
- * that path. The fail-closed fallback when the demand itself cannot be
- * recorded is asserted here too, because a fallback nobody has run is a hope.
+ * the initiating chain. The observer now records the refusal — demand FIRST,
+ * in-process flag second — and resolves, so the library never enters that
+ * path. IN EVERY CASE (ruling 25): when the demand store also refuses, the
+ * refusal is still absorbed, the demand is held in memory, and its durable
+ * record is retried at every later opportunity until a medium answers or the
+ * process ends. REVIEW-023 finding 1 withdrew the earlier rethrow fallback.
  */
 describe('ADR-009 requirement 3 — the refused session write is recorded, then absorbed', () => {
   beforeEach(() => clearSessionPersistenceFailure());
@@ -324,18 +326,60 @@ describe('ADR-009 requirement 3 — the refused session write is recorded, then 
     expect(harness.events).toEqual(['keychain-refused-write', 'demand-recorded']);
   });
 
-  it('rejects with the ORIGINAL cause when the demand store also refuses — the recorded fallback', async () => {
+  it('absorbs the refusal even when the demand store ALSO refuses — ruling 25, no path rethrows', async () => {
+    // REVIEW-023 finding 1. The withdrawn version rethrew the original cause
+    // here, re-entering the pinned client's throw-and-reject path — two
+    // unhandled rejections — and losing restart durability. Now the refusal
+    // is absorbed in every case: the demand is HELD in the handle's memory,
+    // nothing reaches the caller, and the flag still serves this process.
     const harness = createHarness();
     harness.refuseWrites = true;
     harness.demandBackend.refuseWrites = true;
 
-    // Durability could not be achieved, so the library sees the refusal
-    // exactly as before ADR-009. The original keychain cause propagates, not
-    // the demand store's.
-    await expect(harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v2'))).rejects.toThrow(
-      'errSecInteractionNotAllowed',
-    );
-    // The in-process flag still serves this process.
+    await expect(
+      harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v2')),
+    ).resolves.toBeUndefined();
+
+    // Nothing durable — every medium refused — but the demand exists: held.
+    expect(harness.demandBackend.content).toBeNull();
+    expect(peekSessionPersistenceFailure()).toMatchObject({ key: SESSION_KEY });
+  });
+
+  it('retries the held record on the next write once the demand store recovers', async () => {
+    // Ruling 25's "next write" opportunity, driven end to end: both media
+    // refuse, the demand is held; the demand store recovers; the next write
+    // through the observer flushes the held record durably, and a fresh
+    // handle over the same backend — the restart shape — sees it.
+    const harness = createHarness();
+    harness.refuseWrites = true;
+    harness.demandBackend.refuseWrites = true;
+    await harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v2'));
+    expect(harness.demandBackend.content).toBeNull();
+
+    harness.demandBackend.refuseWrites = false;
+    harness.refuseWrites = false;
+    await harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v3'));
+
+    expect(harness.demandBackend.content).not.toBeNull();
+    const record = JSON.parse(harness.demandBackend.content as string) as Record<string, unknown>;
+    expect(record.reason).toBe('session-write-refused');
+    await expect(createReauthDemand(harness.demandBackend).isOutstanding()).resolves.toBe(true);
+  });
+
+  it('lands the demand durably when the demand store recovers but the keychain still refuses', async () => {
+    // The asymmetric recovery: the session write keeps failing, but the
+    // MEDIUM the demand needs has come back. The fresh record() attempt on
+    // the next refused write is itself the retry, and it must land.
+    const harness = createHarness();
+    harness.refuseWrites = true;
+    harness.demandBackend.refuseWrites = true;
+    await harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v2'));
+    expect(harness.demandBackend.content).toBeNull();
+
+    harness.demandBackend.refuseWrites = false;
+    await harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v3'));
+
+    expect(harness.demandBackend.content).not.toBeNull();
     expect(peekSessionPersistenceFailure()).toMatchObject({ key: SESSION_KEY });
   });
 

@@ -95,19 +95,122 @@ describe('reauth demand — the record contains no secret', () => {
   });
 });
 
-describe('reauth demand — every failure falls closed', () => {
-  it('record rejects when the store refuses the write', async () => {
+describe('reauth demand — a refused record is held, not lost (ruling 25)', () => {
+  /** A backend whose write refuses until told otherwise. */
+  function refusingBackend() {
+    const backend = memoryBackend();
+    const acceptingWrite = backend.write;
+    let refuse = true;
+    backend.write = async (value: string) => {
+      if (refuse) throw new Error('disk full');
+      await acceptingWrite(value);
+    };
+    return { backend, recover: () => (refuse = false) };
+  }
+
+  it('holds the demand in memory when the store refuses the write', async () => {
+    // REVIEW-023 finding 1 withdrew the rejecting version: record() now NEVER
+    // rejects. A refused write reports `held`, nothing is durable yet, and
+    // the demand still exists — outstanding to this process, visible to peek.
+    const { backend } = refusingBackend();
+    const demand = createReauthDemand(backend);
+
+    await expect(demand.record('session-write-refused')).resolves.toBe('held');
+
+    expect(backend.content).toBeNull();
+    await expect(demand.isOutstanding()).resolves.toBe(true);
+    await expect(demand.peek()).resolves.toMatchObject({ reason: 'session-write-refused' });
+  });
+
+  it('reports `durable` and holds nothing when the write lands', async () => {
+    const backend = memoryBackend();
+    const demand = createReauthDemand(backend);
+
+    await expect(demand.record('session-write-refused')).resolves.toBe('durable');
+
+    expect(backend.content).not.toBeNull();
+    await expect(demand.retryHeldRecord()).resolves.toBe(true);
+  });
+
+  it('retryHeldRecord flushes a held demand once the store recovers — and a fresh handle sees it', async () => {
+    // Ruling 25's retry, proven to the restart boundary: the flush is what
+    // makes the demand durable, so the record must be visible to a fresh
+    // handle over the same backend — everything held in memory gone.
+    const { backend, recover } = refusingBackend();
+    const demand = createReauthDemand(backend);
+    await demand.record('session-purge-pending');
+    await expect(demand.retryHeldRecord()).resolves.toBe(false);
+    expect(backend.content).toBeNull();
+
+    recover();
+    await expect(demand.retryHeldRecord()).resolves.toBe(true);
+
+    expect(backend.content).not.toBeNull();
+    const afterRestart = createReauthDemand(backend);
+    await expect(afterRestart.isOutstanding()).resolves.toBe(true);
+    await expect(afterRestart.peek()).resolves.toMatchObject({ reason: 'session-purge-pending' });
+  });
+
+  it('a held demand does not survive what a restart resets — the ruling-25 Known limit, stated', async () => {
+    // The one schedule ruling 25 leaves open: every medium refuses and the
+    // process dies before any recovers. A fresh handle over the same backend
+    // is that death at this module's granularity, and it finds nothing —
+    // recorded here as the limit's exact shape, bounded server-side by
+    // Supabase's refresh-token rotation (the residual's token is already
+    // consumed). Unit F measures that backstop live.
+    const { backend } = refusingBackend();
+    await createReauthDemand(backend).record('session-write-refused');
+
+    const afterRestart = createReauthDemand(backend);
+
+    await expect(afterRestart.isOutstanding()).resolves.toBe(false);
+  });
+
+  it('reports a held demand outstanding without needing the backend to answer', async () => {
+    // Held short-circuits the read: a store refusing BOTH directions still
+    // cannot make this process forget the demand it is holding.
     const backend = memoryBackend();
     backend.write = async () => {
       throw new Error('disk full');
     };
+    backend.read = async () => {
+      throw new Error('io error');
+    };
     const demand = createReauthDemand(backend);
+    await demand.record('session-write-refused');
 
-    // The caller must not proceed as though durability was achieved —
-    // `session-storage.ts` turns this rejection into its recorded fallback.
-    await expect(demand.record('session-write-refused')).rejects.toThrow('disk full');
+    await expect(demand.isOutstanding()).resolves.toBe(true);
   });
 
+  it('clear ends a held demand — read-back proof is the one thing that may', async () => {
+    const { backend } = refusingBackend();
+    const demand = createReauthDemand(backend);
+    await demand.record('session-purge-pending');
+    await expect(demand.isOutstanding()).resolves.toBe(true);
+
+    await demand.clear();
+
+    await expect(demand.isOutstanding()).resolves.toBe(false);
+    await expect(demand.retryHeldRecord()).resolves.toBe(true);
+    expect(backend.content).toBeNull();
+  });
+
+  it('retryHeldRecord is a no-op resolving true when nothing is held', async () => {
+    const backend = memoryBackend();
+    const writes: string[] = [];
+    const originalWrite = backend.write;
+    backend.write = async (value: string) => {
+      writes.push(value);
+      await originalWrite(value);
+    };
+
+    await expect(createReauthDemand(backend).retryHeldRecord()).resolves.toBe(true);
+
+    expect(writes).toHaveLength(0);
+  });
+});
+
+describe('reauth demand — every other failure falls closed', () => {
   it('isOutstanding rejects when the store refuses to answer', async () => {
     const backend = memoryBackend();
     backend.read = async () => {

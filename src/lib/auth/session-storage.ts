@@ -19,10 +19,9 @@ import { createChunkedSecureStore } from './secure-store-adapter';
  * Setting the documented public option makes the key an app constant that the
  * client, this module, and the evidence probes all share.
  *
- * Changing the key from the derived default strands nothing: no device or
- * simulator has ever run this app (Phase A is offline, there is no EAS
- * project and no store presence), so there is no installed base whose stored
- * session lives under the old name.
+ * The transition from the derived default is out of this unit's scope by
+ * owner ruling 26; the scope ruling and its ground live in the evidence
+ * record, not here — code does not assert the world.
  */
 export const AUTH_SESSION_STORAGE_KEY = 'zc-auth-session';
 
@@ -123,17 +122,26 @@ export function clearSessionPersistenceFailure(): void {
  * could consume. The library's throw-and-reject path is not this module's to
  * fix, but it is this module's not to enter.
  *
- * So for the session key the order is now: durable demand FIRST, in-process
- * flag second, then RESOLVE. By the time auth-js resumes, the refusal is
- * already recorded somewhere a crash cannot erase, and the library is told
+ * So for the session key the order is now: demand FIRST, in-process flag
+ * second, then RESOLVE. By the time auth-js resumes, the refusal is already
+ * recorded — durably when any medium answers — and the library is told
  * nothing it would turn into an unhandled rejection. The refusal still
  * surfaces — through the flag to this process's foreground evaluation, and
  * through the demand to every process after it.
  *
- * FAIL CLOSED: when the DEMAND write itself is refused, this rethrows the
- * original cause. Durability could not be achieved, so the library sees the
- * refusal exactly as before — the pre-ADR-009 behaviour, with its known
- * unhandled rejections, is the recorded fallback rather than a silent one.
+ * ABSORBED IN EVERY CASE — ruling 25 (owner, 2026-08-26). When the DEMAND
+ * write is also refused, the refusal is STILL absorbed: `record()` holds the
+ * demand in memory and its durable record is retried on every later
+ * opportunity — the next write through this observer (below), the next
+ * foreground evaluation, the next purge retry — until a medium answers or
+ * the process ends. An earlier version rethrew the original cause here as a
+ * recorded fail-closed fallback; REVIEW-023 finding 1 measured what that
+ * fallback re-entered — two unhandled rejections from the pinned client's
+ * throw-and-reject path, and a restart that had forgotten the demand — and
+ * ruling 25 withdrew it: R3 is unqualified, and R2 holds whenever any
+ * durable medium accepts a write. The schedule where every medium refuses
+ * and the process dies first is the ruling-25 Known limit, recorded with its
+ * server-side bound in `reauth-demand.ts` and the evidence README.
  *
  * A SUCCESSFUL session write does NOT clear the demand. An earlier version
  * cleared it here, reasoning that a completed write proves the disk holds
@@ -156,6 +164,10 @@ export function observingWrites(
   return {
     getItem: (key) => inner.getItem(key),
     setItem: async (key, value) => {
+      // Ruling 25's "next write" opportunity: a demand held in memory because
+      // every medium refused earlier gets its durable record retried before
+      // this write proceeds. A no-op when nothing is held; never rejects.
+      await demand.retryHeldRecord();
       try {
         await inner.setItem(key, value);
       } catch (cause) {
@@ -163,11 +175,9 @@ export function observingWrites(
           try {
             await demand.record('session-write-refused');
           } catch {
-            // The recorded fallback: no durable record could be made, so the
-            // refusal must reach the caller. The flag still serves this
-            // process; durability across restart is lost for this event.
-            lastPersistenceFailure = { key, cause };
-            throw cause;
+            // record() never rejects by contract (a refused backend write is
+            // held in memory instead — ruling 25). Absorbed anyway: R3 is
+            // unqualified, so no path out of this branch may rethrow.
           }
           lastPersistenceFailure = { key, cause };
           return;

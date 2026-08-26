@@ -1300,18 +1300,44 @@ describe('chunked SecureStore adapter — generation alternation', () => {
  * changes nothing.
  */
 describe('chunked SecureStore adapter — confirmRemoved observes, never infers', () => {
-  it('proves an untouched key space empty by reading all of it', async () => {
+  it('proves an untouched key space empty by reading exactly the enumerable address set, in order', async () => {
     const fake = createFakeSecureStore();
     const adapter = createChunkedSecureStore(fake.backend);
 
     await expect(adapter.confirmRemoved(BASE_KEY)).resolves.toBe(true);
 
-    // The proof is the reads: the index plus every chunk key of both
-    // generations — the same enumerable space removal sweeps — and nothing
-    // but reads.
+    // The proof is the reads — asserted as the EXACT ORDERED ADDRESS SET,
+    // not a count (REVIEW-023 finding 5 narrowed the count-only version):
+    // the index first, then every chunk key of generation 0, then every
+    // chunk key of generation 1 — the same enumerable space removal sweeps —
+    // each address exactly once, and nothing but reads.
+    const expectedAddresses = [
+      BASE_KEY,
+      ...GENERATIONS.flatMap((generation) =>
+        Array.from({ length: MAX_CHUNKS }, (_, i) => chunkKeyFor(BASE_KEY, generation, i)),
+      ),
+    ];
+    const gets = fake.log.filter((op) => op.kind === 'get');
+    expect(gets.map((op) => op.key)).toEqual(expectedAddresses);
+    expect(new Set(gets.map((op) => op.key)).size).toBe(1 + GENERATIONS.length * MAX_CHUNKS);
+    expect(fake.log.filter((op) => op.kind !== 'get')).toHaveLength(0);
+  });
+
+  it('reads all 513 addresses before disproving on a value at the final one', async () => {
+    // The reviewer's own exact-address probe, committed: material at the very
+    // last enumerable address — generation 1, chunk MAX_CHUNKS-1 — is only
+    // reachable by a sweep that genuinely visits everything, and the false
+    // verdict must arrive after the full read, not from a shortcut.
+    const fake = createFakeSecureStore();
+    const adapter = createChunkedSecureStore(fake.backend);
+    const finalAddress = chunkKeyFor(BASE_KEY, 1, MAX_CHUNKS - 1);
+    fake.store.set(finalAddress, 'stranded-at-the-final-address');
+
+    await expect(adapter.confirmRemoved(BASE_KEY)).resolves.toBe(false);
+
     const gets = fake.log.filter((op) => op.kind === 'get');
     expect(gets).toHaveLength(1 + GENERATIONS.length * MAX_CHUNKS);
-    expect(fake.log.filter((op) => op.kind !== 'get')).toHaveLength(0);
+    expect(gets[gets.length - 1].key).toBe(finalAddress);
   });
 
   it('reports a stored session as present, not removed', async () => {

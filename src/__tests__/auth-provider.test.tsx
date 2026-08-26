@@ -42,6 +42,7 @@ jest.mock('@/lib/auth/reauth-demand', () => ({
   recordReauthDemand: jest.fn(),
   isReauthDemandOutstanding: jest.fn(),
   clearReauthDemand: jest.fn(),
+  retryReauthDemandRecord: jest.fn(),
 }));
 
 const { takeSessionPersistenceFailure, confirmSessionPurged } = jest.requireMock(
@@ -51,12 +52,16 @@ const { takeSessionPersistenceFailure, confirmSessionPurged } = jest.requireMock
   confirmSessionPurged: jest.Mock;
 };
 
-const { recordReauthDemand, isReauthDemandOutstanding, clearReauthDemand } = jest.requireMock(
-  '@/lib/auth/reauth-demand',
-) as {
+const {
+  recordReauthDemand,
+  isReauthDemandOutstanding,
+  clearReauthDemand,
+  retryReauthDemandRecord,
+} = jest.requireMock('@/lib/auth/reauth-demand') as {
   recordReauthDemand: jest.Mock;
   isReauthDemandOutstanding: jest.Mock;
   clearReauthDemand: jest.Mock;
+  retryReauthDemandRecord: jest.Mock;
 };
 
 const auth = supabase.auth as unknown as {
@@ -118,9 +123,10 @@ beforeEach(() => {
   auth.stopAutoRefresh.mockResolvedValue(undefined);
   takeSessionPersistenceFailure.mockReturnValue(null);
   confirmSessionPurged.mockResolvedValue(true);
-  recordReauthDemand.mockResolvedValue(undefined);
+  recordReauthDemand.mockResolvedValue('durable');
   isReauthDemandOutstanding.mockResolvedValue(false);
   clearReauthDemand.mockResolvedValue(undefined);
+  retryReauthDemandRecord.mockResolvedValue(true);
 
   appStateListeners.length = 0;
   setAppState('active');
@@ -599,6 +605,73 @@ describe('auth provider — the observed purge and the durable demand', () => {
     );
   });
 
+  it('sets signedOut while the purge is still pending — a hung logout cannot delay it', async () => {
+    // REVIEW-023 finding 2, at this suite's granularity. The reviewer's
+    // pinned-client schedule held the logout fetch open after `signOut()`'s
+    // internal refresh and watched the provider keep exposing signedIn for
+    // the whole unbounded interval. The property: signedOut and the recorded
+    // demand exist WHILE the purge is pending, not after it settles; the
+    // read-back and the clear follow only once the logout releases.
+    auth.getSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null });
+    takeSessionPersistenceFailure.mockReturnValueOnce(REFUSED).mockReturnValue(null);
+    let releaseLogout: () => void = () => {};
+    auth.signOut.mockReturnValue(
+      new Promise<{ error: null }>((resolve) => {
+        releaseLogout = () => resolve({ error: null });
+      }),
+    );
+    confirmSessionPurged.mockResolvedValue(true);
+
+    const { result } = await renderHook(() => useAuth(), { wrapper });
+
+    // The logout leg is pending — and the state has already changed, with
+    // the durable demand already recorded. Nothing is awaited first.
+    await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
+    expect(auth.signOut).toHaveBeenCalledTimes(1);
+    expect(recordReauthDemand).toHaveBeenCalledWith('session-purge-pending');
+    // The purge has not settled, so no read-back verdict and no clear yet.
+    expect(confirmSessionPurged).not.toHaveBeenCalled();
+    expect(clearReauthDemand).not.toHaveBeenCalled();
+
+    // Release the logout: the read-back proves the space empty and the
+    // demand ends — the reviewer's release/read-back/cleared tail.
+    await act(async () => releaseLogout());
+    await waitFor(() => expect(clearReauthDemand).toHaveBeenCalledTimes(1));
+    expect(result.current.state.status).toBe('signedOut');
+  });
+
+  it('drops a mid-purge TOKEN_REFRESHED instead of re-exposing the session', async () => {
+    // The door REVIEW-023 finding 2's fix has to close to stay closed:
+    // pinned `signOut()` refreshes the residual on its way out (REVIEW-022
+    // finding 2, recorded behaviour) and emits TOKEN_REFRESHED carrying the
+    // very session the purge is removing. While the demand is outstanding,
+    // that event must not flip the provider back to signedIn.
+    auth.getSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null });
+    takeSessionPersistenceFailure.mockReturnValueOnce(REFUSED).mockReturnValue(null);
+    let releaseLogout: () => void = () => {};
+    auth.signOut.mockReturnValue(
+      new Promise<{ error: null }>((resolve) => {
+        releaseLogout = () => resolve({ error: null });
+      }),
+    );
+    confirmSessionPurged.mockResolvedValue(true);
+
+    const { result } = await renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
+
+    // The purge's own internal refresh announces the session it is deleting.
+    await act(async () => emit('TOKEN_REFRESHED', FAKE_SESSION));
+    expect(result.current.state.status).toBe('signedOut');
+
+    await act(async () => releaseLogout());
+    await waitFor(() => expect(clearReauthDemand).toHaveBeenCalledTimes(1));
+
+    // Once the read-back has proven the space empty and the demand has
+    // ended, events flow again — a real later sign-in still surfaces.
+    await act(async () => emit('SIGNED_IN', FAKE_SESSION));
+    await waitFor(() => expect(result.current.state.status).toBe('signedIn'));
+  });
+
   it('stops retrying once the read-back proves the space empty', async () => {
     auth.getSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null });
     takeSessionPersistenceFailure.mockReturnValueOnce(REFUSED).mockReturnValue(null);
@@ -696,6 +769,28 @@ describe('auth provider — the durable demand at bootstrap', () => {
     expect(Math.max(...auth.signOut.mock.invocationCallOrder)).toBeLessThan(
       Math.min(...auth.getSession.mock.invocationCallOrder),
     );
+  });
+
+  it('retries the durable record on every foreground while the demand is outstanding', async () => {
+    // Ruling 25: a demand that could only be held in memory — every medium
+    // refused at the time — has its durable record retried on each later
+    // opportunity. The outstanding branch is the foreground/purge-retry one;
+    // the retry must run on every evaluation that purges, before the purge.
+    isReauthDemandOutstanding.mockResolvedValue(true);
+    confirmSessionPurged.mockResolvedValue(false);
+
+    await renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(auth.signOut).toHaveBeenCalledTimes(1));
+    expect(retryReauthDemandRecord).toHaveBeenCalledTimes(1);
+    expect(retryReauthDemandRecord.mock.invocationCallOrder[0]).toBeLessThan(
+      auth.signOut.mock.invocationCallOrder[0],
+    );
+
+    await act(async () => emitAppState('background'));
+    await act(async () => emitAppState('active'));
+
+    await waitFor(() => expect(auth.signOut).toHaveBeenCalledTimes(2));
+    expect(retryReauthDemandRecord).toHaveBeenCalledTimes(2);
   });
 
   it('treats a demand store that will not answer as an outstanding demand', async () => {
