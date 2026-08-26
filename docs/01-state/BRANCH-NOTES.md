@@ -96,7 +96,7 @@ Advisory reviewer:  DeepSeek V4 Pro / fresh session — the ADR-001 auth trigger
                     not by reading it (learning 20). Advisory carries no merge
                     authority; the controller adjudicates against the RoR
                     record.
-Status:             REVIEW
+Status:             BUILD
 Dispatch:           Unit E — Session durability: close REVIEW-022 finding 3 to
                     ADR-009's three review-gated requirements — purge success
                     observed by read-back, never inferred from the absence of
@@ -271,6 +271,19 @@ cycles remain: a FAIL here is adjudicated by the controller against
 ruling 28 — subtraction defects are corrected by a further subtraction
 dispatch; no behaviour change is authorised. Written through the Composio
 GitHub connection.
+
+**Phase transition REVIEW -> BUILD (subtraction correction 3b), 2026-08-26,
+CTRL-006.** REVIEW-026 (Codex Sol / Ultra, record at `5cfb88a1`): **FAIL**
+on three prose defects only — stale "every publication" universals in
+publisher comments and test prose; a Known-Issue control that overclaims
+consultation "before any session load"; 006c Known limits described as
+"unchanged" despite material edits. Independently confirmed at the head:
+no behaviour change, zero assertion changes, witnesses RED-as-expected
+with runner exit 0, 9/9 stable at both named heads, governance scope
+clean. The three fix cycles are consumed; this pass is the further
+subtraction the cycle-3 transition note authorised, scribe-class per
+ruling 5 (Fable 5 / High / fresh session), prose only. REVIEW-027 is the
+verdict that gates merge. Written through the Composio GitHub connection.
 
 ---
 
