@@ -96,7 +96,7 @@ Advisory reviewer:  DeepSeek V4 Pro / fresh session — the ADR-001 auth trigger
                     not by reading it (learning 20). Advisory carries no merge
                     authority; the controller adjudicates against the RoR
                     record.
-Status:             BUILD
+Status:             REVIEW
 Dispatch:           Unit E — Session durability: close REVIEW-022 finding 3 to
                     ADR-009's three review-gated requirements — purge success
                     observed by read-back, never inferred from the absence of
@@ -183,6 +183,22 @@ builder, was the defect, recorded in the CTRL-006 ledger. The note stays —
 this record supersedes and never deletes — and no future dispatch authorises
 a builder write to this file. Written through the Composio GitHub
 connection.
+
+**Phase transition BUILD -> REVIEW (cycle-1 review, REVIEW-024), 2026-08-26,
+CTRL-006.** Fix-cycle-1 head verified reachable at
+`5f6d2e6ca873ff3b45d9d9a6e52d42bdebed30bd`: four builder commits
+(`f66c451c`, `74024465`, `7d2229b9`, `5f6d2e6c`) above the advisory record
+`0de2e406`; this file untouched by the builder in that range (finding 4
+honoured); nothing under `supabase/`, `.github/`, `app.json` or the
+lockfile; CI success at the head (run 32973184321). Scope of REVIEW-024:
+closure of REVIEW-023 findings 1–6 under rulings 25–26, plus the cycle-1
+addendum's three advisory leads (A listener gate, B consult by read,
+C sign-in resolves the demand), adjudicated in from REVIEW-023-ADVISORY
+leads 1–3. Reviewer of record Codex Sol / Ultra / fresh session; record
+REVIEW-024 plus HANDOFF top-insert, two files. The advisory seat is spent
+for this unit unless the reviewer of record flags new high risk. This note
+is the only commit above the builder head and touches this file alone.
+Written through the Composio GitHub connection.
 
 ---
 
