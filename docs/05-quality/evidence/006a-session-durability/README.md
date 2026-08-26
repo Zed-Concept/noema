@@ -69,13 +69,13 @@ have none, and each says why.
 | 10 | The flag-driven recovery records the demand durably BEFORE attempting the purge, so a crash mid-purge leaves the record | PASS | `auth-provider.test.tsx`, invocation-order assertion | M9 |
 | 11 | A recorded demand is visible to a fresh handle over the same backend — the restart shape at the module's granularity | PASS | `reauth-demand.test.ts` | M10 |
 | 12 | The demand record contains no secret: exactly `{v, reason, at}`, asserted as the exact key set, with no token material | PASS | `reauth-demand.test.ts` + the probe's content assertion against its own fake tokens | — (structural: the claim is an equality on the written bytes) |
-| 13 | **A refused session-key write is recorded and absorbed**: the pinned client never enters its throw-and-reject path for it | PASS | `foreground-refresh.test.ts`, real adapter + real demand module over in-memory doubles | M11 |
+| 13 | **A refused session-key write is recorded and absorbed**: the pinned client never enters its throw-and-reject path for it — EXCEPT under the recorded fallback of claim 15, when the demand store also refuses and the refusal must reach the caller | PASS | `foreground-refresh.test.ts`, real adapter + real demand module over in-memory doubles | M11 |
 | 14 | The durable record lands before the refused write resolves — nothing between the refusal and the record could observe silence | PASS | `foreground-refresh.test.ts`, event-order assertion | M12 |
 | 15 | When the demand itself cannot be recorded, the write rejects with the ORIGINAL cause — the recorded fail-closed fallback, executed rather than described | PASS | `foreground-refresh.test.ts` | M13 |
-| 16 | A successful observed session write ends the demand (the disk provably holds the newest session); the sticky in-process flag deliberately survives the same event | PASS | `foreground-refresh.test.ts` | M14 |
+| 16 | **A successful session write does NOT end the demand** — like the sticky flag, the demand outlives later successes and ends only on read-back proof. This direction was flipped by this unit's own adversarial review: the earlier clear-on-success let `signOut()`'s internal refresh write (REVIEW-022 finding 2, recorded behaviour) erase a purge-pending demand mid-purge, before any proof | PASS | `foreground-refresh.test.ts` | M14 — the mutant RE-CREATES the reviewed defect by restoring the clear |
 | 17 | Carried, 005d claim 53: the write-refusal flag is sticky until taken | PASS | `foreground-refresh.test.ts` (same schedule as 005d) | — (005d's M31 was its counterfactual; the schedule is unchanged here) |
-| 18 | Zero unhandled `refused-session-write` rejections across the probe's full schedule — refused rotations, refused purges, a restart, a recovery | PASS | `finding3-probe.txt` (the base run shows the rejections the head run must not have) | — |
-| 19 | The four CI-equivalent gates pass at this head: typecheck, lint, test, format:check, all exit 0 — **10 suites, 160 tests** | PASS | `gates.txt` | — |
+| 18 | Zero unhandled `refused-session-write` rejections across the probe's full schedule — refused rotations, refused purges, a restart, a recovery. Bounded to schedules where the demand store answers: the claim-15 fallback deliberately re-enters the pre-ADR-009 rejection path when BOTH stores refuse, and is recorded, not hidden | PASS | `finding3-probe.txt` (the base run shows the rejections the head run must not have) | — |
+| 19 | The four CI-equivalent gates pass at this head: typecheck, lint, test, format:check, all exit 0 — **10 suites, 159 tests** | PASS | `gates.txt` | — |
 | 20 | Every mutant is build-valid and every claim carrying a mutant ID has one that turns its instrument red | PASS | `mutants.txt` — 14/14 SENSITIVE, 0 build-invalid | this row IS the mutation record |
 | 21 | The gated artifacts regenerate byte-for-byte across two fresh `capture.sh` runs, both exiting 0, all matching the committed copies | PASS | `stability.txt` — 8/8 identical | — |
 | 22 | RED lane: `supabase/`, `.github/`, and generated types are object-identical to base; 0 database-layer paths; 0 database-operation hits; every scan's positive control matched | PASS | `red-lane.txt` | — |
@@ -101,7 +101,7 @@ in this suite and no credential is read.
 
 | Artifact | Producer | Class | Notes |
 |---|---|---|---|
-| `gates.txt` | `capture.sh` | gated | the four CI steps; 10 suites, 160 tests |
+| `gates.txt` | `capture.sh` | gated | the four CI steps; 10 suites, 159 tests |
 | `adapter-properties.txt` | `capture.sh` | gated | one jest invocation per suite, adapter first |
 | `session-properties.txt` | `capture.sh` | gated | provider + foreground-refresh + reauth-demand; the middle one runs the real adapter and real demand module over in-memory doubles |
 | `route-guards.txt` | `capture.sh` | gated | unchanged surface, re-proven at this head |
@@ -156,22 +156,25 @@ typechecked at this head by the ordinary `tsc` gate (the tsconfig includes
    future configuration change (a `userStorage`, an OAuth flow writing
    verifiers) would widen what "purged" must mean; the boundary is stated
    here rather than discovered later.
-2. **Clear-on-successful-write is a design decision, argued not assumed.** The
-   demand records that the disk cannot be vouched for; a session-key write the
-   adapter OBSERVED completing leaves the key space holding the newest session
-   the client knows, so the demand's residual no longer exists as a readable
-   session (the two-generation index swap makes the old payload unreachable).
-   The schedule a reviewer will probe — a library-internal refresh of the
-   RESIDUAL succeeding and clearing the demand — resolves correctly in both
-   real cases: inside Supabase's refresh-token reuse grace the server issued a
-   fresh valid session (recovery, disk fresh); outside it the server refuses
-   and no successful write exists to clear anything. The sticky in-process
-   flag additionally survives every such write (claims 16/17), so the
-   refusal still surfaces to this process's consumer regardless. Fragments of
-   the OLD generation can outlive an overwrite if that write's cleanup was
-   refused: unreachable through `getItem` (reads are bounded by the new
-   index), removed by the next full sweep, and named here rather than
-   claimed away.
+2. **The demand ends in exactly one place — and the review that forced that.**
+   An earlier version of this unit also cleared the demand on any successful
+   session write, reasoning that a completed write proves the disk holds the
+   newest session. The pre-handoff adversarial review (disclosure 1) refuted
+   the design with a concrete schedule: `signOut()` refreshes the residual on
+   its way out (REVIEW-022 finding 2, recorded behaviour), so the purge's OWN
+   internal write — succeeding inside Supabase's refresh-token reuse-grace —
+   erased a `session-purge-pending` demand while the purge was unproven; a
+   kill in the window that follows (a full no-timeout network fetch sits
+   between that write and the removal) left a readable session and no durable
+   record. The clear was deleted rather than conditioned: the sticky flag was
+   going to force a re-authentication after any recovery write anyway, so the
+   clear bought nothing and opened a restart hole. The cost of the surviving
+   design is one conservative re-authentication when a session is freshly
+   minted while a demand is outstanding — the same safe-direction behaviour
+   the sticky flag has had since 005d. Fragments of an overwritten OLD
+   generation can outlive a refused cleanup: unreachable through `getItem`
+   (reads are bounded by the new index), removed by the next full sweep, and
+   named here rather than claimed away.
 3. **The read-back costs 513 reads** per verification, on recovery paths only
    (never on the ordinary sign-in/settle path). Same cost class as removal's
    own 513-delete sweep, and the same reason: enumerability is what makes
@@ -187,16 +190,61 @@ typechecked at this head by the ordinary `tsc` gate (the tsconfig includes
    (ADR-008). On web no observer exists, no demand is recorded, and nothing
    is claimed. `confirmSessionPurged` returns false on web and no production
    web path calls it.
+7. **The record window is not atomic.** A crash in the interval between the
+   keychain's refusal and the durable record's write loses that event's
+   durability — a write-ahead record would only invert the window. Bounded:
+   the on-disk residual's superseded token then meets Supabase's server-side
+   refresh-token reuse detection, the backstop that predates this unit.
+8. **The read-back proves an instant, not a barrier.** A library-internal
+   operation already in flight when `confirmSessionPurged()` returns true can
+   write afterwards. Its outcome is contained by the same machinery as any
+   other write — a refusal records flag and demand; a success stores a
+   server-current session — and is recorded behaviour under ADR-009, not
+   prevented.
+9. **The shipped demand-store backend gates its read on `File.exists`.**
+   Whether the installed `expo-file-system` can report `exists === false` on
+   an I/O refusal rather than throwing is not observable offline; if it can,
+   a refusal at that layer reads as absence and a consult misses a demand.
+   The module-level fail-closed contract is proven over the injectable
+   interface (claim 9); the native layer is Phase B territory. Failure
+   direction: a missed demand falls back to the server-side reuse-detection
+   backstop.
+10. **The absorb is key-filtered, not path-filtered.** Every refused
+    `AUTH_SESSION_STORAGE_KEY` write is recorded-and-absorbed, including a
+    sign-in's own persist — auth-js then reports the sign-in as succeeded
+    with nothing on disk. The divergence is bounded to one foreground cycle:
+    the flag and the durable demand were both recorded before the write
+    resolved, so the next evaluation forces the re-authentication. An
+    oversized (>MAX_CHUNKS) session hits the same path: the adapter's
+    fail-closed refusal is recorded as a demand rather than surfacing as a
+    sign-in error, and the stored previous session is then purged — a
+    disclosed consequence of not distinguishing the library's persist paths,
+    which ADR-009 bars enumerating.
+11. **A double-refusal availability schedule is source-read, not probed.**
+    Reading pinned auth-js suggests a store that refuses DELETES during
+    `_callRefreshToken`'s internal cleanup can leave its refresh Deferred
+    pending — hanging concurrent `getSession()` callers and, through the
+    provider's `evaluating` latch, parking the purge machinery for the rest
+    of the process. The durable demand is recorded BEFORE any such hang, so a
+    restart recovers and R2 holds; the hang itself is an availability
+    question about library internals under schedules no Phase A instrument
+    reaches (learning 20: a probe, not a reading, would settle it). Reported
+    to the controller as an adjacent finding rather than closed here.
 
 ---
 
 ## Disclosures — ruling 6
 
-1. **Workflows run:** one — `unit-e-adversarial-review` (3 finder lenses, one
-   per ADR-009 requirement, plus one verifier per finding), run against the
-   committed implementation before handoff. Per-workflow fan-out and its
-   outcome are disclosed in the HANDOFF block; workflow self-verification is
-   supplementary and is never the review.
+1. **Workflows run:** one — `unit-e-adversarial-review`: 3 finder lenses (one
+   per ADR-009 requirement) + 14 verifiers (one per finding), 17 subagents
+   total, run against the committed implementation before handoff. It
+   returned 14 confirmed findings; the builder's adjudication — one HIGH
+   class fixed by subtraction (the clear-on-success, claim 16), one freeze
+   fixed by a one-line reorder (signedOut set before the purge await), two
+   claims narrowed (13, 18), the rest disclosed as Known limits 7–11 — is
+   recorded in the HANDOFF with the full list. Workflow self-verification is
+   supplementary and is never the review (ruling 6); the reviewer of record
+   gates.
 2. **The editor was open throughout.** The learning-11/ENOTEMPTY caution names
    `npm ci` and gate runs; `npm ci` was never run in this session (the one
    dependency was added with `npx expo install`, which installs additively),

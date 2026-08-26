@@ -244,9 +244,9 @@ describe('ADR-009 / ADR-008 — on NATIVE, a rotated session that cannot be stor
   it('keeps a refused write outstanding when a later write succeeds', async () => {
     // REVIEW-021 finding 2, exactly, and unchanged under ADR-009: a later
     // write succeeding does not un-lose the token the earlier one dropped, so
-    // the flag is STICKY UNTIL TAKEN. (What the later success DOES clear is
-    // the durable demand — asserted in its own block below — because disk
-    // freshness and this process's need to act are different facts.)
+    // the flag is STICKY UNTIL TAKEN. (The durable demand behaves the same
+    // way — asserted in its own block below — and ends only on read-back
+    // proof.)
     const harness = createHarness();
     harness.refuseWrites = true;
     await harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v2'));
@@ -353,12 +353,15 @@ describe('ADR-009 requirement 3 — the refused session write is recorded, then 
     expect(harness.demandBackend.content).toBeNull();
   });
 
-  it('clears the durable demand when a session write later SUCCEEDS', async () => {
-    // What the demand records is that the disk cannot be vouched for. After a
-    // write the adapter observed completing, the key space holds the newest
-    // session the client knows, so the demand's residual no longer exists as
-    // a readable session. The sticky flag is asserted separately above — it
-    // deliberately does NOT clear on the same event.
+  it('keeps the demand outstanding when a later session write succeeds', async () => {
+    // This unit's own adversarial review is why this direction is asserted:
+    // an earlier version CLEARED the demand here, and the purge's own
+    // internal refresh write (`signOut()` refreshes on the way out —
+    // REVIEW-022 finding 2, recorded behaviour) could then erase a
+    // purge-pending demand while the purge was unproven, undoing R2's
+    // restart durability. The demand now ends only on read-back proof, in
+    // the provider's observed purge. Like the flag above, a later success
+    // does not un-demand what an earlier refusal demanded.
     const harness = createHarness();
     harness.refuseWrites = true;
     await harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v2'));
@@ -367,22 +370,8 @@ describe('ADR-009 requirement 3 — the refused session write is recorded, then 
     harness.refuseWrites = false;
     await harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v3'));
 
-    expect(harness.demandBackend.content).toBeNull();
-    // The flag is still sticky — disk freshness does not erase this process's
-    // need to surface the earlier refusal.
+    expect(harness.demandBackend.content).not.toBeNull();
     expect(peekSessionPersistenceFailure()).not.toBeNull();
-  });
-
-  it('does not touch the demand on a successful NON-session write', async () => {
-    const harness = createHarness();
-    harness.refuseWrites = true;
-    await harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v2'));
-    expect(harness.demandBackend.content).not.toBeNull();
-
-    harness.refuseWrites = false;
-    await harness.storage.setItem('some-other-key', 'value');
-
-    expect(harness.demandBackend.content).not.toBeNull();
   });
 
   it('does not record a refused REMOVAL as a persistence failure', async () => {

@@ -281,8 +281,8 @@ DEMAND=src/lib/auth/reauth-demand.ts
     "M6 / claim 8 — the observed purge comes before the provider's own getSession"
   if baseline 'auth-provider' 'purges before its own getSession when a demand is outstanding at mount'; then
     edit "$PROVIDER" \
-      "$(printf '        if (demandOutstanding) {\n          // The observed purge comes BEFORE')" \
-      "$(printf '        if (demandOutstanding && bootstrapStarted) {\n          // The observed purge comes BEFORE')"
+      "$(printf '        if (demandOutstanding) {\n          // With a demand outstanding')" \
+      "$(printf '        if (demandOutstanding && bootstrapStarted) {\n          // With a demand outstanding')"
     verdict 'auth-provider' 'purges before its own getSession when a demand is outstanding at mount'
   fi
 
@@ -357,14 +357,14 @@ DEMAND=src/lib/auth/reauth-demand.ts
     verdict 'foreground-refresh' 'rejects with the ORIGINAL cause when the demand store also refuses'
   fi
 
-  begin_mutant "demand-outlives-a-successful-write" \
-    "a completed session write no longer clears the demand, so a proven-fresh disk still gets purged" \
-    "M14 / claim 16 — a successful observed session write ends the demand"
-  if baseline 'foreground-refresh' 'clears the durable demand when a session write later SUCCEEDS'; then
+  begin_mutant "demand-erased-by-a-later-success" \
+    "a successful session write clears the demand again — the adversarial-review HIGH re-created: signOut's own internal refresh write could erase a purge-pending demand mid-purge" \
+    "M14 / claim 16 — the demand outlives a successful write; only read-back proof ends it"
+  if baseline 'foreground-refresh' 'keeps the demand outstanding when a later session write succeeds'; then
     edit "$STORAGE" \
-      '          await demand.clear();' \
-      '          await Promise.resolve();'
-    verdict 'foreground-refresh' 'clears the durable demand when a session write later SUCCEEDS'
+      "$(printf '      // The demand is NOT cleared on success — see the header. Only the\n      // observed purge%s read-back proof ends it.' "'"'s')" \
+      '      if (key === AUTH_SESSION_STORAGE_KEY) await demand.clear();'
+    verdict 'foreground-refresh' 'keeps the demand outstanding when a later session write succeeds'
   fi
 
   # ------------------------------------------------------------ restoration

@@ -135,15 +135,19 @@ export function clearSessionPersistenceFailure(): void {
  * refusal exactly as before — the pre-ADR-009 behaviour, with its known
  * unhandled rejections, is the recorded fallback rather than a silent one.
  *
- * A SUCCESSFUL session write clears the demand. What the demand records is
- * that the disk cannot be vouched for; after a write the adapter observed
- * completing, the key space holds the newest session the client knows — the
- * residual it warned about is no longer what a reader gets. The sticky flag
- * below is deliberately NOT cleared by the same event, so the refusal still
- * reaches this process's consumer even after a later write lands. A failed
- * clear is absorbed: the demand then outlives its cause, which costs one
- * observed purge and a re-authentication — the safe direction — never a
- * trusted session that should not be.
+ * A SUCCESSFUL session write does NOT clear the demand. An earlier version
+ * cleared it here, reasoning that a completed write proves the disk holds
+ * the newest session — and this unit's own adversarial review found what
+ * that invites: `signOut()` refreshes the residual on its way out
+ * (REVIEW-022 finding 2, recorded behaviour), so the purge's OWN internal
+ * write could erase a 'session-purge-pending' demand while the purge it
+ * records was still unproven, and a crash in the window that follows left
+ * a readable session with no durable record — the exact restart hole the
+ * demand exists to close. So the demand now ends in exactly one place:
+ * `auth-provider.tsx`'s observed purge, on read-back proof. The cost is one
+ * conservative re-authentication after a recovery write — which the sticky
+ * flag below was already going to force — never a cleared demand that
+ * should not be.
  */
 export function observingWrites(
   inner: ChunkedSecureStore,
@@ -175,14 +179,9 @@ export function observingWrites(
         lastPersistenceFailure = { key, cause };
         throw cause;
       }
-      if (key === AUTH_SESSION_STORAGE_KEY) {
-        try {
-          await demand.clear();
-        } catch {
-          // Absorbed — see the header. The demand stays; the next consult
-          // purges an already-overwritten space and retries the clear.
-        }
-      }
+      // The demand is NOT cleared on success — see the header. Only the
+      // observed purge's read-back proof ends it.
+      //
       // The flag is NOT cleared on success. REVIEW-021 finding 2 reproduced
       // the defect that rule removes: a refused rotation of v2 followed by a
       // successful write of v3 erased the outstanding failure before the

@@ -278,16 +278,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (demandOutstanding) {
+          // With a demand outstanding the resolution is signedOut whatever
+          // the purge below achieves, so it is set BEFORE the await: the
+          // purge's network legs have no timeout of their own, and a
+          // never-settling fetch must strand the purge retry, not the UI on
+          // a frozen splash. If the purge verifies, the bootstrap that
+          // follows re-resolves the state from an empty store.
+          if (active) setState({ status: 'signedOut' });
           // The observed purge comes BEFORE this provider's own
           // `getSession()`. REVIEW-022 found the order reversed — the
           // provider loaded (and could refresh) the very session it refused
           // to use, then retried the purge. While the demand is unmet,
           // nothing below runs: no bootstrap, no settle, no session exposed.
           demandOutstanding = !(await observedPurge());
-          if (demandOutstanding) {
-            if (active) setState({ status: 'signedOut' });
-            return;
-          }
+          if (demandOutstanding) return;
         }
 
         if (!bootstrapStarted) startBootstrap();
