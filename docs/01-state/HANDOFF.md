@@ -1,3 +1,110 @@
+## 2026-08-27 — REVIEW-025, Unit E fix cycle 2 of 3
+
+**Controller:** CTRL-006 Auth Phase B and session durability.
+**Reviewer of record:** Codex Sol / Ultra / fresh session — the dispatched
+seat. The harness does not expose model, effort, or prior-session identity
+metadata, so those three attributes cannot be independently confirmed.
+**Code target:** `feat/session-durability` fix-cycle-2 head
+`2620802a208981a34a88690d4eba5ad10b096b61`.
+**Review overlay:** `85a319d866fb7818ac8367a3a0f1669cee49bd74`, whose sole
+change above the candidate is the controller-owned LOCK transition.
+**Base:** `main` at `7caf23e10856601f17d52ae37ae59fbb9dbbac60`.
+**Output:** immutable `docs/04-reviews/REVIEW-025.md` plus this required
+append-only top insert; exactly two files in the review commit.
+**Verdict:** **FAIL**.
+
+### Preflight and boundary
+
+- Required sequence passed: fetch; checkout `85a319d8…`; diff stat from
+  `2620802a…`. The overlay changes only `docs/01-state/BRANCH-NOTES.md`, 19
+  lines (`+18/-1`). The LOCK reads `Status: REVIEW` and says “cycle-2 review,
+  REVIEW-025.” It is left untouched.
+- `AGENTS.md` matched the dispatched 5378 bytes and SHA-256
+  `0ff02d209247dadd94f217b441732baa87ed9f182f9b734cece668b1c3f0f013`
+  before it was trusted. All probes ran in disposable exact-head worktrees;
+  no live Supabase endpoint, credential, device, or production system was
+  accessed.
+- Full base range: 21 commits, 93 files, `+17689/-538`. Cycle range: five
+  commits, 40 files, `+6105/-100`; the per-commit counts in the builder
+  HANDOFF match Git and `git diff --check` passes.
+
+### REVIEW-024 dispositions
+
+- **Finding 1 CLOSED.** The prior read-throws/`exists=false` schedule and the
+  refused-listing, listed-but-unreadable, and listing/`exists` contradiction
+  cases all stay outstanding. Only a successful empty listing corroborated by
+  `exists=false` yields absence.
+- **Finding 2 OPEN at the governing invariant and structural-enforcement
+  claim.** The builder's five named schedules, current-tree publisher
+  enumeration, flag-before-record order, and foreground take/cache act pass. A
+  real pinned-client sign-out schedule nevertheless ends `signedIn` after a
+  refused refresh installs a durable demand: both `TOKEN_REFRESHED(session)`
+  and `SIGNED_OUT(null)` are dropped, and the action has no direct publication.
+  Independently, a queued
+  `signedIn` commits after the real observer raises the flag/demand before
+  React flush. The lint/type claim also fails: a default React import with
+  `useState` destructured under an alias mints a second setter while ESLint and
+  all nine committed publisher-suite tests stay green. REVIEW-024 finding 2 was
+  already the second in-class recurrence; this third recurrence fires the stop
+  rule. **Cycle 3 remedies by subtraction, not by a further fix.**
+- **Finding 3 OPEN / FAIL introduced by this work.** `stability.sh` exits 0 at exact `2620802a` and at the
+  docs/01-only overlay `85a319d8`, but the universal is false. A disposable
+  docs/04-only review commit kept all 12 bound product OIDs identical, both
+  captures exited 0 and agreed, yet the red-lane listing grew 19→20 and
+  stability exited 1. A docs-only `.ts` control independently changed the
+  typecheck gate while every bound OID stayed equal. This required REVIEW-025
+  record is itself a counterexample of that class.
+- **Ruling-26 comment deletion HONOURED.** Commit `b715105` is one file and
+  comment-only; no executable behavior changed.
+
+### Independent probes and classifications
+
+- Builder `review024-probe`: `5f6d2e6c` 3 discriminating RED / 2 controls
+  GREEN; `2620802a` 5/5 GREEN; runner 0. Rebased `review023-probe`:
+  `caa31ee2` 7/7 RED; `2620802a` 7/7 GREEN; runner 0. **PASS at the named
+  schedules.**
+- Real-client sign-out/refusal schedule: durable demand present, no session
+  material, zero unhandled, action error null, final provider state
+  `signedIn`; focused Jest expected `signedOut`, received `signedIn`, exit 1.
+  Opposite-order queued-publication probe failed the same invariant twice.
+  **FAIL pre-existing / recurring.**
+- Direct named-import lint control fails as configured, but the default-import
+  alias control typechecks, exits ESLint 0, and leaves the committed publisher
+  suite GREEN. **FAIL introduced by this work: the structural “cannot mint
+  another setter” claim.**
+  Both disposable mutations were restored byte-identically.
+- Fresh mutation battery: 33 baseline GREEN, 33 build-valid, 33 individually
+  RED, zero invalid; five product files restored byte-identically. **PASS as
+  execution, not coverage.** The publication log measures calls entering the
+  barrier, not consumer exposure.
+- 006a and 006b remain byte-identical. Their tree OIDs are respectively
+  `be85ba58558cd167f72ca88572f1aa687d4e7c15` and
+  `67d57d138cc5c99cfc5705cc312761f2408b818a`. The 006c supersession list
+  narrows claims 9/10 and corrects the old claim-number misattribution, but
+  the scope/invariant prose and claims 6/16/18/19 still exceed their
+  instruments; claim 14 receives only named-behavior credit.
+- Exact-candidate CI **PASS**, run 32989188068, `head_sha=2620802a…`.
+  Live Supabase, native File/keychain behavior, physical restart/device, and
+  Unit F's server bound are **NOT RUN**.
+
+### Governance and adjacent findings
+
+- Builder log over `d38b2ba4..2620802a` is empty for `BRANCH-NOTES.md`.
+  Nothing in the cycle touches `supabase/`, `.github/`, `app.json`, package
+  manifests, generated database types, ADRs, or prior reviews. The builder's
+  ruling-6 disclosure is nil: no workflow, no subagent.
+- Three supplementary review subagents covered evidence, real-client
+  schedules, and static auth-state routes. No orchestrated workflow was run.
+- `clear()`/`remove()` with lying `exists=false` leaves the record present and
+  restart-visible. **ACCEPT as Known limit 6:** fail-closed, one redundant
+  purge/re-authentication, no exposure.
+- No adjacent finding was acted on. No product code, evidence, ADR, prior
+  review, LOCK, migration, or outward-facing system was changed.
+
+**LOCK status line:** `Status: REVIEW` — read and left untouched.
+
+---
+
 ## 2026-08-26 — Unit E fix cycle 2 of 3, feat/session-durability
 
 **Controller:** CTRL-006 Auth Phase B and session durability.
