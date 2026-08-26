@@ -1,3 +1,94 @@
+## 2026-08-27 — REVIEW-026, Unit E fix cycle 3 of 3 (subtraction)
+
+**Reviewer of record:** Codex Sol / Ultra / fresh session; **Controller:**
+CTRL-006 Auth Phase B and session durability. This is the dispatched seat; the
+runtime harness does not expose model, reasoning-effort, or prior-session
+identity metadata, so those attributes cannot be independently confirmed.
+**Code target:** `feat/session-durability` at
+`9e90fdba7d3e828da5a716a8985957f85e166b82`.
+**Review overlay:** `f15199e4b561031f5b68dce335b7f25d727e619f`, whose sole
+change above the code target is the controller-owned LOCK transition.
+**Base:** `main` at `7caf23e10856601f17d52ae37ae59fbb9dbbac60`.
+**Output:** immutable `docs/04-reviews/REVIEW-026.md` plus this required
+append-only top insert; exactly two files in the review commit.
+**Verdict:** **FAIL**.
+
+### Verdict
+
+Ruling 28's no-behaviour-change boundary is honoured, but the subtraction is
+not fully honest. Three claim defects remain:
+
+1. `auth-state-publisher.ts` still says one barrier is the single point every
+   publication must pass and that a publisher added tomorrow is automatically
+   gated. REVIEW-025's alias counterexample disproved that structural
+   universal; the new narrowing beside it does not withdraw the old prose.
+2. The 006d Known-Issues register says the durable demand is consulted before
+   **any session load**. ADR-009 and shipped source say constructor/internal
+   loads can precede the provider consult. Only purge-before-the-provider's-own
+   `getSession()` is established.
+3. The 006d README and prior HANDOFF block say 006c's Known limits carry
+   forward **unchanged**, while limits 2, 5, 10, and 11 lose or replace
+   substantive clauses. Some narrowing is correct under ruling 28; “unchanged”
+   is not.
+
+No fix cycles remain. These findings are corrected by further subtraction
+only, never by code. This review makes no merge recommendation and supplies no
+PROJECT-STATE copy block.
+
+### Acceptance items and fresh probes
+
+- **1 — PASS, no behaviour/assertion change.** Comment-free tokens and emitted
+  JS are identical across `2620802a..9e90fdba` for both auth files; ESLint is
+  also token-identical. Ordered assertion statements are identical: provider
+  145/145, publisher 18/18. The test delta is comments plus two `describe`
+  strings.
+- **2 — FAIL, invariant/structural claim not fully withdrawn.** The README and
+  named-schedule block enumerate REVIEW-023/024 and say “NOT established in
+  general,” but the stale future every-publication paragraph remains.
+- **3 — FAIL overall.** The two Known-Issue schedules are verbatim REVIEW-025,
+  HIGH, class session exposure. The exact-head runner exits 0 with 3/3
+  preconditions GREEN and 3/3 witnesses RED as expected (`expected signedOut`,
+  `received signedIn`). All four controls appear; control 1's added “before any
+  session load” sentence is false.
+- **4 — FAIL overall.** The named-import rule and publisher-enumeration
+  assertions are unchanged in effect, and the alias bypass is documented
+  beside the rule and in 006d. The stale structural future claim remains.
+- **5 — PASS.** `stability.sh` at both `afef2b2a` and `9e90fdba`: exit 0,
+  captures A/B 0, 9/9 pair- and committed-identical; committed stability hash
+  `c0d22c8121fd9ed8a66163a3aa3c01f5bbb72f0f596c650e96666ad3b29fec8d`.
+  `binding.txt` identifies its one base SHA; `red-lane.txt` states the exact
+  exclusions, lists 20 paths, and includes REVIEW-025; no scan exclusion was
+  added.
+- **6 — FAIL overall.** The numbered claims are instrument-bound and 006a/b/c
+  recompute exactly as `be85ba58…`, `67d57d13…`, `6fbba42b…`. All eleven
+  Known-limit headings survive, but the bodies are materially changed while
+  the record calls them unchanged.
+- **7 — PASS.** Builder range: 38 files, `+6390/-43`; BRANCH-NOTES untouched;
+  ruling-6 disclosure nil; `reauth-demand.ts` blob `cc3a6237…` at cycle 2 and
+  head; no `supabase/`, `.github/`, `app.json`, manifest/lockfile, generated-
+  type, ADR, or prior-review delta.
+
+Exact-code-head CI independently rechecked: run 33003500621, completed
+success, `head_sha=9e90fdba…`.
+
+### Review workflow and boundary
+
+Three supplementary read-only subagents covered standards/governance,
+ruling-28 spec/prose, and evidence/producers. The reviewer of record inspected
+the instruments and reran every verdict-driving probe. No live Supabase
+endpoint, credential, secret, device, production system, deployment, or other
+outward-facing action was used; fake stores/fetch only.
+
+This review changed no product code, test assertion, evidence artifact, ADR,
+LOCK status, BRANCH-NOTES content, migration, policy, dependency, or
+outward-facing system. The review commit contains only REVIEW-026 and this top
+insert; its pushed SHA is reported externally because a commit cannot name
+itself.
+
+**LOCK status line:** `Status: REVIEW` — read and left untouched.
+
+---
+
 ## 2026-08-27 — Unit E fix cycle 3 of 3 (SUBTRACTION, ruling 28), feat/session-durability
 
 **Controller:** CTRL-006 Auth Phase B and session durability.
