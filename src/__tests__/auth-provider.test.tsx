@@ -48,6 +48,47 @@ jest.mock('@/lib/auth/reauth-demand', () => ({
   retryReauthDemandRecord: jest.fn(),
 }));
 
+/**
+ * The REAL publication barrier, transparently wrapped so every `publish`
+ * invocation is RECORDED before it runs. Render histories cannot observe a
+ * transient exposure that React batches away within one tick (the same
+ * compression the probes document for the A2 window), and the barrier
+ * itself absorbs a deleted listener gate — so the gate tests below assert
+ * on THIS log: a dropped event never reaches `publish` at all, which is a
+ * fact batching cannot hide. Pure pass-through otherwise; every other test
+ * in this file runs the real barrier unchanged.
+ */
+const mockPublishLog: string[] = [];
+const mockPublishWraps = new WeakMap<object, (next: { status: string }) => void>();
+// Defined OUTSIDE the jest.mock factory: babel's hoist checker rejects any
+// non-mock-prefixed identifier inside the factory, type positions included,
+// so the typed logic lives here and the factory calls it by its mock- name.
+// Identity-stable: the provider's session effect lists `publish` in its
+// dependency array, so the wrapper must not mint a new function per render.
+const mockWrapPublisher = (
+  real: ReturnType<(typeof import('@/lib/auth/auth-state-publisher'))['useAuthStatePublisher']>,
+) => {
+  let wrapped = mockPublishWraps.get(real.publish);
+  if (!wrapped) {
+    const forward = real.publish as (value: { status: string }) => void;
+    wrapped = (next: { status: string }) => {
+      mockPublishLog.push(next.status);
+      forward(next);
+    };
+    mockPublishWraps.set(real.publish, wrapped);
+  }
+  return { ...real, publish: wrapped };
+};
+jest.mock('@/lib/auth/auth-state-publisher', () => {
+  const actual = jest.requireActual(
+    '@/lib/auth/auth-state-publisher',
+  ) as typeof import('@/lib/auth/auth-state-publisher');
+  return {
+    ...actual,
+    useAuthStatePublisher: () => mockWrapPublisher(actual.useAuthStatePublisher()),
+  };
+});
+
 const {
   takeSessionPersistenceFailure,
   peekSessionPersistenceFailure,
@@ -119,6 +160,7 @@ const FAKE_SESSION = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockPublishLog.length = 0;
   auth.onAuthStateChange.mockImplementation((callback: typeof emit) => {
     emit = callback;
     return { data: { subscription: { unsubscribe } } };
@@ -670,8 +712,13 @@ describe('auth provider — the observed purge and the durable demand', () => {
     await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
 
     // The purge's own internal refresh announces the session it is deleting.
+    // Asserted at the publication log, beneath React's batching: the gated
+    // event never reaches publish at all — the listener drops it whole
+    // rather than leaning on the barrier to refuse it.
+    const publishesBeforeEvent = mockPublishLog.length;
     await act(async () => emit('TOKEN_REFRESHED', FAKE_SESSION));
     expect(result.current.state.status).toBe('signedOut');
+    expect(mockPublishLog.slice(publishesBeforeEvent)).not.toContain('signedIn');
 
     await act(async () => releaseLogout());
     await waitFor(() => expect(clearReauthDemand).toHaveBeenCalledTimes(1));
@@ -858,10 +905,13 @@ describe('auth provider — the advisory invariant: no exposure while a demand s
     await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
 
     peekSessionPersistenceFailure.mockReturnValue(REFUSED);
+    const publishesBeforeEvents = mockPublishLog.length;
     await act(async () => emit('SIGNED_IN', FAKE_SESSION));
     expect(result.current.state.status).toBe('signedOut');
     await act(async () => emit('TOKEN_REFRESHED', FAKE_SESSION));
     expect(result.current.state.status).toBe('signedOut');
+    // Beneath batching: the events were dropped whole, never published.
+    expect(mockPublishLog.slice(publishesBeforeEvents)).not.toContain('signedIn');
 
     // Flag consumed and no demand outstanding: events flow again.
     peekSessionPersistenceFailure.mockReturnValue(null);
@@ -1067,5 +1117,12 @@ describe('auth provider — the REVIEW-024 publication barrier', () => {
 
     await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
     expect(history.some((state) => state.status === 'signedIn')).toBe(false);
+    // The render history alone cannot prove this: React batches a transient
+    // signedIn away within the tick (observed while building this cycle's
+    // battery). The publication log is beneath batching — the injected
+    // event must never reach publish with a session, because the take
+    // raised the demand signal in the same synchronous act that consumed
+    // the flag, and the listener therefore dropped it.
+    expect(mockPublishLog).not.toContain('signedIn');
   });
 });
