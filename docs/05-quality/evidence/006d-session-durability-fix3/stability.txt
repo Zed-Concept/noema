@@ -1,0 +1,42 @@
+# Byte-stability across two fresh capture.sh runs, at the one commit
+# this run happened at (ruling 28: the 006c every-matching-commit
+# universal is withdrawn — REVIEW-025 finding 2). The heads where
+# stability was demonstrated are named in the README; review records
+# added afterwards change red-lane.txt by construction and are outside
+# the claim. Compares the gated artifacts — binding.txt included —
+# between the two fresh runs AND against the committed copies. No run
+# head is recorded in this transcript; the commit each capture ran at
+# is in the run directories' non-gated binding-head.txt, not compared
+# and not kept.
+
+## Binding of this stability run
+product trees: as recorded in binding.txt — the comparison against the
+               committed copy below IS the verification that this run
+               measured the same product trees the committed set binds
+tree: clean beyond this evidence directory (git status exit 0)
+
+capture run A exit: 0
+capture run B exit: 0
+
+## Gated artifacts (fresh run A vs fresh run B, then run A vs committed)
+  binding.txt                IDENTICAL
+  binding.txt                matches the committed copy
+  gates.txt                  IDENTICAL
+  gates.txt                  matches the committed copy
+  adapter-properties.txt     IDENTICAL
+  adapter-properties.txt     matches the committed copy
+  session-properties.txt     IDENTICAL
+  session-properties.txt     matches the committed copy
+  route-guards.txt           IDENTICAL
+  route-guards.txt           matches the committed copy
+  banned-apis.txt            IDENTICAL
+  banned-apis.txt            matches the committed copy
+  red-lane.txt               IDENTICAL
+  red-lane.txt               matches the committed copy
+  chrome.txt                 IDENTICAL
+  chrome.txt                 matches the committed copy
+  deps.txt                   IDENTICAL
+  deps.txt                   matches the committed copy
+
+gated artifacts: 9
+differing-or-failing comparisons: 0

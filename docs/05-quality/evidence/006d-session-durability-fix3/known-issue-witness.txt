@@ -1,0 +1,106 @@
+# Known-Issue witness — REVIEW-025 finding 1's two schedules, EXPECTED RED.
+# See known-issue-witness.tsx for what is asserted and
+# known-issue-witness.sh for the inverted contract: preconditions must
+# PASS, witnesses must FAIL (expected signedOut, received signedIn),
+# or this runner exits 1.
+#
+# head: 5e787a6360a1cadeb7f95669f86cfeb0c6b74c96 (the commit the witness ran against. The commit that
+# adds this transcript necessarily post-dates it — the same
+# head-cannot-name-itself boundary as ci.txt.)
+
+==========================================================================
+## RUN — head 5e787a6360a1cadeb7f95669f86cfeb0c6b74c96 (jest exit: 1; expected nonzero:
+## the witness tests are expected RED)
+==========================================================================
+FAIL src/__tests__/known-issue-witness.test.tsx
+  REVIEW-025 Known Issue 1 — signOut() under a refused mid-sign-out refresh (severity HIGH, class session exposure)
+    ✓ KI-1 PRECONDITION — the schedule reproduces: refused rotation, durable demand, empty key space, action error null, zero unhandled
+    ✕ KI-1 WITNESS (expected RED) — the withdrawn invariant: the provider ends signedOut with the demand outstanding
+  REVIEW-025 Known Issue 2 — queued signedIn commits past a rising signal (severity HIGH, class session exposure)
+    ✓ KI-2 PRECONDITION (flag) — the refused observed write installs the flag and durable demand before commit; the NEXT publication is refused
+    ✕ KI-2 WITNESS (expected RED, flag) — the withdrawn invariant: the queued signedIn does not commit past the rising flag
+    ✓ KI-2 PRECONDITION (demand) — the predicate rises before commit; the NEXT publication is refused
+    ✕ KI-2 WITNESS (expected RED, demand) — the withdrawn invariant: the queued signedIn does not commit past the rising demand
+
+  ● REVIEW-025 Known Issue 1 — signOut() under a refused mid-sign-out refresh (severity HIGH, class session exposure) › KI-1 WITNESS (expected RED) — the withdrawn invariant: the provider ends signedOut with the demand outstanding
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "signedOut"
+    Received: "signedIn"
+
+      398 |     // remained signedIn. EXPECTED RED until the follow-up unit closes the
+      399 |     // class; a GREEN run here means the Known Issue no longer reproduces.
+    > 400 |     expect(hook.result.current.state.status).toBe('signedOut');
+          |                                              ^
+      401 |
+      402 |     await hook.unmount();
+      403 |     proc.rtl.cleanup();
+
+      at Object.toBe (src/__tests__/known-issue-witness.test.tsx:400:46)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● REVIEW-025 Known Issue 2 — queued signedIn commits past a rising signal (severity HIGH, class session exposure) › KI-2 WITNESS (expected RED, flag) — the withdrawn invariant: the queued signedIn does not commit past the rising flag
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "signedOut"
+    Received: "signedIn"
+
+      458 |     // publish() was called and nothing re-evaluates the standing state.
+      459 |     // EXPECTED RED until the follow-up unit closes the class.
+    > 460 |     expect(result.current.state.status).toBe('signedOut');
+          |                                         ^
+      461 |
+      462 |     await unmount();
+      463 |     world.rtl.cleanup();
+
+      at Object.toBe (src/__tests__/known-issue-witness.test.tsx:460:41)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● REVIEW-025 Known Issue 2 — queued signedIn commits past a rising signal (severity HIGH, class session exposure) › KI-2 WITNESS (expected RED, demand) — the withdrawn invariant: the queued signedIn does not commit past the rising demand
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "signedOut"
+    Received: "signedIn"
+
+      511 |     // commits and remains. EXPECTED RED until the follow-up unit closes
+      512 |     // the class.
+    > 513 |     expect(result.current.state.status).toBe('signedOut');
+          |                                         ^
+      514 |
+      515 |     await unmount();
+      516 |     world.rtl.cleanup();
+
+      at Object.toBe (src/__tests__/known-issue-witness.test.tsx:513:41)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+Test Suites: 1 failed, 1 total
+Tests:       3 failed, 3 passed, 6 total
+Snapshots:   0 total
+Time:        <duration>
+Ran all test suites matching /known-issue-witness/i.
+Test results written to: ../../../../../../../../var/folders/nf/5n98ynn57fsc0fzmgpsc5rwm0000gn/T/tmp.Cez8DGXbKk
+
+==========================================================================
+## PER-TEST CLASSIFICATION (from jest --json)
+==========================================================================
+precondition passed  KI-1 PRECONDITION — the schedule reproduces: refused rotation, durable demand, empty key space, action error null, zero unhandled
+precondition passed  KI-2 PRECONDITION (flag) — the refused observed write installs the flag and durable demand before commit; the NEXT publication is refused
+precondition passed  KI-2 PRECONDITION (demand) — the predicate rises before commit; the NEXT publication is refused
+witness      failed  KI-1 WITNESS (expected RED) — the withdrawn invariant: the provider ends signedOut with the demand outstanding
+witness      failed  KI-2 WITNESS (expected RED, flag) — the withdrawn invariant: the queued signedIn does not commit past the rising flag
+witness      failed  KI-2 WITNESS (expected RED, demand) — the withdrawn invariant: the queued signedIn does not commit past the rising demand
+counts: preconditions 3/3 passed, witnesses 3/3 failed-as-expected
+verdict: WITNESS-HOLDS
+
+==========================================================================
+## VERDICT
+==========================================================================
+every PRECONDITION passed and every WITNESS failed exactly as expected:
+the two REVIEW-025 Known Issues reproduce at this head, and their
+reproduction is this committed record. runner exit: 0
