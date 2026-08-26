@@ -96,7 +96,7 @@ Advisory reviewer:  DeepSeek V4 Pro / fresh session — the ADR-001 auth trigger
                     not by reading it (learning 20). Advisory carries no merge
                     authority; the controller adjudicates against the RoR
                     record.
-Status:             BUILD
+Status:             REVIEW
 Dispatch:           Unit E — Session durability: close REVIEW-022 finding 3 to
                     ADR-009's three review-gated requirements — purge success
                     observed by read-back, never inferred from the absence of
@@ -216,6 +216,23 @@ cycle (controller extension of the ruling's touch-set; one file). Fix
 cycle 2 dispatched to Claude Code, Fable 5 / Max / fresh session. Draft
 PR #17 stays open for CI only. Written through the Composio GitHub
 connection.
+
+**Phase transition BUILD -> REVIEW (cycle-2 review, REVIEW-025), 2026-08-26,
+CTRL-006.** Fix-cycle-2 head verified reachable at
+`2620802a208981a34a88690d4eba5ad10b096b61`: five builder commits
+(`46deb1e`, `b715105`, `4742aef`, `862a4f7`, `2620802`) above `d38b2ba4`,
+40 files, this file untouched in the range, nothing under `supabase/`,
+`.github/`, `app.json`, `package.json` or the lockfile; CI success at the
+head (run 32989188068). Scope of REVIEW-025: closure of REVIEW-024 findings
+1–3 — consult by positive observation, ONE publication barrier as a type-
+and lint-level fact (the stop-rule class), evidence invariant under
+docs-only commits proven at the final head — plus the authorised ruling-26
+comment deletion in `secure-store-adapter.ts`. Reviewer of record Codex Sol
+/ Ultra / fresh session; record REVIEW-025 plus HANDOFF top-insert, two
+files. One fix cycle remains; an in-class recurrence of the exposure defect
+here is remedied by subtraction in cycle 3, not by a further fix. This
+note is the only commit above the builder head and touches this file
+alone. Written through the Composio GitHub connection.
 
 ---
 
