@@ -288,6 +288,29 @@ pass; and the early `gates.txt` anomaly stays DISCLOSED and unexplained across
 three cycles, recorded so "non-dispositive twice" is never quietly promoted to
 "resolved".
 
+**Owner override authorised, 2026-08-26, CTRL-005.** REVIEW-022 returned
+**FAIL** at `c86ed5c2`: three findings MUST CLOSE, one SHOULD DELETE, the rest
+ACCEPT AND RECORD. The fix-cycle budget was exhausted.
+
+Findings 1 and 2 were attempts to enforce ADR-007's foreground-gating clause,
+which **ADR-009 now supersedes as unenforceable**: three cycles found four-plus
+refresh entrances into a pinned dependency that self-initiates from
+construction, from `getSession()`, and from `signOut()`, each fix revealing
+another. Under ADR-009 they are recorded library behaviour, not defects.
+Finding 4 closes by subtraction. **Finding 3 — purge success inferred from the
+absence of a rejection, with a process-local demand that does not survive
+restart — remains genuinely open** and is the sole subject of the override.
+
+The owner authorised merging on that single documented finding, on the Unit C
+precedent, with no users, no production, and staging-only credentials. Finding 3
+is recorded in Known Issues and closes in a named follow-up unit **before Phase
+B exit**, not before Phase B starts. **ADR-009 is the last re-scope of Unit D**:
+if the follow-up does not close finding 3, it ships as a Known Issue and the
+unit is finished regardless.
+
+This block still reads `REVIEW`; the controller reconciles it to `MERGED` in the
+CTRL-005 close-out state commit, per learning 5.
+
 This block was edited in the owner's working tree rather than through the
 GitHub API: the controller's Composio project key was revoked mid-session and
 repo write access was lost. The owner commits and pushes it. Recorded because
