@@ -96,7 +96,7 @@ Advisory reviewer:  DeepSeek V4 Pro / fresh session — the ADR-001 auth trigger
                     not by reading it (learning 20). Advisory carries no merge
                     authority; the controller adjudicates against the RoR
                     record.
-Status:             REVIEW
+Status:             BUILD
 Dispatch:           Unit E — Session durability: close REVIEW-022 finding 3 to
                     ADR-009's three review-gated requirements — purge success
                     observed by read-back, never inferred from the absence of
@@ -199,6 +199,23 @@ REVIEW-024 plus HANDOFF top-insert, two files. The advisory seat is spent
 for this unit unless the reviewer of record flags new high risk. This note
 is the only commit above the builder head and touches this file alone.
 Written through the Composio GitHub connection.
+
+**Phase transition REVIEW -> BUILD (fix cycle 2 of 3), 2026-08-26, CTRL-006.**
+REVIEW-024 (Codex Sol / Ultra, record at `055ac265`): **FAIL** — three
+findings: (1) HIGH, a thrown demand read plus `exists === false` still
+reads as absence; (2) HIGH, in-class recurrence of the exposure defect —
+`getSession()` publishes state after its await with no demand boundary;
+(3) MEDIUM, 006b bound to `74024465`, not the candidate, and `red-lane.txt`
+not byte-stable at the candidate. REVIEW-023 findings 1, 3, 4, 6 closed or
+honoured; 2 closed in its exact schedule but open in class; 5 open. The
+reviewer invoked the stop rule on the exposure class: cycle 2 must close it
+structurally — one enforced post-await publication barrier — or cycle 3
+remedies by subtraction. The adjacent `secure-store-adapter.ts:353-363`
+world-assertion comment is authorised for deletion under ruling 26 this
+cycle (controller extension of the ruling's touch-set; one file). Fix
+cycle 2 dispatched to Claude Code, Fable 5 / Max / fresh session. Draft
+PR #17 stays open for CI only. Written through the Composio GitHub
+connection.
 
 ---
 
