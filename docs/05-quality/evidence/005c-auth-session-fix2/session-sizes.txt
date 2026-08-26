@@ -1,0 +1,42 @@
+# Session size versus the chunk ceiling — the measurement REVIEW-020 finding 2 asked for.
+#
+# CHUNK_BUDGET_BYTES and MAX_CHUNKS are READ FROM THE SHIPPED MODULE below,
+# not restated here: a measurement that hard-coded them would keep agreeing
+# with itself after the constants changed.
+#
+# The session shape is the full GoTrue session — JWT-sized access token,
+# refresh token, and the complete user object including timestamps and the
+# identities array. Serialized exactly as auth-js persists it:
+# _saveSession -> setItemAsync(storage, key, data) -> storage.setItem(key,
+# JSON.stringify(data))  (lib/helpers.js:132-134).
+
+CHUNK_BUDGET_BYTES = 1536   (read from secure-store-adapter.ts)
+MAX_CHUNKS         = 256   (read from secure-store-adapter.ts)
+ceiling            = 393216 bytes (384 KiB)
+removal cost       = 513 backend deletes, paid once per sign-out
+
+chunks    chars  admitted  session shape
+------  -------  --------  -------------
+     2     2010  yes       empty user_metadata — what Noema v1 email OTP actually creates
+     2     2089  yes       small profile (full_name, avatar_url, locale)
+     2     3043  yes       1 KiB metadata
+     8    12259  yes       10 KiB metadata
+    44    67555  yes       64 KiB metadata
+    67   102019  yes       REVIEW-020 finding 2 counterexample: 100,000-char metadata value
+   172   264163  yes       256 KiB metadata
+   684  1050595  NO        1 MiB metadata
+
+headroom over the session this product actually creates: 128x
+
+# WHAT THIS DOES NOT SHOW.
+# There is no finite ceiling that is provably unreachable: UserMetadata is an
+# open-ended index signature, so for ANY bound a structurally valid session
+# above it exists — the 1 MiB row is one. MAX_CHUNKS is a RESOURCE BOUND ON
+# REMOVAL, not a safety property, and the refusal above it is a disclosed
+# functional limit. What makes that limit safe rather than merely bounded is
+# that exceeding it throws BEFORE any backend write: zero writes, a byte-stable
+# key set, and the previous value still readable. It never truncates.
+#
+# Whether the Noema Supabase project would ever return metadata approaching
+# this size is NOT RUN — Phase A makes no live auth call. ADR-007 Phase B is
+# where a real session is first measured.

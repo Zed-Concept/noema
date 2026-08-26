@@ -1,0 +1,17 @@
+# Dependency delta against the base.
+# Authorized for this unit: expo-secure-store, and nothing else.
+# Fix cycle 1 adds NO dependency: the checksum ADR-006 requires is
+# computed inline, with no crypto API and no new package.
+
+## git diff package.json (dependency lines only)
++    "expo-secure-store": "~57.0.1",
+
+## installed version
+expo-secure-store: 57.0.1
+
+## SDK compatibility — installed via npx expo install, so the SDK 57 pin holds
+package.json range: ~57.0.1
+expo range:         ~57.0.14
+
+## auth-js is pinned through the lockfile, and this unit does not move it
+@supabase/auth-js installed: 2.112.3

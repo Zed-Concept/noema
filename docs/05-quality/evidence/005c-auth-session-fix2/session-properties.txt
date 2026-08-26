@@ -1,0 +1,79 @@
+# The session layer's properties: bootstrap, currency, OTP call shapes,
+# device-local sign-out, and ADR-007's refresh lifecycle — the foreground
+# gate, and a rotated session that could not be persisted forcing
+# re-authentication.
+#
+# TWO SUITES, and the split is deliberate. In auth-provider the supabase
+# client module is replaced by a double, which is what REVIEW-020 finding 1
+# said could never observe the property: method spies cannot see a storage
+# write. So foreground-refresh runs the REAL chunked adapter over a real
+# in-memory keychain and produces the refused write by actually refusing
+# one. The provider suite proves the wiring; the foreground-refresh suite
+# proves the behaviour.
+#
+# No network call and no credential is involved in either.
+
+
+> noema@0.1.0 test
+> jest --ci --runInBand --verbose --testPathPattern auth-provider
+
+PASS src/__tests__/auth-provider.test.tsx
+  auth provider — bootstrap
+    ✓ starts in bootstrapping, which is not signed out
+    ✓ resolves to signedOut when there is no stored session
+    ✓ resolves to signedIn and carries the session when one is stored
+    ✓ resolves rather than hanging when the stored session cannot be read
+    ✓ stops waiting on a cold-start read that never settles
+    ✓ subscribes before reading, so an event in flight is not missed
+  auth provider — currency
+    ✓ follows onAuthStateChange into and out of a session
+    ✓ does not let a late cold-start read overwrite a newer event
+    ✓ unsubscribes on unmount
+  auth provider — OTP flow
+    ✓ requests a code that also creates the account, and never a redirect link
+    ✓ verifies the emailed code as an email OTP
+    ✓ reports errors instead of throwing them
+    ✓ returns an error rather than throwing when auth-js throws
+    ✓ ends the session through signOut, device-locally
+  auth provider — ADR-007 refresh lifecycle
+    ✓ never touches the auto-refresh ticker, in any AppState
+    ✓ initiates a settle when the app is already active at mount
+    ✓ initiates nothing when mounted while the app is backgrounded
+    ✓ initiates on each transition to active and none on background or inactive
+    ✓ releases the AppState listener on unmount
+    ✓ absorbs a rejected settle rather than crashing the effect
+    ✓ does not sign the user out when a settle fails without a persistence failure
+    ✓ requires re-authentication when a rotated session could not be persisted
+    ✓ still forces signedOut when the cleanup removal also fails
+
+Test Suites: 1 passed, 1 total
+Tests:       23 passed, 23 total
+Snapshots:   0 total
+Time:        <duration>
+Ran all test suites matching /auth-provider/i.
+
+
+> noema@0.1.0 test
+> jest --ci --runInBand --verbose --testPathPattern foreground-refresh
+
+PASS src/__tests__/foreground-refresh.test.ts
+  ADR-007 — the foreground gate initiates nothing while backgrounded
+    ✓ initiates no refresh in AppState "background"
+    ✓ initiates no refresh in AppState "inactive"
+    ✓ initiates exactly one settle when the app is active
+  ADR-007 item 3 — a rotated session that cannot be stored is surfaced
+    ✓ reports "unpersisted" when the store refuses the rotated write
+    ✓ reports "settled" when the rotated write lands
+    ✓ does not demand re-authentication when a settle fails for any other reason
+    ✓ consumes the failure, so one refused write forces re-authentication once
+    ✓ clears the failure when a later write succeeds
+    ✓ observes without absorbing: the caller still sees the rejection
+    ✓ does not record a refused REMOVAL as a persistence failure
+
+Test Suites: 1 passed, 1 total
+Tests:       10 passed, 10 total
+Snapshots:   0 total
+Time:        <duration>
+Ran all test suites matching /foreground-refresh/i.
+
+exit: 0

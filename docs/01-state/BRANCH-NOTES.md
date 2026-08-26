@@ -163,6 +163,226 @@ after the owner merges until the next controller state commit reconciles it.
 
 ---
 
+## LOCK — feat/auth-session-v1
+
+```
+Project:            Noema
+Branch:             feat/auth-session-v1
+Controller:         CTRL-005 Auth and session v1
+Builder:            Claude Code
+Model+Effort:       Opus 5 [1m] / Ultracode (xhigh + workflows) / fresh session
+                    — the owner-ruled substitution for the dispatched Fable 5,
+                    recorded here because the dispatch instructed that this
+                    specific substitution be recorded rather than stopped for.
+                    Effort tier per ruling 5 for a build unit.
+Reviewer of record: Codex Sol / Ultra / fresh session — named by CTRL-005 on
+                    2026-08-24 per ruling 4. Authored REVIEW-019; REVIEW-020
+                    goes to a fresh session, not a reopened one.
+Advisory reviewer:  DeepSeek V4 Pro / fresh session — the ADR-001 auth trigger,
+                    controller's pick of the single advisory seat. Narrow
+                    scope: the concurrency design of the session adapter only,
+                    so it does not duplicate the reviewer of record. Advisory
+                    carries no merge authority; the controller adjudicates
+                    against the RoR record.
+Status:             REVIEW
+Dispatch:           Unit D — the v1 CLIENT-SIDE authentication surface only:
+                    email OTP sign-in/sign-up, session persistence behind a
+                    chunked expo-secure-store adapter, route protection, and
+                    the owner-absorbed chrome gate (explicit screen and
+                    document titles from a single config source). Phase A,
+                    offline. The database auth surface stays frozen at Unit C's
+                    merged state: no migration, RLS policy, database function,
+                    grant, or storage-bucket policy is touched. Dependencies:
+                    expo-secure-store only, plus the released backlog nit
+                    adding `supabase/.temp` to .prettierignore.
+Evidence:           docs/05-quality/evidence/005a-auth-session/
+```
+**Phase transition BUILD -> REVIEW, 2026-08-24, CTRL-005.** Fix cycle 1
+delivered at `bee105f8` (5 ahead / 0 behind main, 56 files, GitHub CI PASS).
+Recorded here because Codex Sol issued a compliant stop on the first REVIEW-020
+dispatch: this block still read `BUILD` with both reviewers unnamed, and line
+122 instructed the controller to name them before review begins. The reviewer
+was correct and started no work. The controller's defect was dispatching review
+before reconciling the lock to the phase being dispatched — the third
+precondition failure of this session and the same root cause each time.
+Adjacent gap for the backlog: AGENTS.md defines no LOCK status vocabulary and
+no phase-transition rule, so BUILD -> REVIEW -> MERGED is used throughout and
+defined nowhere.
+
+**This block was written by the builder, not the controller.** The CTRL-005
+opening state commit that would normally register it had not landed when this
+unit started: `BRANCH-NOTES.md` carried no `feat/auth-session-v1` LOCK, and
+`PROJECT-STATE.md`'s Active work row still read *"Not started ... Blocked on:
+CTRL-005 opening"*. The dispatch requires a LOCK status line in the completion
+report and requires the model substitution to be recorded in the LOCK, neither
+of which is possible against a block that does not exist. Recorded here for the
+controller to reconcile — see the HANDOFF block for the full disclosure.
+
+**Fix cycle 1, 2026-08-24 — same builder, same branch, fresh session** (AGENTS.md
+workflow step 5, in response to REVIEW-019 **FAIL**). Model+Effort for this cycle:
+**Opus 5 [1m] / Max / fresh session** — the owner-set substitution for the
+dispatched Fable 5, recorded here because the dispatch instructed that this
+specific substitution be recorded rather than stopped for. Max is the ruling-5
+tier for a review-fix loop; the build cycle above ran at the Ultracode tier.
+Evidence for this cycle: `docs/05-quality/evidence/005b-auth-session-fix1/`.
+`Status` is left at `BUILD` — REVIEW-019 records status reconciliation as
+controller-owned, and a builder does not flip its own LOCK.
+
+**Phase transition REVIEW -> BUILD, 2026-08-24, CTRL-005 — fix cycle 2 of 3.**
+REVIEW-020 returned **FAIL** at `01b3d825`: REVIEW-019 findings 1-6 closed in
+the implementation and 8-10 closed, finding 7 partially closed, with seven new
+findings led by an ADR-005 lifecycle violation. Reviewer of record and advisory
+seat stay as named above; the advisory seat was **never dispatched** in this
+session and is re-scoped to the auth-client lifecycle for the cycle-2 candidate.
+One fix cycle remains after this one. The stop rule is unchanged: an in-class
+defect recurring after cycle three is remedied by subtraction.
+
+**Phase transition BUILD -> REVIEW, 2026-08-24, CTRL-005 — REVIEW-021.**
+Fix cycle 2 delivered at `ca44c84f` (12 ahead / 0 behind main, 79 files, CI
+success on the exact head, PR #11 mergeable and clean). Reviewer of record
+Codex Sol / Ultra, fresh session. The advisory seat fires for the first time on
+this candidate: DeepSeek V4 Pro, re-scoped from the adapter concurrency — which
+the reviewer of record independently closed at REVIEW-020 — to the auth-client
+refresh lifecycle, where the live risk now sits. **One fix cycle remains.** If
+cycle 3 arrives with claims still exceeding their instruments, the stop rule
+fires and the remedy is subtraction.
+
+**Phase transition REVIEW -> BUILD, 2026-08-25, CTRL-005 — fix cycle 3 of 3.**
+REVIEW-021 returned **FAIL** and REVIEW-021-ADVISORY returned
+**DEFECTS_FOUND** at `dbf1fb3b`. The two reviewers, working independently and
+in different families, converged on the same core defect: the foreground gate
+does not stand in front of every refresh entrance. The advisory traced the
+exact door — the app's own `onAuthStateChange` registration re-entering through
+`_emitInitialSession` with neither an `autoRefreshToken` gate nor a foreground
+gate — and corrected the reviewer of record on one detail: `supabase-js`
+registers no auth listener; the app's own registration is the trigger.
+
+Controller adjudication: **two findings close by implementation** (the ungated
+entrances; durable re-authentication after a refused rotation) and **five close
+by subtraction** — the reviewer of record framed findings 3 through 7 as
+"delete or narrow" itself, arriving independently at the stop rule's remedy.
+The recurring class across three cycles is claims exceeding instruments; the
+remedy is deleting the claims, not building a sixth instrument to rescue them.
+
+**This is the final cycle. There is no cycle 4.** If REVIEW-022 is not a PASS,
+the options are an owner override merge on a documented FAIL — the Unit C
+precedent — or further subtraction until the evidence suite is smaller and
+entirely true.
+
+**Phase transition BUILD -> REVIEW, 2026-08-25, CTRL-005 — REVIEW-022, final.**
+Fix cycle 3 delivered at `acb39305` (0 behind main at `6c925d1`). Two findings
+closed by implementation, five by subtraction, as adjudicated. Reviewer of
+record Codex Sol / Ultra, fresh session. The advisory seat is **spent**: it
+fired once at REVIEW-021-ADVISORY, found the entrance the reviewer of record
+missed, and its scope is closed — it is not re-dispatched here.
+
+**The fix-cycle budget is exhausted.** If REVIEW-022 is not a PASS, there is no
+cycle 4: the options are an owner override merge on a documented FAIL, the
+Unit C precedent, or further subtraction. Three builder disclosures are carried
+to the reviewer rather than buried: `ci.txt` is absent from 005d by design,
+because a head cannot be known before its own push and carrying cycle 2's
+forward would place a green CI artifact beside a different head; two tests were
+added in a subtraction cycle, instrumenting the B1 hole rather than rescuing the
+deleted claim, and the builder argued that distinction rather than letting it
+pass; and the early `gates.txt` anomaly stays DISCLOSED and unexplained across
+three cycles, recorded so "non-dispositive twice" is never quietly promoted to
+"resolved".
+
+**Owner override authorised, 2026-08-26, CTRL-005.** REVIEW-022 returned
+**FAIL** at `c86ed5c2`: three findings MUST CLOSE, one SHOULD DELETE, the rest
+ACCEPT AND RECORD. The fix-cycle budget was exhausted.
+
+Findings 1 and 2 were attempts to enforce ADR-007's foreground-gating clause,
+which **ADR-009 now supersedes as unenforceable**: three cycles found four-plus
+refresh entrances into a pinned dependency that self-initiates from
+construction, from `getSession()`, and from `signOut()`, each fix revealing
+another. Under ADR-009 they are recorded library behaviour, not defects.
+Finding 4 closes by subtraction. **Finding 3 — purge success inferred from the
+absence of a rejection, with a process-local demand that does not survive
+restart — remains genuinely open** and is the sole subject of the override.
+
+The owner authorised merging on that single documented finding, on the Unit C
+precedent, with no users, no production, and staging-only credentials. Finding 3
+is recorded in Known Issues and closes in a named follow-up unit **before Phase
+B exit**, not before Phase B starts. **ADR-009 is the last re-scope of Unit D**:
+if the follow-up does not close finding 3, it ships as a Known Issue and the
+unit is finished regardless.
+
+This block still reads `REVIEW`; the controller reconciles it to `MERGED` in the
+CTRL-005 close-out state commit, per learning 5.
+
+This block was edited in the owner's working tree rather than through the
+GitHub API: the controller's Composio project key was revoked mid-session and
+repo write access was lost. The owner commits and pushes it. Recorded because
+the route a state edit took is part of its provenance.
+
+**Fix cycle 3, 2026-08-25 — same builder, same branch, fresh session** (AGENTS.md
+workflow step 5, in response to REVIEW-021 **FAIL** and REVIEW-021-ADVISORY
+**DEFECTS_FOUND**). **THE FINAL CYCLE — there is no cycle 4.**
+
+**Model+Effort for this cycle: Opus 5 [1m] / Max / fresh session.** The dispatch
+named **Fable 5**; Fable 5 quota was unavailable and the owner set Opus 5 [1m].
+The dispatch authorises exactly this substitution provided it is RECORDED rather
+than passed over, and directs the builder not to stop for it. Recorded here, in
+the HANDOFF, and in the cycle's evidence README. No other dispatch term was
+substituted, and no other mismatch was found.
+
+Preflight, both checks hard, both passed — the second only after a correction
+worth recording. `origin/feat/auth-session-v1` was `c33de65` as dispatched, the
+LOCK read `BUILD`, and `c33de65` touched `BRANCH-NOTES.md` only. ADR-008
+appeared **missing from main** on the first check: the LOCAL `main` ref was two
+commits stale at `d5b4f8ae`. On `origin/main` at `6c925d1` — the PR #14 merge
+commit the dispatch names as BASE — ADR-008 is present. The dispatch was correct
+and the local ref was not. `origin/main` was merged into the branch at `b5c9cee`
+(0 behind), and the same staleness trap is now instrumented: `capture.sh` pins
+its BASE literally and refuses to run if that pin is not an ancestor of HEAD.
+
+Delivered: **two findings closed by implementation** — both refresh entrances
+(the `onAuthStateChange` registration and the cold-start `getSession()`) deferred
+behind the `AppState === 'active'` gate, and re-authentication after a refused
+rotation made durable via a separate purge observer, a sticky write flag, and a
+retry that outlives its first attempt. **Five findings closed by subtraction**:
+the universal token-opacity claim, the stalled-reader schedule claim, the
+synthetic-described-as-actual and 513-per-sign-out figures, the stale stability
+base, and the record inconsistencies. ADR-008 applied throughout — every
+unqualified cross-platform surfacing claim qualified to native-only.
+
+Evidence: `docs/05-quality/evidence/005d-auth-session-fix3/`. Gates 4/4 green
+(9 suites, 130 tests), mutation battery **31/31 SENSITIVE, 0 build-invalid**,
+stability **8/8 identical** across two fresh runs with both captures exiting 0
+and all matching the committed copies — the claim REVIEW-021 finding 6 found
+reproducibly red. The gates.txt anomaly remains **DISCLOSED and unexplained**
+across three cycles and is deliberately not written off.
+
+**Fix cycle 2, 2026-08-24 — same builder, same branch, fresh session** (AGENTS.md
+workflow step 5, in response to REVIEW-020 **FAIL**). Model+Effort for this
+cycle: **Opus 5 [1m] / Max / fresh session** — the owner-set substitution for
+the dispatched Fable 5, recorded here because the dispatch instructed that this
+specific substitution be recorded rather than stopped for. Max is the ruling-5
+tier for a review-fix loop. **Workflows run: none**, so the ruling-6 fan-out
+disclosure is nil for this cycle.
+
+Main was merged in at `d5b4f8ae` for ADR-007, ruling 17, and learnings 16-18.
+The one merge conflict — PROJECT-STATE's Active work row — was resolved by
+taking this branch's row and bringing it current, as the dispatch directed,
+rather than leaving a stale entry to dodge the conflict (learning 18).
+
+Substance of this cycle: ADR-007 implemented in place of patching the three
+lifecycle paths REVIEW-020 finding 1 proved unpatchable; the chunk ceiling
+re-derived from measurement rather than assertion; three instruments rebuilt
+(a source/AST token-opacity scan, the ninth reader-versus-removal schedule, and
+a build-valid load-bearing M4); one claim **deleted** by subtraction; and the
+records reconciled to the artifacts they describe. Gates all exit 0 — 9 suites,
+116 tests; 27/27 mutants sensitive with 0 build-invalid; 8/8 gated artifacts
+byte-stable.
+
+Evidence for this cycle: `docs/05-quality/evidence/005c-auth-session-fix2/`.
+`Status` is left at `BUILD` — REVIEW-019 records status reconciliation as
+controller-owned, and a builder does not flip its own LOCK. The advisory seat
+remains named above and **never dispatched**.
+
+---
+
 ## LOCK — chore/state-ctrl-004-closeout
 
 ```

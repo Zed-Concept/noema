@@ -1,0 +1,187 @@
+# Mutation sensitivity — every re-instrumented claim, checked both ways.
+#
+# baseline GREEN (>=1 test executed) then mutant RED (>=1 failed assertion).
+# Anything else fails this run. See the header of mutants.sh for why.
+# Backups for this run: /var/folders/nf/5n98ynn57fsc0fzmgpsc5rwm0000gn/T/tmp.Fi7Sy08NqU
+
+## serialization-removed--concurrent-writers
+breaks:    public operations no longer queue; two writers can interleave
+claim:     M1 / claim 13a — two writers never commit a payload belonging to neither
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## serialization-removed--stale-reader
+breaks:    public operations no longer queue; a reader can be overtaken mid-payload
+claim:     M2 / claim 13b — a reader a writer overtakes is never shown null
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## serialization-removed--read-interleaving
+breaks:    public operations no longer queue; a write can land between chunk reads
+claim:     M3 / claim 13c — no write lands between a reader chunk read and the next
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## index-read-refusal-laundered
+breaks:    setItem treats a refused index read as an absent index again
+claim:     M4 / claim 14a — a refused index read blocks the write and preserves the session
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## index-delete-failure-swallowed
+breaks:    removeItem stops consulting whether the index delete succeeded
+claim:     M5 / claim 15a — removal reports failure when the index survives
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## removal-failure-swallowed-entirely
+breaks:    removeItem stops consulting either half of its completeness report
+claim:     M6 / claim 15 — removal never reports success while the session survives
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## chunk-delete-failure-swallowed
+breaks:    removeItem stops consulting whether the chunk sweep succeeded
+claim:     M7 / claim 15b — removal reports failure when a chunk survives
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## sweep-stops-at-first-gap
+breaks:    the cleanup sweep breaks at the first absent key, as it did before
+claim:     M8 / claim 16a — a fragment behind an adapter-created gap is still cleared
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## sweep-bounded-to-occupied-range
+breaks:    removal sweeps only what the store currently holds
+claim:     M9 / claim 16b — removal sweeps the complete enumerable key space
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## checksum-not-verified
+breaks:    the read no longer compares the recorded checksum
+claim:     M10 / claim 6a — same-length corruption fails closed to null
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## checksum-not-verified--forged-index
+breaks:    the read no longer compares the recorded checksum
+claim:     M11 / claim 6b — a self-consistent shortened index fails closed to null
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## payload-verification-removed
+breaks:    the read no longer checks the reassembled payload against the index at all
+claim:     M12 / claim 5 — a payload that disagrees with its index fails closed to null
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## chunk-read-rejection-escapes
+breaks:    a rejected CHUNK read propagates out of getItem — both guards removed
+claim:     M13 / claim 7 — getItem resolves null rather than rejecting on any backend throw
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## payload-parsed-on-write
+breaks:    setItem parses the payload it is supposed to treat as opaque
+claim:     M14 / claim 1a — a payload that is not valid JSON round-trips
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## payload-reserialised-on-write
+breaks:    setItem re-serialises the payload instead of storing it verbatim
+claim:     M15 / claim 1b — the stored chunks concatenate to exactly the input
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## payload-bytes-leak-into-index
+breaks:    the index carries a slice of the payload alongside its own metadata
+claim:     M16 / claim 1c — the index holds adapter metadata only
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## client-storage-option-deleted
+breaks:    the Supabase client is built without the platform session storage
+claim:     M17 / claim 13 — the platform storage reaches createClient
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/supabase.ts
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## signout-scope-reverted-to-global
+breaks:    signOut falls back to auth-js's global scope
+claim:     M18 / claim 21b — sign-out is device-local
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/auth-provider.tsx
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## appstate-gate-always-starts
+breaks:    the refresh ticker runs regardless of AppState
+claim:     M19 / claim 22 — the ticker stops on background and inactive
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/auth-provider.tsx
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## appstate-gate-ignores-mount-state
+breaks:    the gate stops reading the state the app is actually in at mount
+claim:     M20 / claim 22a — a provider mounted while backgrounded starts no ticker
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/auth-provider.tsx
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## keychain-accessibility-inherited
+breaks:    SecureStore writes stop stating their accessibility class
+claim:     M21 / claim 23 — every write is WHEN_UNLOCKED
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## Tree restored
+  byte-identical to its pre-run copy: src/lib/auth/secure-store-adapter.ts
+  byte-identical to its pre-run copy: src/lib/supabase.ts
+  byte-identical to its pre-run copy: src/lib/auth/auth-provider.tsx
+  all mutated files restored
+
+## Summary
+mutants:   21
+sensitive: 21
+exit:      0

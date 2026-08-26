@@ -121,7 +121,7 @@ What is in flight, who owns it, and what it is blocked on. One row per stream.
 
 | Stream | Owner | Status | Blocked on |
 |---|---|---|---|
-| Unit D — Auth and session v1 | Claude Code (`feat/auth-session-v1`) | REVIEW — built, REVIEW-019 FAIL, fix cycle 1 delivered, REVIEW-020 FAIL. Fix cycle 2 of 3 pending; two cycles remain. RoR Codex Sol; advisory DeepSeek V4 Pro NOT dispatched | ADR-007 landing, then fix cycle 2 dispatch
+| Unit D — Auth and session v1 | Claude Code (`feat/auth-session-v1`) | BUILD — **fix cycle 3 of 3 delivered**, answering REVIEW-021 FAIL and REVIEW-021-ADVISORY DEFECTS_FOUND. **This is the final cycle; there is no cycle 4.** REVIEW-019/020 FAILs and fix cycles 1-2 are closed history. Main merged in at `b5c9cee` (origin/main `6c925d1`, PR #14) for ADR-008, rulings 18-19; evidence at `docs/05-quality/evidence/005d-auth-session-fix3/` (005a-005c retained as their cycles' records). Two findings closed by implementation, five by subtraction. Phase A offline; PR #11 open | Nothing. Awaiting REVIEW-022. If it is not a PASS the options are an owner override merge on a documented FAIL (the Unit C precedent) or further subtraction. RoR Codex Sol (fresh session, authored REVIEW-019/020/021, did not build); advisory DeepSeek V4 Pro (fired at REVIEW-021-ADVISORY)
 | Production Supabase project | Owner | Parked by ruling — create in East US (North Virginia) before any launch-facing unit | Free-tier slot or Pro upgrade at that time |
 
 Unit A merged 2026-08-19 at `8d648bb` (PR #2, REVIEW-007 PASS); its full

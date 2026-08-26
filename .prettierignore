@@ -4,6 +4,10 @@ dist/
 coverage/
 package-lock.json
 
+# Machine-local Supabase CLI residue. Not tracked, and Prettier must not walk
+# into it — it has interfered with three separate fix cycles.
+supabase/.temp
+
 # Governance documents. Formatting here is owner-approved content, not style —
 # see AGENTS.md. No tool reformats these.
 docs/

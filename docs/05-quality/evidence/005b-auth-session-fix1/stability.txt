@@ -1,0 +1,27 @@
+# Byte-stability across two fresh capture.sh runs at this head.
+# Compares the gated artifacts only; environment.txt and npm-audit.txt are
+# run-varying by construction and mutants.txt is produced separately.
+
+capture run A exit: 0
+capture run B exit: 0
+
+## Gated artifacts
+  gates.txt                  IDENTICAL
+  gates.txt                  matches the committed copy
+  adapter-properties.txt     IDENTICAL
+  adapter-properties.txt     matches the committed copy
+  session-properties.txt     IDENTICAL
+  session-properties.txt     matches the committed copy
+  route-guards.txt           IDENTICAL
+  route-guards.txt           matches the committed copy
+  banned-apis.txt            IDENTICAL
+  banned-apis.txt            matches the committed copy
+  red-lane.txt               IDENTICAL
+  red-lane.txt               matches the committed copy
+  chrome.txt                 IDENTICAL
+  chrome.txt                 matches the committed copy
+  deps.txt                   IDENTICAL
+  deps.txt                   matches the committed copy
+
+gated artifacts: 8
+differing-or-failing comparisons: 0

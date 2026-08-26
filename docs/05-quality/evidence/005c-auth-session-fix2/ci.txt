@@ -1,0 +1,42 @@
+# GitHub CI on the EXACT pushed head of fix cycle 2.
+#
+# SCOPE — this artifact is evidence about ONE COMMIT and nothing else.
+# REVIEW-020 finding 7 caught the cycle-1 ci.txt overextending run
+# 32671673617 from its head 81ecd0d to "the exact tree under review",
+# when the artifact itself was added after 81ecd0d and the review target
+# was later still. A CI run is a fact about the commit it ran on. If the
+# reviewer's target is not the SHA below, this artifact does not cover it.
+#
+# Captured by a one-off 'gh run view', NOT by capture.sh, for the
+# mechanical reason that the head cannot be known until the push that
+# creates it. capture.sh's manifest names ci.txt as one of its five
+# exceptions.
+
+## Run
+workflow:   CI
+run id:     32730940489
+head sha:   97f1b7d5fadedb538e31bf8d1281a5e0404d758a
+branch:     feat/auth-session-v1
+event:      pull_request
+status:     completed
+conclusion: success
+url:        https://github.com/Zed-Concept/noema/actions/runs/32730940489
+
+## Jobs and steps
+job: typecheck, lint, test — success
+  1. Set up job — success
+  2. Run actions/checkout@v7 — success
+  3. Run actions/setup-node@v7 — success
+  4. Install — success
+  5. Typecheck — success
+  6. Lint — success
+  7. Test — success
+  8. Format check — success
+  15. Post Run actions/setup-node@v7 — success
+  16. Post Run actions/checkout@v7 — success
+  17. Complete job — success
+
+## Local equivalence
+gates.txt in this directory records the same four steps run locally at
+this head, each exit 0. This artifact is the independent check: it ran on
+GitHub's runner from a clean checkout of the pushed commit.

@@ -1,0 +1,19 @@
+$ bash docs/05-quality/evidence/005a-auth-session/stability.sh
+# two fresh capture.sh runs, each gated artifact compared to the committed copy
+gates.txt                  run1: identical
+gates.txt                  run2: identical
+adapter-properties.txt     run1: identical
+adapter-properties.txt     run2: identical
+session-properties.txt     run1: identical
+session-properties.txt     run2: identical
+route-guards.txt           run1: identical
+route-guards.txt           run2: identical
+banned-apis.txt            run1: identical
+banned-apis.txt            run2: identical
+chrome.txt                 run1: identical
+chrome.txt                 run2: identical
+deps.txt                   run1: identical
+deps.txt                   run2: identical
+capture.sh exit status: run1=0 run2=0 (0 required)
+gated artifacts: 7    differing-or-failing comparisons: 0
+--- encoded exit code: 0 ---

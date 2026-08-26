@@ -1,0 +1,269 @@
+# Mutation sensitivity — every re-instrumented claim, checked both ways.
+#
+# baseline GREEN (>=1 test executed) then mutant RED (>=1 failed assertion).
+# Anything else fails this run. See the header of mutants.sh for why.
+# Backups for this run: /var/folders/nf/5n98ynn57fsc0fzmgpsc5rwm0000gn/T/tmp.JHd0IJhgwp
+
+## serialization-removed--concurrent-writers
+breaks:    public operations no longer queue; two writers can interleave
+claim:     M1 / claim 13a — two writers never commit a payload belonging to neither
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## serialization-removed--stale-reader
+breaks:    public operations no longer queue; a reader can be overtaken mid-payload
+claim:     M2 / claim 13b — a reader a writer overtakes is never shown null
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## serialization-removed--read-interleaving
+breaks:    public operations no longer queue; a write can land between chunk reads
+claim:     M3 / claim 13c — no write lands between a reader chunk read and the next
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## index-read-refusal-laundered
+breaks:    a refused backend read reports itself as an absent key, so setItem picks a generation it cannot see
+claim:     M4 / claim 14a — a refused index read blocks the write and preserves the session
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## index-delete-failure-swallowed
+breaks:    removeItem stops consulting whether the index delete succeeded
+claim:     M5 / claim 15a — removal reports failure when the index survives
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## removal-failure-swallowed-entirely
+breaks:    removeItem stops consulting either half of its completeness report
+claim:     M6 / claim 15 — removal never reports success while the session survives
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## chunk-delete-failure-swallowed
+breaks:    removeItem stops consulting whether the chunk sweep succeeded
+claim:     M7 / claim 15b — removal reports failure when a chunk survives
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## sweep-stops-at-first-gap
+breaks:    the cleanup sweep breaks at the first absent key, as it did before
+claim:     M8 / claim 16a — a fragment behind an adapter-created gap is still cleared
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## sweep-bounded-to-occupied-range
+breaks:    removal sweeps only what the store currently holds
+claim:     M9 / claim 16b — removal sweeps the complete enumerable key space
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## checksum-not-verified
+breaks:    the read no longer compares the recorded checksum
+claim:     M10 / claim 6a — same-length corruption fails closed to null
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## checksum-not-verified--forged-index
+breaks:    the read no longer compares the recorded checksum
+claim:     M11 / claim 6b — a self-consistent shortened index fails closed to null
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## payload-verification-removed
+breaks:    the read no longer checks the reassembled payload against the index at all
+claim:     M12 / claim 5 — a payload that disagrees with its index fails closed to null
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## chunk-read-rejection-escapes
+breaks:    a rejected CHUNK read propagates out of getItem — both guards removed
+claim:     M13 / claim 7 — getItem resolves null rather than rejecting on any backend throw
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## payload-parsed-on-write
+breaks:    setItem parses the payload it is supposed to treat as opaque
+claim:     M14 / claim 1a — a payload that is not valid JSON round-trips
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## payload-reserialised-on-write
+breaks:    setItem re-serialises the payload instead of storing it verbatim
+claim:     M15 / claim 1b — the stored chunks concatenate to exactly the input
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## payload-bytes-leak-into-index
+breaks:    the index carries a slice of the payload alongside its own metadata
+claim:     M16 / claim 1c — the index holds adapter metadata only
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## client-storage-option-deleted
+breaks:    the Supabase client is built without the platform session storage
+claim:     M17 / claim 13 — the platform storage reaches createClient
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/supabase.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## signout-scope-reverted-to-global
+breaks:    signOut falls back to auth-js's global scope
+claim:     M18 / claim 21b — sign-out is device-local
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/auth-provider.tsx
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## client-self-schedules-again
+breaks:    the auth client is constructed so it schedules its own refreshes
+claim:     M22 / ADR-007 clause 1 — autoRefreshToken is false at construction
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/supabase.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## foreground-gate-removed
+breaks:    the gate stops testing AppState, so a refresh is initiated while backgrounded
+claim:     M23 / ADR-007 clause 2 — refresh is initiated only by foreground-gated calls
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/foreground-refresh.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## unpersisted-rotation-dropped-silently
+breaks:    a rotated session that could not be written is reported as settled
+claim:     M24 / ADR-007 clause 3 — a refused session write is surfaced, not dropped
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/foreground-refresh.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## write-observer-records-nothing
+breaks:    the session-write observer stops recording a refused write
+claim:     M25 / ADR-007 clause 3 — the refused write is what is observed, not the rejection
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/session-storage.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## reauthentication-not-forced
+breaks:    the provider keeps the session it could not vouch for
+claim:     M26 / ADR-007 clause 3 — an unpersisted rotation forces re-authentication
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/auth-provider.tsx
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## removal-bypasses-only-its-own-queue
+breaks:    removeItem stops participating in the serialization queue, while get and set still do
+claim:     M27 / claim 13d — the queue covers EVERY public operation, removal included
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## payload-parsed-behaviour-preservingly
+breaks:    the adapter parses the payload without changing what it returns
+claim:     M28 / claim 12 — the adapter never parses token material
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## ceiling-lowered-below-a-persistable-session
+breaks:    the chunk ceiling returns to 64, refusing a session the pinned client can persist
+claim:     M29 / claim 11 — the ceiling admits every session auth-js can hand this adapter
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## keychain-accessibility-inherited
+breaks:    SecureStore writes stop stating their accessibility class
+claim:     M21 / claim 23 — every write is WHEN_UNLOCKED
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## Tree restored
+  byte-identical to its pre-run copy: src/lib/auth/secure-store-adapter.ts
+  byte-identical to its pre-run copy: src/lib/supabase.ts
+  byte-identical to its pre-run copy: src/lib/auth/auth-provider.tsx
+  byte-identical to its pre-run copy: src/lib/auth/foreground-refresh.ts
+  byte-identical to its pre-run copy: src/lib/auth/session-storage.ts
+  all mutated files restored
+
+## Summary
+mutants:       27
+sensitive:     27
+build-invalid: 0
+
+# 'sensitive' is an EXECUTION FACT — each edit landed, the mutated tree
+# typechecked, and the named instrument turned red. It is not a coverage
+# measure and not a claim that every behaviour has a mutant. Learning 16.
+exit:      0
