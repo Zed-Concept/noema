@@ -23,23 +23,41 @@ jest.mock('@/lib/supabase', () => ({
   },
 }));
 
-// The persistence-failure flag is module scope in the real module and is driven
-// directly here, so the provider's REACTION to it can be measured on its own.
-// What the flag itself does — how a refused write comes to set it, and what is
-// left on disk when one does — is proved against the real adapter over a real
-// in-memory keychain in `foreground-refresh.test.ts`, not here.
+// The persistence-failure flag and the purge read-back are driven directly
+// here, so the provider's REACTION to them can be measured on its own. What
+// each actually does — how a refused write records the durable demand and
+// resolves, and what `confirmSessionPurged` reads to reach its verdict — is
+// proved against the real adapter and the real demand module over in-memory
+// doubles in `foreground-refresh.test.ts`, and against the real pinned client
+// in the finding-3 probe under `docs/05-quality/evidence/006a-*`; not here.
 jest.mock('@/lib/auth/session-storage', () => ({
   takeSessionPersistenceFailure: jest.fn(),
-  takeSessionPurgeFailure: jest.fn(),
-  clearSessionPurgeFailure: jest.fn(),
+  confirmSessionPurged: jest.fn(),
 }));
 
-const { takeSessionPersistenceFailure, takeSessionPurgeFailure, clearSessionPurgeFailure } =
-  jest.requireMock('@/lib/auth/session-storage') as {
-    takeSessionPersistenceFailure: jest.Mock;
-    takeSessionPurgeFailure: jest.Mock;
-    clearSessionPurgeFailure: jest.Mock;
-  };
+// The durable demand — ADR-009 requirement 2. Mocked for the same reason as
+// the storage layer: this suite measures when the provider consults, records,
+// and clears; the demand module's own contract has its own suite.
+jest.mock('@/lib/auth/reauth-demand', () => ({
+  recordReauthDemand: jest.fn(),
+  isReauthDemandOutstanding: jest.fn(),
+  clearReauthDemand: jest.fn(),
+}));
+
+const { takeSessionPersistenceFailure, confirmSessionPurged } = jest.requireMock(
+  '@/lib/auth/session-storage',
+) as {
+  takeSessionPersistenceFailure: jest.Mock;
+  confirmSessionPurged: jest.Mock;
+};
+
+const { recordReauthDemand, isReauthDemandOutstanding, clearReauthDemand } = jest.requireMock(
+  '@/lib/auth/reauth-demand',
+) as {
+  recordReauthDemand: jest.Mock;
+  isReauthDemandOutstanding: jest.Mock;
+  clearReauthDemand: jest.Mock;
+};
 
 const auth = supabase.auth as unknown as {
   getSession: jest.Mock;
@@ -99,8 +117,10 @@ beforeEach(() => {
   auth.startAutoRefresh.mockResolvedValue(undefined);
   auth.stopAutoRefresh.mockResolvedValue(undefined);
   takeSessionPersistenceFailure.mockReturnValue(null);
-  takeSessionPurgeFailure.mockReturnValue(null);
-  clearSessionPurgeFailure.mockReturnValue(undefined);
+  confirmSessionPurged.mockResolvedValue(true);
+  recordReauthDemand.mockResolvedValue(undefined);
+  isReauthDemandOutstanding.mockResolvedValue(false);
+  clearReauthDemand.mockResolvedValue(undefined);
 
   appStateListeners.length = 0;
   setAppState('active');
@@ -142,10 +162,10 @@ describe('auth provider — bootstrap', () => {
     const { result } = await renderHook(() => useAuth(), { wrapper });
 
     await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
-    // Not an exact count. Under ADR-007 `getSession()` has two callers: the
-    // cold-start bootstrap here, and the foreground gate, which evaluates once
-    // at mount because AppState is `active`. The gate's own call is counted in
-    // its own describe block below.
+    // Not an exact count. `getSession()` has two callers: the cold-start
+    // bootstrap here, and the foreground gate, which evaluates once at mount
+    // because AppState is `active`. The gate's own call is counted in its own
+    // describe block below.
     expect(auth.getSession).toHaveBeenCalled();
   });
 
@@ -189,7 +209,7 @@ describe('auth provider — bootstrap', () => {
   it('subscribes before reading, so an event in flight is not missed', async () => {
     await renderHook(() => useAuth(), { wrapper });
 
-    expect(auth.onAuthStateChange).toHaveBeenCalled();
+    await waitFor(() => expect(auth.onAuthStateChange).toHaveBeenCalled());
     expect(auth.onAuthStateChange.mock.invocationCallOrder[0]).toBeLessThan(
       auth.getSession.mock.invocationCallOrder[0],
     );
@@ -241,6 +261,7 @@ describe('auth provider — currency', () => {
   it('unsubscribes on unmount', async () => {
     const { unmount } = await renderHook(() => useAuth(), { wrapper });
 
+    await waitFor(() => expect(auth.onAuthStateChange).toHaveBeenCalled());
     expect(unsubscribe).not.toHaveBeenCalled();
     await unmount();
     expect(unsubscribe).toHaveBeenCalledTimes(1);
@@ -290,9 +311,11 @@ describe('auth provider — OTP flow', () => {
   });
 
   it('returns an error rather than throwing when auth-js throws', async () => {
-    // auth-js rethrows anything that is not an AuthError — a keychain failure
-    // inside _saveSession, for instance. Every screen disables its controls
-    // until these resolve, so an escaping rejection strands the UI.
+    // auth-js rethrows anything that is not an AuthError. Every screen
+    // disables its controls until these resolve, so an escaping rejection
+    // strands the UI. (A refused SESSION write no longer arrives this way —
+    // the observer records it and resolves, ADR-009 requirement 3 — but other
+    // throw classes remain: an unreadable store, a rejected demand fallback.)
     auth.verifyOtp.mockRejectedValue(new Error('errSecInteractionNotAllowed'));
     auth.signOut.mockRejectedValue(new Error('errSecInteractionNotAllowed'));
 
@@ -321,19 +344,17 @@ describe('auth provider — OTP flow', () => {
 });
 
 /**
- * ADR-007 / binding ruling 17 — the client never self-schedules a refresh, and
- * the app initiates one only while foreground.
+ * ADR-009 / binding ruling 20 — the client never self-schedules a refresh,
+ * and the app's OWN calls are made only while foreground.
  *
- * This block replaces the previous "auto-refresh is gated on AppState" block
- * wholesale. That block asserted `startAutoRefresh`/`stopAutoRefresh` call
- * counts, and REVIEW-020 finding 1 proved those calls never established the
- * property they were credited with: `stopAutoRefresh()` clears only the timers
- * that exist at that moment and cancels neither initialization nor an in-flight
- * refresh. Asserting them harder would not have helped. ADR-007 removed the
- * scheduler, so what is asserted here is that the ticker is never touched at
- * all, and that the gate decides what it is supposed to decide.
+ * What this block does NOT assert, because ADR-009 bars the claim: that no
+ * refresh can occur before the first foreground. The pinned client registers
+ * an internal auth listener during construction and can load and refresh a
+ * stored session with no application call — REVIEW-022 proved it, and the
+ * mocked client here could never show it. These tests measure the app's own
+ * conduct: what THIS code initiates, and when.
  */
-describe('auth provider — ADR-007 refresh lifecycle', () => {
+describe('auth provider — ADR-009 refresh lifecycle', () => {
   it('never touches the auto-refresh ticker, in any AppState', async () => {
     await renderHook(() => useAuth(), { wrapper });
 
@@ -341,10 +362,9 @@ describe('auth provider — ADR-007 refresh lifecycle', () => {
     await act(async () => emitAppState('active'));
     await act(async () => emitAppState('inactive'));
 
-    // The whole of ADR-007's first clause, asserted negatively because that is
-    // what it says: the client is constructed with `autoRefreshToken: false`
-    // and nothing here starts or stops a ticker. `supabase-client.test.ts`
-    // asserts the construction option itself.
+    // The client is constructed with `autoRefreshToken: false` and nothing
+    // here starts or stops a ticker. `supabase-client.test.ts` asserts the
+    // construction option itself.
     expect(auth.startAutoRefresh).not.toHaveBeenCalled();
     expect(auth.stopAutoRefresh).not.toHaveBeenCalled();
   });
@@ -361,34 +381,30 @@ describe('auth provider — ADR-007 refresh lifecycle', () => {
 
     await renderHook(() => useAuth(), { wrapper });
 
-    // REVIEW-021 finding 1 / REVIEW-021-ADVISORY finding 1. The predecessor of
-    // this test expected ONE call here and explained it as "the cold-start
-    // bootstrap" — which is precisely the ungated entrance both reviewers
-    // found. `getSession()` enters `__loadSession`, which refreshes a
-    // near-expiry stored session with no `autoRefreshToken` check and, before
-    // this fix, no foreground gate either.
-    //
-    // Zero is the whole property. Nothing is asked of the auth client before
-    // the first foreground.
+    // Zero is the whole property — FOR THIS APP'S OWN CALLS. Nothing is asked
+    // of the auth client, and the durable demand store is not even consulted,
+    // before the first foreground. (What the pinned client does from its own
+    // constructor is recorded behaviour under ADR-009, invisible to this
+    // mocked suite and probed for real in the 006a evidence.)
     await waitFor(() => expect(auth.getSession).not.toHaveBeenCalled());
     expect(auth.startAutoRefresh).not.toHaveBeenCalled();
+    expect(isReauthDemandOutstanding).not.toHaveBeenCalled();
   });
 
-  it('registers no auth listener until the app is foreground', async () => {
+  it('registers no app auth listener until the app is foreground', async () => {
     setAppState('background');
 
     await renderHook(() => useAuth(), { wrapper });
 
-    // The advisory's correction, encoded as a test. `supabase-js` registers no
-    // auth listener of its own — THIS registration is the trigger. Registering
-    // it schedules `_emitInitialSession` (`GoTrueClient.js:3640`), which enters
-    // `_useSession` → `__loadSession` and refreshes inside the 90s expiry
-    // margin with no gate on the path. So the registration itself, not only the
-    // read, has to wait for foreground.
+    // THIS APP's registration is deferred to the first foreground — an app
+    // choice, not a boundary claim. (An earlier version of this comment said
+    // `supabase-js` registers no listener of its own; REVIEW-022 disproved
+    // that by probe, and the claim is withdrawn. The library's internal
+    // listener is outside what a mocked client can show.)
     await waitFor(() => expect(auth.onAuthStateChange).not.toHaveBeenCalled());
   });
 
-  it('opens both entrances on the first transition to active, and only then', async () => {
+  it('opens the bootstrap on the first transition to active, and only then', async () => {
     setAppState('background');
     await renderHook(() => useAuth(), { wrapper });
     expect(auth.onAuthStateChange).not.toHaveBeenCalled();
@@ -396,8 +412,8 @@ describe('auth provider — ADR-007 refresh lifecycle', () => {
 
     await act(async () => emitAppState('active'));
 
-    // Both app-initiated entrances, now that the gate has opened: the
-    // registration and the cold-start read, plus the gate's own settle.
+    // The app's registration and cold-start read, now that its own gate has
+    // opened, plus the gate's settle.
     await waitFor(() => expect(auth.onAuthStateChange).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(auth.getSession).toHaveBeenCalledTimes(2));
   });
@@ -465,101 +481,148 @@ describe('auth provider — ADR-007 refresh lifecycle', () => {
 
   it('requires re-authentication when a rotated session could not be persisted', async () => {
     auth.getSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null });
-    takeSessionPersistenceFailure.mockReturnValue({
-      key: 'sb-noema-auth-token',
+    takeSessionPersistenceFailure.mockReturnValueOnce({
+      key: 'zc-auth-session',
       cause: new Error('errSecInteractionNotAllowed'),
     });
+    takeSessionPersistenceFailure.mockReturnValue(null);
 
     const { result } = await renderHook(() => useAuth(), { wrapper });
 
-    // ADR-007 item 3. The server has already rotated the refresh token and the
-    // write was refused, so what is on disk is the superseded one. The app must
-    // not keep using a session it did not store.
+    // ADR-009: the server has already rotated the refresh token and the write
+    // was refused, so what is on disk is the superseded one. The app must not
+    // keep using a session it did not store.
     await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
     // Device-local, still: requiring re-authentication here must not revoke the
     // same user's session on their other devices. ADR-005's scope decision is
-    // untouched by ADR-007.
+    // carried forward by ADR-009.
     expect(auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+    // And the demand went durable — recorded, not merely flagged in memory.
+    expect(recordReauthDemand).toHaveBeenCalledWith('session-purge-pending');
   });
 
-  it('still forces signedOut when the cleanup removal also fails', async () => {
+  it('still forces signedOut when the purge cannot be proven', async () => {
     auth.getSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null });
-    takeSessionPersistenceFailure.mockReturnValue({
-      key: 'sb-noema-auth-token',
+    takeSessionPersistenceFailure.mockReturnValueOnce({
+      key: 'zc-auth-session',
       cause: new Error('errSecInteractionNotAllowed'),
     });
-    // The store that just refused a write may refuse the deletes too.
+    takeSessionPersistenceFailure.mockReturnValue(null);
+    // The store that just refused a write refuses the deletes too, and the
+    // read-back still finds the residual.
     auth.signOut.mockRejectedValue(new Error('errSecInteractionNotAllowed'));
+    confirmSessionPurged.mockResolvedValue(false);
 
     const { result } = await renderHook(() => useAuth(), { wrapper });
 
-    // The demand for re-authentication is NOT contingent on the removal
+    // The demand for re-authentication is NOT contingent on the purge
     // succeeding.
     await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
   });
 });
 
 /**
- * REVIEW-021 finding 2 — the demand has to outlive the moment it was made.
+ * REVIEW-022 finding 3 — the purge is proven by read-back, and the demand
+ * survives what a restart resets.
  *
- * The predecessor of this block stopped at "signedOut is still set". The
- * reviewer of record held that this is not durable re-authentication, and it
- * was right: a removal the store refuses leaves the SUPERSEDED session on disk,
- * where the next cold start reads it back and trips reuse detection.
- *
- * What is asserted here is the retry. The provider keeps the purge demand alive
- * and re-issues it on later foreground evaluations until the store accepts it.
+ * The predecessor of this block asserted the FALSE INFERENCE the finding
+ * names: its "reads what the STORE did" test mocked a rejected `signOut()`
+ * with a null purge record and expected NO retry — encoding "no observation
+ * of a refused delete" as "deleted". Pinned auth-js can reject before any
+ * removal is attempted, so that null proved nothing. The block is REPLACED,
+ * not patched: the only fact the provider now acts on is the read-back
+ * (`confirmSessionPurged`), and the demand it keeps while unproven is durable
+ * (`reauth-demand`), consulted again by the next process.
  */
-describe('auth provider — durable re-authentication after a refused rotation', () => {
+describe('auth provider — the observed purge and the durable demand', () => {
   const REFUSED = {
-    key: 'sb-noema-auth-token',
+    key: 'zc-auth-session',
     cause: new Error('errSecInteractionNotAllowed'),
   };
 
-  it('retries the removal on the next foreground when the store refused it', async () => {
+  it('treats a signOut rejection with a populated key space as NOT purged, and retries', async () => {
+    // The exact schedule the old test got wrong. `signOut()` rejects — as it
+    // does when a pre-removal refresh write is refused — and the read-back
+    // finds the session still there. The old code called this success; the
+    // provider must now keep the demand alive and retry on the next
+    // foreground.
     auth.getSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null });
     takeSessionPersistenceFailure.mockReturnValueOnce(REFUSED).mockReturnValue(null);
-    // The store refused the delete too, so the superseded session survived.
-    takeSessionPurgeFailure.mockReturnValueOnce(REFUSED).mockReturnValue(null);
+    auth.signOut.mockRejectedValue(new Error('refused-session-write'));
+    confirmSessionPurged.mockResolvedValue(false);
 
     const { result } = await renderHook(() => useAuth(), { wrapper });
     await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
     expect(auth.signOut).toHaveBeenCalledTimes(1);
 
-    // A later foreground, with the store answering again. The demand is still
-    // outstanding, so the removal is re-issued rather than forgotten.
     await act(async () => emitAppState('background'));
     await act(async () => emitAppState('active'));
 
     await waitFor(() => expect(auth.signOut).toHaveBeenCalledTimes(2));
     expect(auth.signOut).toHaveBeenLastCalledWith({ scope: 'local' });
+    // Never cleared: the read-back never proved the space empty.
+    expect(clearReauthDemand).not.toHaveBeenCalled();
   });
 
-  it('stops retrying once the store accepts the removal', async () => {
+  it('treats a signOut rejection with a PROVEN-empty key space as purged', async () => {
+    // The other half of observation replacing inference: the rejection itself
+    // is not evidence either way. Here the deletes actually ran before the
+    // rejection surfaced elsewhere, the read-back proves the space empty, and
+    // there is nothing to retry.
     auth.getSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null });
     takeSessionPersistenceFailure.mockReturnValueOnce(REFUSED).mockReturnValue(null);
-    takeSessionPurgeFailure.mockReturnValueOnce(REFUSED).mockReturnValue(null);
+    auth.signOut.mockRejectedValue(new Error('network request failed'));
+    confirmSessionPurged.mockResolvedValue(true);
+
+    const { result } = await renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
+    expect(auth.signOut).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(clearReauthDemand).toHaveBeenCalledTimes(1));
+
+    await act(async () => emitAppState('background'));
+    await act(async () => emitAppState('active'));
+
+    expect(auth.signOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('records the durable demand BEFORE attempting the purge', async () => {
+    // A crash between the two must leave the record, not just the residual.
+    auth.getSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null });
+    takeSessionPersistenceFailure.mockReturnValueOnce(REFUSED).mockReturnValue(null);
 
     await renderHook(() => useAuth(), { wrapper });
     await waitFor(() => expect(auth.signOut).toHaveBeenCalledTimes(1));
 
-    // Retry #2 succeeds — `takeSessionPurgeFailure` now returns null.
+    expect(recordReauthDemand).toHaveBeenCalledTimes(1);
+    expect(recordReauthDemand.mock.invocationCallOrder[0]).toBeLessThan(
+      auth.signOut.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('stops retrying once the read-back proves the space empty', async () => {
+    auth.getSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null });
+    takeSessionPersistenceFailure.mockReturnValueOnce(REFUSED).mockReturnValue(null);
+    confirmSessionPurged.mockResolvedValueOnce(false).mockResolvedValue(true);
+
+    await renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(auth.signOut).toHaveBeenCalledTimes(1));
+
+    // Retry #2: the store accepts, the read-back proves it, the demand clears.
     await act(async () => emitAppState('background'));
     await act(async () => emitAppState('active'));
     await waitFor(() => expect(auth.signOut).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(clearReauthDemand).toHaveBeenCalledTimes(1));
 
-    // ...and there is nothing left to retry. A demand that never clears would
-    // re-issue a removal on every foreground for the life of the process.
+    // ...and there is nothing left to retry.
     await act(async () => emitAppState('background'));
     await act(async () => emitAppState('active'));
     expect(auth.signOut).toHaveBeenCalledTimes(2);
   });
 
-  it('does not retry a removal the store accepted the first time', async () => {
+  it('does not retry a purge the read-back proved the first time', async () => {
     auth.getSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null });
     takeSessionPersistenceFailure.mockReturnValueOnce(REFUSED).mockReturnValue(null);
-    // No purge failure: the delete landed.
-    takeSessionPurgeFailure.mockReturnValue(null);
+    confirmSessionPurged.mockResolvedValue(true);
 
     await renderHook(() => useAuth(), { wrapper });
     await waitFor(() => expect(auth.signOut).toHaveBeenCalledTimes(1));
@@ -569,34 +632,97 @@ describe('auth provider — durable re-authentication after a refused rotation',
 
     expect(auth.signOut).toHaveBeenCalledTimes(1);
   });
+});
 
-  it('reads what the STORE did, not whether signOut rejected', async () => {
-    // The distinction REVIEW-021 finding 2 turned on. `signOut()` rejecting
-    // says nothing about whether the delete happened — the real composition
-    // "rejected before cleanup ran and left the old session on disk". A
-    // rejection with no purge failure means the store did remove it, and there
-    // is nothing to retry.
+/**
+ * ADR-009 requirement 2 — the demand is consulted at bootstrap, before any
+ * session is exposed, and the observed purge comes BEFORE the provider's own
+ * `getSession()`. REVIEW-022 found the order reversed: the provider loaded
+ * (and could refresh) the very session it refused to use, then retried the
+ * purge. A fresh mount with the demand outstanding is exactly the restart
+ * schedule at this suite's granularity — everything process-local is new, and
+ * only the durable store says what happened before.
+ */
+describe('auth provider — the durable demand at bootstrap', () => {
+  it('purges before its own getSession when a demand is outstanding at mount', async () => {
+    isReauthDemandOutstanding.mockResolvedValue(true);
+    confirmSessionPurged.mockResolvedValue(true);
+
+    await renderHook(() => useAuth(), { wrapper });
+
+    await waitFor(() => expect(auth.getSession).toHaveBeenCalled());
+    // The order IS the property: purge first, then the provider's own reads.
+    expect(auth.signOut).toHaveBeenCalledTimes(1);
+    expect(auth.signOut.mock.invocationCallOrder[0]).toBeLessThan(
+      auth.getSession.mock.invocationCallOrder[0],
+    );
+    expect(clearReauthDemand).toHaveBeenCalledTimes(1);
+  });
+
+  it('exposes no session and reads nothing while the demand is unmet', async () => {
+    isReauthDemandOutstanding.mockResolvedValue(true);
+    confirmSessionPurged.mockResolvedValue(false);
+    // Even a readable stored session must not surface.
     auth.getSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null });
-    takeSessionPersistenceFailure.mockReturnValueOnce(REFUSED).mockReturnValue(null);
-    auth.signOut.mockRejectedValue(new Error('network request failed'));
-    takeSessionPurgeFailure.mockReturnValue(null);
+
+    const { result } = await renderHook(() => useAuth(), { wrapper });
+
+    await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
+    // No bootstrap, no settle, no app listener: the provider's own surface
+    // stays closed until the purge is proven. (What the pinned client's
+    // constructor does internally is recorded behaviour, contained by the
+    // purge — probed in the 006a evidence, invisible to these mocks.)
+    expect(auth.getSession).not.toHaveBeenCalled();
+    expect(auth.onAuthStateChange).not.toHaveBeenCalled();
+    expect(clearReauthDemand).not.toHaveBeenCalled();
+  });
+
+  it('keeps retrying across foregrounds until the read-back proves the purge, then bootstraps', async () => {
+    isReauthDemandOutstanding.mockResolvedValue(true);
+    confirmSessionPurged.mockResolvedValueOnce(false).mockResolvedValue(true);
 
     const { result } = await renderHook(() => useAuth(), { wrapper });
     await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
+    expect(auth.getSession).not.toHaveBeenCalled();
 
     await act(async () => emitAppState('background'));
     await act(async () => emitAppState('active'));
 
-    expect(auth.signOut).toHaveBeenCalledTimes(1);
+    // Proven on the retry: the demand clears and the normal bootstrap runs.
+    await waitFor(() => expect(clearReauthDemand).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(auth.getSession).toHaveBeenCalled());
+    expect(auth.signOut).toHaveBeenCalledTimes(2);
+    // Still purge-before-read, on every evaluation that purged.
+    expect(Math.max(...auth.signOut.mock.invocationCallOrder)).toBeLessThan(
+      Math.min(...auth.getSession.mock.invocationCallOrder),
+    );
   });
 
-  it('clears the purge flag before each attempt, so it describes that attempt', async () => {
-    auth.getSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null });
-    takeSessionPersistenceFailure.mockReturnValueOnce(REFUSED).mockReturnValue(null);
-    takeSessionPurgeFailure.mockReturnValue(null);
+  it('treats a demand store that will not answer as an outstanding demand', async () => {
+    // Refusal is not absence. The cost of assuming outstanding is one
+    // observed purge of an empty key space; the cost of assuming absence
+    // would be trusting the residual the demand exists to bar.
+    isReauthDemandOutstanding.mockRejectedValue(new Error('io error'));
+    confirmSessionPurged.mockResolvedValue(true);
 
     await renderHook(() => useAuth(), { wrapper });
 
-    await waitFor(() => expect(clearSessionPurgeFailure).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(auth.getSession).toHaveBeenCalled());
+    expect(auth.signOut).toHaveBeenCalledTimes(1);
+    expect(auth.signOut.mock.invocationCallOrder[0]).toBeLessThan(
+      auth.getSession.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('consults the durable store once per process, not on every foreground', async () => {
+    isReauthDemandOutstanding.mockResolvedValue(false);
+
+    await renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(auth.getSession).toHaveBeenCalledTimes(2));
+
+    await act(async () => emitAppState('background'));
+    await act(async () => emitAppState('active'));
+
+    expect(isReauthDemandOutstanding).toHaveBeenCalledTimes(1);
   });
 });

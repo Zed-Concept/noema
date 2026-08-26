@@ -1,45 +1,47 @@
 import { refreshWhileForeground } from '@/lib/auth/foreground-refresh';
 import type { AppStateStatus } from 'react-native';
+import type { DemandStoreBackend } from '@/lib/auth/reauth-demand';
+import { createReauthDemand } from '@/lib/auth/reauth-demand';
 import {
+  AUTH_SESSION_STORAGE_KEY,
   clearSessionPersistenceFailure,
-  clearSessionPurgeFailure,
   observingWrites,
   peekSessionPersistenceFailure,
-  peekSessionPurgeFailure,
   takeSessionPersistenceFailure,
-  takeSessionPurgeFailure,
 } from '@/lib/auth/session-storage';
 import { createChunkedSecureStore, type SecureStoreBackend } from '@/lib/auth/secure-store-adapter';
 
 /**
- * ADR-007 / binding ruling 17, tested at the module the decision lives in.
+ * ADR-009's persistence guarantee, tested at the modules the decisions live in.
  *
  * REVIEW-020 finding 1 said of the previous lifecycle evidence: the provider
  * tests "replace the whole auth client with method spies ... they prove only
- * that `startAutoRefresh` or `stopAutoRefresh` was called; they cannot observe
- * initialization, recovery refresh, ticker restart, cancellation, or a
- * post-stop storage write."
+ * that `startAutoRefresh` or `stopAutoRefresh` was called."
  *
  * These tests are built the opposite way. Nothing below is a spy standing in
  * for storage: the REAL chunked adapter runs over an in-memory keychain double,
- * wrapped in the REAL `observingWrites` observer, and the persistence failure
- * is produced by actually refusing a write. What is asserted is the decision
- * the gate reached and the state the store was left in, not that a method was
- * called.
+ * wrapped in the REAL `observingWrites` observer over the REAL demand module
+ * with an in-memory demand backend, and every refusal is produced by actually
+ * refusing an operation. What is asserted is the decision each layer reached
+ * and the state both stores were left in.
  *
  * The one stand-in is `settleSession`, which plays auth-js's `_saveSession`.
  * That is faithful to the pinned library rather than invented: `_saveSession`
  * persists through `setItemAsync(this.storage, this.storageKey, data)`
  * (`GoTrueClient.js`), and that helper is exactly
  * `await storage.setItem(key, JSON.stringify(data))`
- * (`lib/helpers.js:132-134`).
+ * (`lib/helpers.js:132-134`). The full pinned-client composition — real
+ * `createClient`, injected refusing storage, fake fetch — is the finding-3
+ * probe in `docs/05-quality/evidence/006a-session-durability/`, not here.
  *
  * NOT COVERED HERE, and not claimed anywhere: a real device, a real keychain,
- * and a locked screen. ADR-007 classifies locked-device behaviour NOT RUN and
- * NOT CLAIMED in Phase A and carries a named physical-device test into Phase B.
+ * a real app-sandbox file, and a locked screen. ADR-009 keeps locked-device
+ * behaviour NOT RUN and NOT CLAIMED in Phase A and carries a named
+ * physical-device test into Phase B.
  */
 
-const SESSION_KEY = 'sb-noema-auth-token';
+/** The key the client persists the session under — the R3 branch keys off it. */
+const SESSION_KEY = AUTH_SESSION_STORAGE_KEY;
 
 /** A session-shaped payload. Opaque to everything under test. */
 function sessionJson(refreshToken: string): string {
@@ -51,33 +53,77 @@ function sessionJson(refreshToken: string): string {
   });
 }
 
+function memoryDemandBackend(): DemandStoreBackend & {
+  content: string | null;
+  refuseWrites: boolean;
+  writeLog: string[];
+} {
+  const backend = {
+    content: null as string | null,
+    refuseWrites: false,
+    writeLog: [] as string[],
+    read: async () => backend.content,
+    write: async (value: string) => {
+      if (backend.refuseWrites) throw new Error('demand store refused');
+      backend.writeLog.push(value);
+      backend.content = value;
+    },
+    remove: async () => {
+      backend.content = null;
+    },
+  };
+  return backend;
+}
+
 type Harness = {
   readonly storage: ReturnType<typeof observingWrites>;
   readonly store: Map<string, string>;
-  /** Refuse every write whose key starts with this base. Default: never. */
+  readonly demandBackend: ReturnType<typeof memoryDemandBackend>;
+  /** Refuse every keychain write. Default: never. */
   refuseWrites: boolean;
+  /** Refuse every keychain delete. Default: never. */
+  refuseDeletes: boolean;
+  /** Order-sensitive log of keychain refusals and demand writes. */
+  readonly events: string[];
 };
 
 function createHarness(): Harness {
   const store = new Map<string, string>();
-  const harness: Partial<Harness> & { refuseWrites: boolean } = { refuseWrites: false };
+  const events: string[] = [];
+  const demandBackend = memoryDemandBackend();
+  const originalWrite = demandBackend.write;
+  demandBackend.write = async (value) => {
+    await originalWrite(value);
+    events.push('demand-recorded');
+  };
+
+  const harness: Partial<Harness> & { refuseWrites: boolean; refuseDeletes: boolean } = {
+    refuseWrites: false,
+    refuseDeletes: false,
+  };
 
   const backend: SecureStoreBackend = {
     getItemAsync: async (key) => (store.has(key) ? (store.get(key) as string) : null),
     setItemAsync: async (key, value) => {
       // The shape a locked keychain actually produces: the write is refused,
       // and nothing about the refusal says how much of the value landed.
-      if (harness.refuseWrites) throw new Error('errSecInteractionNotAllowed');
+      if (harness.refuseWrites) {
+        events.push('keychain-refused-write');
+        throw new Error('errSecInteractionNotAllowed');
+      }
       store.set(key, value);
     },
     deleteItemAsync: async (key) => {
+      if (harness.refuseDeletes) throw new Error('errSecInteractionNotAllowed');
       store.delete(key);
     },
   };
 
   return Object.assign(harness, {
-    storage: observingWrites(createChunkedSecureStore(backend)),
+    storage: observingWrites(createChunkedSecureStore(backend), createReauthDemand(demandBackend)),
     store,
+    demandBackend,
+    events,
   }) as Harness;
 }
 
@@ -87,7 +133,7 @@ beforeEach(() => {
   clearSessionPersistenceFailure();
 });
 
-describe('ADR-007 — the foreground gate initiates nothing while backgrounded', () => {
+describe('the foreground gate initiates nothing while backgrounded', () => {
   const NOT_FOREGROUND: AppStateStatus[] = ['background', 'inactive'];
 
   it.each(NOT_FOREGROUND)('initiates no refresh in AppState "%s"', async (status) => {
@@ -101,9 +147,9 @@ describe('ADR-007 — the foreground gate initiates nothing while backgrounded',
     });
 
     expect(outcome).toBe('not-foreground');
-    // The gate is what is being measured: the call never happened at all. Under
-    // ADR-007 there is no ticker to stop, so "did not initiate" is the entire
-    // backgrounded behaviour.
+    // The gate is what is being measured: the call never happened at all.
+    // There is no ticker to stop, because `autoRefreshToken: false` means one
+    // was never started.
     expect(settleCalls).toBe(0);
   });
 
@@ -126,9 +172,8 @@ describe('ADR-007 — the foreground gate initiates nothing while backgrounded',
 // rather than leaving the platform to be inferred. The observer wraps the
 // SecureStore-backed adapter handed to the client on native; on web, storage is
 // `localStorage` through the supabase-js default, which never reaches the
-// adapter, so no flag is set and nothing here is claimed about it. A web
-// observer is a named backlog unit, deliberately not built in this cycle.
-describe('ADR-007 item 3 / ADR-008 — on NATIVE, a rotated session that cannot be stored is surfaced', () => {
+// adapter, so no flag is set and nothing here is claimed about it.
+describe('ADR-009 / ADR-008 — on NATIVE, a rotated session that cannot be stored is surfaced', () => {
   it('reports "unpersisted" when the store refuses the rotated write', async () => {
     const harness = createHarness();
     // A session is already stored, as it would be for a signed-in user.
@@ -146,9 +191,8 @@ describe('ADR-007 item 3 / ADR-008 — on NATIVE, a rotated session that cannot 
     expect(outcome).toBe('unpersisted');
 
     // The security-relevant half, asserted on the store rather than inferred
-    // from the outcome: what survived is the SUPERSEDED token. This is the
-    // state ADR-007 exists to stop the app from continuing against — the
-    // server has moved on to refresh-v2 and the disk still says refresh-v1.
+    // from the outcome: what survived is the SUPERSEDED token. The server has
+    // moved on to refresh-v2 and the disk still says refresh-v1.
     const survived = await harness.storage.getItem(SESSION_KEY);
     expect(survived).toBe(sessionJson('refresh-v1'));
     expect(survived).not.toContain('refresh-v2');
@@ -184,7 +228,7 @@ describe('ADR-007 item 3 / ADR-008 — on NATIVE, a rotated session that cannot 
   it('consumes the failure, so one refused write forces re-authentication once', async () => {
     const harness = createHarness();
     harness.refuseWrites = true;
-    await expect(harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v2'))).rejects.toThrow();
+    await harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v2'));
 
     const deps = {
       settleSession: async () => {},
@@ -198,19 +242,14 @@ describe('ADR-007 item 3 / ADR-008 — on NATIVE, a rotated session that cannot 
   });
 
   it('keeps a refused write outstanding when a later write succeeds', async () => {
-    // REVIEW-021 finding 2, exactly. This schedule USED to return `settled`,
-    // and the predecessor test asserted that it should: the observer cleared
-    // the flag on any later successful write, so a refused rotation of v2
-    // followed by a successful write of v3 erased the refusal before the
-    // foreground consumer ever read it. The reviewer ran this schedule against
-    // the real client and the earlier refused rotation "was never surfaced as
-    // claimed".
-    //
-    // A later write succeeding does not un-lose the token the earlier one
-    // dropped, so the flag is now STICKY UNTIL TAKEN.
+    // REVIEW-021 finding 2, exactly, and unchanged under ADR-009: a later
+    // write succeeding does not un-lose the token the earlier one dropped, so
+    // the flag is STICKY UNTIL TAKEN. (What the later success DOES clear is
+    // the durable demand — asserted in its own block below — because disk
+    // freshness and this process's need to act are different facts.)
     const harness = createHarness();
     harness.refuseWrites = true;
-    await expect(harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v2'))).rejects.toThrow();
+    await harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v2'));
     expect(peekSessionPersistenceFailure()).not.toBeNull();
 
     harness.refuseWrites = false;
@@ -227,13 +266,9 @@ describe('ADR-007 item 3 / ADR-008 — on NATIVE, a rotated session that cannot 
   });
 
   it('surfaces a refused write exactly once, so re-authentication cannot loop', async () => {
-    // The other half of sticky-until-taken, and the reason it does not turn
-    // into a permanent signed-out loop: the CONSUMER clears it. One refused
-    // write forces re-authentication once, and the sign-in that follows —
-    // whose own write succeeds — is unaffected.
     const harness = createHarness();
     harness.refuseWrites = true;
-    await expect(harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v2'))).rejects.toThrow();
+    await harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v2'));
 
     const deps = {
       settleSession: async () => {},
@@ -245,123 +280,195 @@ describe('ADR-007 item 3 / ADR-008 — on NATIVE, a rotated session that cannot 
     await harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v4'));
     expect(await refreshWhileForeground('active', deps)).toBe('settled');
   });
+});
 
-  it('observes without absorbing: the caller still sees the rejection', async () => {
+/**
+ * ADR-009 requirement 3 — a refused session write is recorded and absorbed.
+ *
+ * REVIEW-022 observed what rethrowing did inside the pinned client: one
+ * refused write produced TWO unhandled `refused-session-write` rejections,
+ * because `_callRefreshToken` both rejects its internal Deferred and throws to
+ * the initiating chain. The observer now records the refusal — durable demand
+ * FIRST, in-process flag second — and resolves, so the library never enters
+ * that path. The fail-closed fallback when the demand itself cannot be
+ * recorded is asserted here too, because a fallback nobody has run is a hope.
+ */
+describe('ADR-009 requirement 3 — the refused session write is recorded, then absorbed', () => {
+  beforeEach(() => clearSessionPersistenceFailure());
+
+  it('resolves a refused SESSION write instead of rethrowing it', async () => {
     const harness = createHarness();
     harness.refuseWrites = true;
 
-    await expect(harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v2'))).rejects.toThrow(
-      'errSecInteractionNotAllowed',
-    );
+    // No rejection escapes: by the time this resolves, the refusal is already
+    // recorded somewhere a crash cannot erase.
+    await expect(
+      harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v2')),
+    ).resolves.toBeUndefined();
+
     expect(peekSessionPersistenceFailure()).toMatchObject({ key: SESSION_KEY });
   });
 
-  it('does not record a refused REMOVAL as a persistence failure', async () => {
-    // Bounded to the claim it supports, per learning 12. A refused removal is a
-    // failed sign-out, which the adapter already surfaces by rejecting and the
-    // provider already turns into an error shown to the user. It is not a lost
-    // rotated token, and widening the flag to cover it would overstate what
-    // this instrument measures.
-    const store = new Map<string, string>();
-    const backend: SecureStoreBackend = {
-      getItemAsync: async (key) => (store.has(key) ? (store.get(key) as string) : null),
-      setItemAsync: async (key, value) => {
-        store.set(key, value);
-      },
-      deleteItemAsync: async () => {
-        throw new Error('errSecInteractionNotAllowed');
-      },
-    };
-    const storage = observingWrites(createChunkedSecureStore(backend));
-    await storage.setItem(SESSION_KEY, sessionJson('refresh-v1'));
+  it('records the durable demand BEFORE it resolves, and before the flag is readable', async () => {
+    const harness = createHarness();
+    harness.refuseWrites = true;
 
-    await expect(storage.removeItem(SESSION_KEY)).rejects.toThrow(/Removal of/);
+    await harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v2'));
+
+    // The demand is on "disk".
+    expect(harness.demandBackend.content).not.toBeNull();
+    const record = JSON.parse(harness.demandBackend.content as string) as Record<string, unknown>;
+    expect(record.reason).toBe('session-write-refused');
+    // Order: the keychain refusal happened, then the demand write — nothing
+    // between them could have observed a refusal with no durable record.
+    expect(harness.events).toEqual(['keychain-refused-write', 'demand-recorded']);
+  });
+
+  it('rejects with the ORIGINAL cause when the demand store also refuses — the recorded fallback', async () => {
+    const harness = createHarness();
+    harness.refuseWrites = true;
+    harness.demandBackend.refuseWrites = true;
+
+    // Durability could not be achieved, so the library sees the refusal
+    // exactly as before ADR-009. The original keychain cause propagates, not
+    // the demand store's.
+    await expect(harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v2'))).rejects.toThrow(
+      'errSecInteractionNotAllowed',
+    );
+    // The in-process flag still serves this process.
+    expect(peekSessionPersistenceFailure()).toMatchObject({ key: SESSION_KEY });
+  });
+
+  it('still rethrows a refused write of a NON-session key', async () => {
+    // Bounded to the claim: only the session persist enters auth-js's
+    // Deferred path. Other keys keep the observe-and-rethrow contract.
+    const harness = createHarness();
+    harness.refuseWrites = true;
+
+    await expect(harness.storage.setItem('some-other-key', 'value')).rejects.toThrow(
+      'errSecInteractionNotAllowed',
+    );
+    expect(peekSessionPersistenceFailure()).toMatchObject({ key: 'some-other-key' });
+    // And no demand: the durable demand is about the session.
+    expect(harness.demandBackend.content).toBeNull();
+  });
+
+  it('clears the durable demand when a session write later SUCCEEDS', async () => {
+    // What the demand records is that the disk cannot be vouched for. After a
+    // write the adapter observed completing, the key space holds the newest
+    // session the client knows, so the demand's residual no longer exists as
+    // a readable session. The sticky flag is asserted separately above — it
+    // deliberately does NOT clear on the same event.
+    const harness = createHarness();
+    harness.refuseWrites = true;
+    await harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v2'));
+    expect(harness.demandBackend.content).not.toBeNull();
+
+    harness.refuseWrites = false;
+    await harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v3'));
+
+    expect(harness.demandBackend.content).toBeNull();
+    // The flag is still sticky — disk freshness does not erase this process's
+    // need to surface the earlier refusal.
+    expect(peekSessionPersistenceFailure()).not.toBeNull();
+  });
+
+  it('does not touch the demand on a successful NON-session write', async () => {
+    const harness = createHarness();
+    harness.refuseWrites = true;
+    await harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v2'));
+    expect(harness.demandBackend.content).not.toBeNull();
+
+    harness.refuseWrites = false;
+    await harness.storage.setItem('some-other-key', 'value');
+
+    expect(harness.demandBackend.content).not.toBeNull();
+  });
+
+  it('does not record a refused REMOVAL as a persistence failure', async () => {
+    // Bounded to the claim it supports, per learning 12. A refused removal is
+    // a failed sign-out, which the adapter surfaces by rejecting and the
+    // provider turns into an error shown to the user. It is not a lost
+    // rotated token.
+    const harness = createHarness();
+    await harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v1'));
+    harness.refuseDeletes = true;
+
+    await expect(harness.storage.removeItem(SESSION_KEY)).rejects.toThrow(/Removal of/);
     expect(peekSessionPersistenceFailure()).toBeNull();
-    // It IS recorded, separately, as a purge failure — see the block below.
-    expect(peekSessionPurgeFailure()).toMatchObject({ key: SESSION_KEY });
   });
 });
 
 /**
- * REVIEW-021 finding 2 — durable re-authentication.
+ * ADR-009 requirement 1 — purge success is OBSERVED, never inferred.
  *
- * The finding was not that detection fails. The advisory confirmed detection is
- * sound because the observer sits at the WRITE rather than at the initiator. It
- * was that what happens AFTER detection does not guarantee the superseded
- * session stops existing: `signOut()` can reject before cleanup runs and leave
- * the old session readable on the next cold start.
- *
- * These tests cover the fact the provider needs in order to keep the demand
- * alive: did the STORE remove it? That is a different question from whether
- * `signOut()` rejected, and it is the one that decides whether a residual
- * exists.
+ * The previous version of this file tested a purge-failure flag here: a
+ * refused delete was recorded, and the ABSENCE of that record was read
+ * upstream as proof of deletion. REVIEW-022 finding 3 showed the inference
+ * fail — auth-js can reject before any delete is attempted, leaving no record
+ * and no deletion. The flag is deleted, not repaired. What replaces it is
+ * observation: `confirmRemoved` reads the complete enumerable key space back,
+ * and empty means EMPTY, proven by reads that succeeded.
  */
-describe('the purge observer — did the store actually remove it', () => {
-  beforeEach(() => {
-    clearSessionPersistenceFailure();
-    clearSessionPurgeFailure();
+describe('ADR-009 requirement 1 — the read-back is the only proof of deletion', () => {
+  it('reports a populated key space after a refused removal — the residual is real', async () => {
+    const harness = createHarness();
+    await harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v1'));
+    harness.refuseDeletes = true;
+
+    await expect(harness.storage.removeItem(SESSION_KEY)).rejects.toThrow(/Removal of/);
+
+    // The read-back finds what the refusal left behind. Note the removal
+    // rejection above proves nothing on its own — THIS does.
+    expect(await harness.storage.confirmRemoved(SESSION_KEY)).toBe(false);
+    expect(await harness.storage.getItem(SESSION_KEY)).toBe(sessionJson('refresh-v1'));
   });
 
-  function refusingRemovalStore() {
+  it('proves the space empty once a retried removal is accepted', async () => {
+    const harness = createHarness();
+    await harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v1'));
+    harness.refuseDeletes = true;
+    await expect(harness.storage.removeItem(SESSION_KEY)).rejects.toThrow();
+
+    harness.refuseDeletes = false;
+    await harness.storage.removeItem(SESSION_KEY);
+
+    expect(await harness.storage.confirmRemoved(SESSION_KEY)).toBe(true);
+    expect(await harness.storage.getItem(SESSION_KEY)).toBeNull();
+  });
+
+  it('detects stranded chunk material that no getItem would ever return', async () => {
+    // A fragment without an index is unreadable — getItem fails closed to
+    // null — but it is still token material on disk. The read-back sweeps the
+    // full enumerable key space precisely so "empty" means no material, not
+    // merely no readable session.
+    const harness = createHarness();
+    harness.store.set(`${SESSION_KEY}.0.3`, 'stranded-fragment');
+
+    expect(await harness.storage.getItem(SESSION_KEY)).toBeNull();
+    expect(await harness.storage.confirmRemoved(SESSION_KEY)).toBe(false);
+  });
+
+  it('refuses to call a space empty when the backend refuses to answer', async () => {
+    // Reading for absence honours the same invariant as every other read: a
+    // backend that would not answer has not said the key is empty.
     const store = new Map<string, string>();
     const backend: SecureStoreBackend = {
-      getItemAsync: async (key) => (store.has(key) ? (store.get(key) as string) : null),
-      setItemAsync: async (key, value) => {
-        store.set(key, value);
-      },
-      deleteItemAsync: async () => {
+      getItemAsync: async () => {
         throw new Error('errSecInteractionNotAllowed');
       },
-    };
-    return { store, storage: observingWrites(createChunkedSecureStore(backend)) };
-  }
-
-  it('records a refused removal, and rethrows rather than absorbing it', async () => {
-    const { storage } = refusingRemovalStore();
-    await storage.setItem(SESSION_KEY, sessionJson('refresh-v1'));
-
-    await expect(storage.removeItem(SESSION_KEY)).rejects.toThrow(/Removal of/);
-
-    // The residual is real and this is what proves it: the superseded session
-    // is still readable after the removal was refused.
-    expect(await storage.getItem(SESSION_KEY)).toBe(sessionJson('refresh-v1'));
-    expect(peekSessionPurgeFailure()).toMatchObject({ key: SESSION_KEY });
-  });
-
-  it('reports the residual gone once a retried removal is accepted', async () => {
-    // The durability property, as a schedule: refused first, accepted second.
-    // The provider retries on each later foreground evaluation, and this is the
-    // transition it is waiting for.
-    const store = new Map<string, string>();
-    let refuseRemoval = true;
-    const backend: SecureStoreBackend = {
-      getItemAsync: async (key) => (store.has(key) ? (store.get(key) as string) : null),
       setItemAsync: async (key, value) => {
         store.set(key, value);
       },
       deleteItemAsync: async (key) => {
-        if (refuseRemoval) throw new Error('errSecInteractionNotAllowed');
         store.delete(key);
       },
     };
-    const storage = observingWrites(createChunkedSecureStore(backend));
-    await storage.setItem(SESSION_KEY, sessionJson('refresh-v1'));
+    const storage = observingWrites(
+      createChunkedSecureStore(backend),
+      createReauthDemand(memoryDemandBackend()),
+    );
 
-    await expect(storage.removeItem(SESSION_KEY)).rejects.toThrow();
-    expect(takeSessionPurgeFailure()).not.toBeNull();
-
-    refuseRemoval = false;
-    await storage.removeItem(SESSION_KEY);
-
-    expect(peekSessionPurgeFailure()).toBeNull();
-    expect(await storage.getItem(SESSION_KEY)).toBeNull();
-  });
-
-  it('does not record a successful removal', async () => {
-    const harness = createHarness();
-    await harness.storage.setItem(SESSION_KEY, sessionJson('refresh-v1'));
-    await harness.storage.removeItem(SESSION_KEY);
-
-    expect(peekSessionPurgeFailure()).toBeNull();
+    expect(await storage.confirmRemoved(SESSION_KEY)).toBe(false);
   });
 });

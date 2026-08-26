@@ -1290,3 +1290,114 @@ describe('chunked SecureStore adapter — generation alternation', () => {
     expect(two).not.toBe(one);
   });
 });
+
+/**
+ * ADR-009 requirement 1 — `confirmRemoved`, the read-back that is the only
+ * proof of deletion. REVIEW-022 finding 3 showed the cost of inferring purge
+ * success from the absence of a failure observation: auth-js can reject before
+ * any delete is attempted, leaving no observation and no deletion. This block
+ * proves the replacement observes rather than infers, and that observing
+ * changes nothing.
+ */
+describe('chunked SecureStore adapter — confirmRemoved observes, never infers', () => {
+  it('proves an untouched key space empty by reading all of it', async () => {
+    const fake = createFakeSecureStore();
+    const adapter = createChunkedSecureStore(fake.backend);
+
+    await expect(adapter.confirmRemoved(BASE_KEY)).resolves.toBe(true);
+
+    // The proof is the reads: the index plus every chunk key of both
+    // generations — the same enumerable space removal sweeps — and nothing
+    // but reads.
+    const gets = fake.log.filter((op) => op.kind === 'get');
+    expect(gets).toHaveLength(1 + GENERATIONS.length * MAX_CHUNKS);
+    expect(fake.log.filter((op) => op.kind !== 'get')).toHaveLength(0);
+  });
+
+  it('reports a stored session as present, not removed', async () => {
+    const fake = createFakeSecureStore();
+    const adapter = createChunkedSecureStore(fake.backend);
+    await adapter.setItem(BASE_KEY, 'opaque-session-payload');
+
+    await expect(adapter.confirmRemoved(BASE_KEY)).resolves.toBe(false);
+  });
+
+  it('proves the space empty after a completed removal', async () => {
+    const fake = createFakeSecureStore();
+    const adapter = createChunkedSecureStore(fake.backend);
+    await adapter.setItem(BASE_KEY, 'opaque-session-payload');
+    await adapter.removeItem(BASE_KEY);
+
+    await expect(adapter.confirmRemoved(BASE_KEY)).resolves.toBe(true);
+    expect(fake.store.size).toBe(0);
+  });
+
+  it('detects stranded chunk material that getItem would never return', async () => {
+    // A fragment with no index is unreadable — getItem fails closed to null —
+    // but it is still token material on disk. "Empty" means NO MATERIAL, not
+    // merely no readable session, which is why the sweep cannot stop at the
+    // index.
+    const fake = createFakeSecureStore();
+    const adapter = createChunkedSecureStore(fake.backend);
+    fake.store.set(chunkKeyFor(BASE_KEY, 1, 7), 'stranded-fragment');
+
+    await expect(adapter.getItem(BASE_KEY)).resolves.toBeNull();
+    await expect(adapter.confirmRemoved(BASE_KEY)).resolves.toBe(false);
+  });
+
+  it('refuses to call the space empty when the index read is refused', async () => {
+    // INVARIANT 1, applied to reading for absence: a backend that refuses to
+    // answer has not said the key is empty.
+    const fake = createFakeSecureStore();
+    const adapter = createChunkedSecureStore(fake.backend);
+    fake.failGet = (key) => key === BASE_KEY;
+
+    await expect(adapter.confirmRemoved(BASE_KEY)).resolves.toBe(false);
+  });
+
+  it('refuses to call the space empty when any single chunk read is refused', async () => {
+    const fake = createFakeSecureStore();
+    const adapter = createChunkedSecureStore(fake.backend);
+    const refusedKey = chunkKeyFor(BASE_KEY, 1, MAX_CHUNKS - 1);
+    fake.failDelete = () => false;
+    fake.failGet = (key) => key === refusedKey;
+
+    // Every other read succeeds and finds nothing; the one refusal is enough
+    // to withhold the proof.
+    await expect(adapter.confirmRemoved(BASE_KEY)).resolves.toBe(false);
+  });
+
+  it('never writes or deletes — observation cannot perturb what it proves', async () => {
+    const fake = createFakeSecureStore();
+    const adapter = createChunkedSecureStore(fake.backend);
+    await adapter.setItem(BASE_KEY, 'opaque-session-payload');
+    const opsBefore = fake.ops.length;
+
+    await adapter.confirmRemoved(BASE_KEY);
+
+    const opsDuring = fake.ops.slice(opsBefore);
+    expect(opsDuring.every((op) => op.startsWith('get:'))).toBe(true);
+    await expect(adapter.getItem(BASE_KEY)).resolves.toBe('opaque-session-payload');
+  });
+
+  it('queues behind an in-flight write, so it cannot read a space mid-transition', async () => {
+    // INVARIANT 2 covers this method like every other: the read-back joins
+    // the same queue, so its answer describes a settled key space, never a
+    // half-laid generation.
+    const fake = createFakeSecureStore();
+    const adapter = createChunkedSecureStore(fake.backend);
+
+    const write = adapter.setItem(BASE_KEY, 'opaque-session-payload');
+    const readBack = adapter.confirmRemoved(BASE_KEY);
+
+    await expect(readBack).resolves.toBe(false);
+    await write;
+
+    // Every backend operation of the write precedes every read of the
+    // read-back: the queue held the read-back until the write finished.
+    const firstReadBackIndex = fake.ops.findIndex(
+      (op, index) => op.startsWith('get:') && index > 0 && fake.ops[index - 1].startsWith('set:'),
+    );
+    expect(firstReadBackIndex).toBeGreaterThan(0);
+  });
+});

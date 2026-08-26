@@ -194,8 +194,8 @@ export const CHUNK_BUDGET_BYTES = 1536;
  *
  * Whether the Noema Supabase project will ever return metadata approaching
  * this size is **NOT RUN** — Phase A makes no live auth call, so no
- * server-side bound is established, and none is assumed. ADR-007's Phase B
- * work is where a real session is first measured.
+ * server-side bound is established, and none is assumed. Phase B, whose device
+ * test ADR-009 carries forward, is where a real session is first measured.
  */
 export const MAX_CHUNKS = 256;
 
@@ -270,19 +270,20 @@ export type SecureStoreBackend = {
  * rejected `AFTER_FIRST_UNLOCK`: it would fix a background refresh's lost write
  * by making the session readable while the device is locked, which is exactly
  * the at-rest protection ADR-004 chose SecureStore for. That rejection stands
- * unchanged under ADR-007.
+ * unchanged under ADR-009, which carries ADR-005's storage decisions forward.
  *
  * WHAT IS NOT CLAIMED HERE. An earlier version of this note said a refresh
  * "never fires against a locked device, and there is no lost write to fix".
  * Both halves are withdrawn. REVIEW-020 finding 1 disproved the first, and
- * ADR-007 replaced the clause it rested on: the client no longer schedules
- * refreshes at all (`supabase.ts`, `autoRefreshToken: false`) and the app
- * initiates them only while foreground (`foreground-refresh.ts`). The second
- * half was never established in this phase — ADR-007 classifies locked-device
- * behaviour NOT RUN and NOT CLAIMED in Phase A and carries a named
- * physical-device test into Phase B. What this codebase does instead of
- * claiming the write cannot be lost is DETECT that it was: a refused session
- * write is recorded by `session-storage.ts` and forces re-authentication.
+ * ADR-009 replaced the decision it rested on: refresh entrances are not
+ * enumerated and not gated — the client never self-schedules
+ * (`supabase.ts`, `autoRefreshToken: false`), but library-internal refreshes
+ * are recorded, expected behaviour. The second half was never established in
+ * this phase — ADR-009 keeps locked-device behaviour NOT RUN and NOT CLAIMED
+ * in Phase A and carries a named physical-device test into Phase B. What this
+ * codebase does instead of claiming the write cannot be lost is DETECT that it
+ * was: a refused session write is recorded by `session-storage.ts`, forces
+ * re-authentication, and the demand survives restart (`reauth-demand.ts`).
  */
 const secureStoreBackend: SecureStoreBackend = {
   getItemAsync: (key) => SecureStore.getItemAsync(key),
@@ -385,6 +386,13 @@ export type ChunkedSecureStore = {
   getItem(key: string): Promise<string | null>;
   setItem(key: string, value: string): Promise<void>;
   removeItem(key: string): Promise<void>;
+  /**
+   * Prove, by reading every enumerable key, that nothing is stored under
+   * `key`. ADR-009 requirement 1: purge success is OBSERVED, never inferred —
+   * this read-back is the only proof of deletion the session layer accepts.
+   * Read-only; it never writes or deletes anything.
+   */
+  confirmRemoved(key: string): Promise<boolean>;
 };
 
 /**
@@ -589,6 +597,42 @@ export function createChunkedSecureStore(
     if (current) await purgeRange(key, current.g, current.n);
   }
 
+  /**
+   * ADR-009 requirement 1 — the observed absence of a value.
+   *
+   * REVIEW-022 finding 3 held that the absence of a removal REJECTION was
+   * being read as proof of deletion, when auth-js can reject upstream of the
+   * store with the removal never attempted. The only honest proof that a purge
+   * happened is to look: this reads the same complete enumerable key space
+   * `removeItemBody` sweeps — the index plus every chunk key of both
+   * generations — and reports empty only when every single read succeeded AND
+   * returned null.
+   *
+   * INVARIANT 1 applies to reading for absence exactly as it applies
+   * everywhere else: a backend that refuses to answer has not said the key is
+   * empty, so a refused read makes this return false. Unlike removal's sweep,
+   * which must finish its work after a refusal, disproof here needs only one
+   * witness — the early return on the first present-or-refused key changes no
+   * observable answer, only how quickly a false one arrives.
+   *
+   * Read-only by construction. It shares `removeItem`'s key-space enumeration
+   * (the property the two-generation design exists to provide) and runs
+   * through the same queue, so it can never interleave with a write and read a
+   * key space that is mid-transition.
+   */
+  async function confirmRemovedBody(key: string): Promise<boolean> {
+    const indexRead = await readBackend(key);
+    if (!indexRead.ok || indexRead.value !== null) return false;
+
+    for (const generation of GENERATIONS) {
+      for (let i = 0; i < MAX_CHUNKS; i += 1) {
+        const chunk = await readBackend(chunkKeyFor(key, generation, i));
+        if (!chunk.ok || chunk.value !== null) return false;
+      }
+    }
+    return true;
+  }
+
   async function removeItemBody(key: string): Promise<void> {
     // No index read. Removal does not need to know what is there, and asking
     // would reintroduce exactly the discovery step whose failure mode is
@@ -632,5 +676,6 @@ export function createChunkedSecureStore(
     getItem: (key) => serialized(() => getItemBody(key)),
     setItem: (key, value) => serialized(() => setItemBody(key, value)),
     removeItem: (key) => serialized(() => removeItemBody(key)),
+    confirmRemoved: (key) => serialized(() => confirmRemovedBody(key)),
   };
 }

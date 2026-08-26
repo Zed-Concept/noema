@@ -1,8 +1,30 @@
 import type { SupportedStorage } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 
+import type { ReauthDemandHandle } from './reauth-demand';
+import { reauthDemand } from './reauth-demand';
 import type { ChunkedSecureStore } from './secure-store-adapter';
 import { createChunkedSecureStore } from './secure-store-adapter';
+
+/**
+ * The key the Supabase client persists the session under, passed to
+ * `createClient` as `auth.storageKey` in `supabase.ts`.
+ *
+ * EXPLICIT, NOT DERIVED. Left unset, the pinned client derives this from the
+ * project URL inside its own constructor. ADR-009 requirement 1 makes the
+ * session layer read this key space back to prove a purge happened, so the
+ * key must be knowable HERE — and re-deriving the library's formula in app
+ * code is exactly the reading-of-internals that learning 20 and ADR-009 warn
+ * against: it silently breaks on any upgrade that changes the formula.
+ * Setting the documented public option makes the key an app constant that the
+ * client, this module, and the evidence probes all share.
+ *
+ * Changing the key from the derived default strands nothing: no device or
+ * simulator has ever run this app (Phase A is offline, there is no EAS
+ * project and no store presence), so there is no installed base whose stored
+ * session lives under the old name.
+ */
+export const AUTH_SESSION_STORAGE_KEY = 'zc-auth-session';
 
 /**
  * A session write that the store refused.
@@ -21,23 +43,26 @@ export type SessionPersistenceFailure = {
  * The most recent session write, remembered only when it FAILED.
  *
  * ---------------------------------------------------------------------------
- * WHY THIS EXISTS — ADR-007 item 3, binding ruling 17
+ * WHY THIS EXISTS — ADR-009, binding ruling 20
  * ---------------------------------------------------------------------------
  *
- * The danger ADR-007 names is not that a refresh happened. It is that a
+ * The danger ADR-009 names is not that a refresh happened. It is that a
  * ROTATED TOKEN VANISHED AND NOBODY NOTICED. When `_saveSession` cannot write,
  * the server has already rotated the refresh token, so what remains on disk is
  * the SUPERSEDED one. Continuing against it is how a session dies days later
  * inside Supabase's refresh-token reuse detection, with no diagnostic trail.
  *
- * auth-js does propagate that failure — a non-`AuthError` thrown out of
- * `_saveSession` is rethrown by `_callRefreshToken`
- * (`GoTrueClient.js:4301`) and again by `_refreshSession`
- * (`GoTrueClient.js:3229`) — but a propagated rejection is indistinguishable
- * at the call site from a network failure or an unreadable store. Only one of
- * those means "a rotated token is now lost". This flag is what tells them
- * apart, so the session layer can require re-authentication for the one case
- * that warrants it instead of signing users out on any transient error.
+ * Detection sits AT THE WRITE, not at the initiator. That is what makes it
+ * indifferent to how many refresh entrances exist — ADR-009 records that they
+ * are not enumerable — because every failing session write lands here no
+ * matter what initiated it.
+ *
+ * This in-process flag is one of TWO records a refused session write now
+ * leaves. The other is the durable demand (`reauth-demand.ts`), written FIRST,
+ * which survives process restart — REVIEW-022 finding 3 established that this
+ * flag alone does not. The flag remains because the two answer different
+ * consumers: the demand tells the NEXT process not to trust the disk; this
+ * flag tells THIS process's foreground evaluation to act now.
  *
  * ---------------------------------------------------------------------------
  * SCOPE — what this observes and what it does not
@@ -49,16 +74,7 @@ export type SessionPersistenceFailure = {
  *
  * NOT COVERED: web. `Platform.OS === 'web'` gets `undefined` so `supabase-js`
  * uses its own `localStorage`, which this module never sees — a quota-exceeded
- * write there is NOT observed and no claim is made that it is.
- *
- * NOT COVERED BY THIS FLAG: `removeItem`. A refused removal is a different
- * fact about a different operation, and it is recorded separately below in
- * `lastPurgeFailure` rather than folded in here. Two flags, because the session
- * layer must act differently on each: a refused WRITE means a rotated token was
- * lost and the session must be abandoned; a refused REMOVAL means a session that
- * has already been abandoned is still on disk and must be deleted again. Merging
- * them would widen each past the claim it exists to support, and learning 12 is
- * explicit that a claim is bound to its instrument.
+ * write there is NOT observed and no claim is made that it is (ADR-008).
  *
  * Module scope, like the adapter singleton it wraps, and for the same reason:
  * there is exactly one session store per runtime.
@@ -83,107 +99,117 @@ export function takeSessionPersistenceFailure(): SessionPersistenceFailure | nul
   return failure;
 }
 
-/** Drop any outstanding failure. Test seam; also called on a successful write. */
+/** Drop any outstanding failure. Test seam. */
 export function clearSessionPersistenceFailure(): void {
   lastPersistenceFailure = null;
 }
 
 /**
- * The most recent session REMOVAL, remembered only when the store refused it.
- *
- * ---------------------------------------------------------------------------
- * WHY THIS EXISTS — REVIEW-021 finding 2
- * ---------------------------------------------------------------------------
- *
- * Forcing `signedOut` is not the same thing as making a superseded session
- * stop existing. REVIEW-021 reproduced the gap: the real composition rejected
- * before cleanup ran and left the old session on disk, and `signOut()`
- * rejecting tells the caller nothing about whether the delete happened — it
- * can reject for reasons upstream of the store entirely.
- *
- * This flag answers the narrower question the caller actually needs: did the
- * STORE remove it? `auth-provider.tsx` reads it after every forced
- * re-authentication and retries the removal on each later foreground
- * evaluation until it comes back clear.
- *
- * Kept separate from `lastPersistenceFailure` on purpose — see the scope note
- * above.
- */
-let lastPurgeFailure: SessionPersistenceFailure | null = null;
-
-/** Read the outstanding removal failure without consuming it. */
-export function peekSessionPurgeFailure(): SessionPersistenceFailure | null {
-  return lastPurgeFailure;
-}
-
-/** Read and clear the outstanding removal failure. */
-export function takeSessionPurgeFailure(): SessionPersistenceFailure | null {
-  const failure = lastPurgeFailure;
-  lastPurgeFailure = null;
-  return failure;
-}
-
-/**
- * Drop any outstanding removal failure.
- *
- * Called immediately BEFORE an attempted purge, so that what is read afterwards
- * describes that attempt rather than an older one. Also a test seam.
- */
-export function clearSessionPurgeFailure(): void {
-  lastPurgeFailure = null;
-}
-
-/**
- * Record whether each session write landed, then let the result through
- * unchanged.
+ * Record whether each session write landed, then decide what the library sees.
  *
  * A decorator, deliberately, rather than a change inside the adapter. ADR-004
  * names the adapter the highest-risk code in the repo and constrains it to stay
  * minimal; observing writes is a session-layer concern and does not belong in
  * the module that must remain small enough to audit by reading.
  *
- * The rejection is RETHROWN. This observes; it does not absorb. A caller that
- * would have seen the failure still sees it.
+ * ---------------------------------------------------------------------------
+ * A REFUSED SESSION WRITE IS RECORDED AND ABSORBED — ADR-009 requirement 3
+ * ---------------------------------------------------------------------------
+ *
+ * The previous version rethrew every refused write. REVIEW-022 observed what
+ * that does inside the pinned client: `_callRefreshToken` both rejects its
+ * internal Deferred and throws to the initiating chain, so one refused write
+ * produced TWO unhandled `refused-session-write` rejections that no caller
+ * could consume. The library's throw-and-reject path is not this module's to
+ * fix, but it is this module's not to enter.
+ *
+ * So for the session key the order is now: durable demand FIRST, in-process
+ * flag second, then RESOLVE. By the time auth-js resumes, the refusal is
+ * already recorded somewhere a crash cannot erase, and the library is told
+ * nothing it would turn into an unhandled rejection. The refusal still
+ * surfaces — through the flag to this process's foreground evaluation, and
+ * through the demand to every process after it.
+ *
+ * FAIL CLOSED: when the DEMAND write itself is refused, this rethrows the
+ * original cause. Durability could not be achieved, so the library sees the
+ * refusal exactly as before — the pre-ADR-009 behaviour, with its known
+ * unhandled rejections, is the recorded fallback rather than a silent one.
+ *
+ * A SUCCESSFUL session write clears the demand. What the demand records is
+ * that the disk cannot be vouched for; after a write the adapter observed
+ * completing, the key space holds the newest session the client knows — the
+ * residual it warned about is no longer what a reader gets. The sticky flag
+ * below is deliberately NOT cleared by the same event, so the refusal still
+ * reaches this process's consumer even after a later write lands. A failed
+ * clear is absorbed: the demand then outlives its cause, which costs one
+ * observed purge and a re-authentication — the safe direction — never a
+ * trusted session that should not be.
  */
-export function observingWrites(inner: ChunkedSecureStore): ChunkedSecureStore {
+export function observingWrites(
+  inner: ChunkedSecureStore,
+  demand: ReauthDemandHandle = reauthDemand,
+): ChunkedSecureStore {
   return {
     getItem: (key) => inner.getItem(key),
     setItem: async (key, value) => {
       try {
         await inner.setItem(key, value);
       } catch (cause) {
+        if (key === AUTH_SESSION_STORAGE_KEY) {
+          try {
+            await demand.record('session-write-refused');
+          } catch {
+            // The recorded fallback: no durable record could be made, so the
+            // refusal must reach the caller. The flag still serves this
+            // process; durability across restart is lost for this event.
+            lastPersistenceFailure = { key, cause };
+            throw cause;
+          }
+          lastPersistenceFailure = { key, cause };
+          return;
+        }
+        // Non-session keys keep the observe-and-rethrow contract: nothing
+        // auth-js does with them enters the Deferred path a session persist
+        // does, and absorbing their failures would claim more than ADR-009
+        // asks for.
         lastPersistenceFailure = { key, cause };
         throw cause;
       }
-      // NOT cleared on success. REVIEW-021 finding 2 reproduced the defect this
-      // removes: a refused rotation of session v2 followed by a successful write
-      // of v3 erased the outstanding failure before the foreground consumer had
-      // read it, and the refusal was never surfaced at all. A later write
-      // succeeding does not un-lose the token that the earlier one dropped.
-      //
-      // The flag is therefore STICKY UNTIL TAKEN, and
-      // `takeSessionPersistenceFailure()` is the only thing that consumes it in
-      // production. That is also why this cannot loop: the consumer clears it as
-      // it acts, so a single refused write forces re-authentication exactly once
-      // and the sign-in that follows is unaffected.
-    },
-    removeItem: async (key) => {
-      try {
-        await inner.removeItem(key);
-      } catch (cause) {
-        // A removal the store refused leaves a session on disk that the session
-        // layer has already decided not to trust — after a refused rotation, the
-        // SUPERSEDED one. `auth-provider.tsx` keeps retrying the removal while
-        // this is set, so the residual stops existing rather than merely being
-        // disclosed. Rethrown, like the write above: this observes, it does not
-        // absorb, and a failed sign-out still reaches the user as an error.
-        lastPurgeFailure = { key, cause };
-        throw cause;
+      if (key === AUTH_SESSION_STORAGE_KEY) {
+        try {
+          await demand.clear();
+        } catch {
+          // Absorbed — see the header. The demand stays; the next consult
+          // purges an already-overwritten space and retries the clear.
+        }
       }
-      lastPurgeFailure = null;
+      // The flag is NOT cleared on success. REVIEW-021 finding 2 reproduced
+      // the defect that rule removes: a refused rotation of v2 followed by a
+      // successful write of v3 erased the outstanding failure before the
+      // foreground consumer had read it, and the refusal was never surfaced.
+      // STICKY UNTIL TAKEN; `takeSessionPersistenceFailure()` is the only
+      // thing that consumes it in production.
     },
+    // Removals pass through untouched. The previous version kept a second
+    // flag here — `lastPurgeFailure`, recording a refused delete — and
+    // REVIEW-022 finding 3 showed what that instrument invited: the absence
+    // of its record was read as proof of deletion, when auth-js can reject
+    // before any delete is attempted. ADR-009 requirement 1 replaces
+    // inference with observation — `confirmSessionPurged()` below reads the
+    // key space back — so the flag is deleted rather than repaired. A refused
+    // delete still rejects out of the adapter itself, and still reaches the
+    // user as a failed sign-out.
+    removeItem: (key) => inner.removeItem(key),
+    confirmRemoved: (key) => inner.confirmRemoved(key),
   };
 }
+
+/**
+ * The adapter instance behind the observer, kept so the read-back below can
+ * reach it. Null on web, where no adapter exists at all.
+ */
+const nativeAdapter: ChunkedSecureStore | null =
+  Platform.OS === 'web' ? null : createChunkedSecureStore();
 
 /**
  * Which storage the auth client persists the session into, decided per
@@ -203,5 +229,31 @@ export function observingWrites(inner: ChunkedSecureStore): ChunkedSecureStore {
  * The branch is written as an explicit `Platform.OS === 'web'` test so the
  * split is visible in code review, not a consequence of module resolution.
  */
-export const authSessionStorage: SupportedStorage | undefined =
-  Platform.OS === 'web' ? undefined : observingWrites(createChunkedSecureStore());
+export const authSessionStorage: SupportedStorage | undefined = nativeAdapter
+  ? observingWrites(nativeAdapter)
+  : undefined;
+
+/**
+ * ADR-009 requirement 1 — is the session's key space PROVEN empty?
+ *
+ * This is the read-back `auth-provider.tsx` treats as the only proof that a
+ * recovery purge happened. It asks the adapter to read the complete
+ * enumerable key space under `AUTH_SESSION_STORAGE_KEY` — the index and every
+ * chunk key of both generations, the same space `removeItem` sweeps — and
+ * returns true only when every read succeeded and found nothing. A `signOut()`
+ * that rejected before any delete ran, the case REVIEW-022 finding 3 showed
+ * being misread as success, leaves the space populated and this returns false.
+ *
+ * Deliberately NOT routed through the write observer: observation must never
+ * be able to record or clear anything, or the proof would perturb what it
+ * proves. It reads through the same serialization queue as every other
+ * adapter operation, so it cannot catch a write mid-transition.
+ *
+ * On web there is no adapter and no observer, so there is nothing this could
+ * prove: it returns false, and nothing is claimed (ADR-008). No production
+ * web path calls it — no demand is ever recorded there to trigger one.
+ */
+export function confirmSessionPurged(): Promise<boolean> {
+  if (!nativeAdapter) return Promise.resolve(false);
+  return nativeAdapter.confirmRemoved(AUTH_SESSION_STORAGE_KEY);
+}
