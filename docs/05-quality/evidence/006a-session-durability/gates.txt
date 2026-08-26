@@ -32,7 +32,7 @@ PASS src/__tests__/token-opacity.test.ts
 
 
 Test Suites: 10 passed, 10 total
-Tests:       160 passed, 160 total
+Tests:       159 passed, 159 total
 Snapshots:   0 total
 Time:        <duration>
 Ran all test suites.

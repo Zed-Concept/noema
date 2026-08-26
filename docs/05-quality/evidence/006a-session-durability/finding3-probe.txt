@@ -2,7 +2,7 @@
 # See finding3-probe.tsx for what is asserted and finding3-probe.sh for how.
 #
 # base: 7caf23e10856601f17d52ae37ae59fbb9dbbac60 (pinned; must be RED — the positive control)
-# head: 1693f60bb891f4eaeb4b71c540a2bd0d85c525ed (the candidate at the time of this run; must be GREEN)
+# head: 5bc1ba42fbecb76d8fcb8f1e3675b665958bff08 (the candidate at the time of this run; must be GREEN)
 # NOTE the head SHA above is the commit the probe ran against. The commit
 # that adds this transcript necessarily post-dates it — the same
 # head-cannot-name-itself boundary as ci.txt (REVIEW-022 claim 48a ruling).
@@ -134,7 +134,7 @@ Ran all test suites matching /finding3-probe/i.
 exit: 1
 
 ==========================================================================
-## RUN 2 — head 1693f60bb891f4eaeb4b71c540a2bd0d85c525ed (expected: GREEN)
+## RUN 2 — head 5bc1ba42fbecb76d8fcb8f1e3675b665958bff08 (expected: GREEN)
 ==========================================================================
 PASS src/__tests__/finding3-probe.test.tsx
   REVIEW-022 finding 3 — the probe (RED at base 7caf23e1, GREEN at the candidate)

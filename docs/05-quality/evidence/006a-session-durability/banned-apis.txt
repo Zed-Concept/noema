@@ -32,13 +32,14 @@ src/lib/auth/auth-provider.tsx:179:     * `signOut({ scope: 'local' })` asks; th
 src/lib/auth/auth-provider.tsx:183:     * finding 3 showed what any weaker rule invites: pinned `signOut()` can
 src/lib/auth/auth-provider.tsx:197:        await supabase.auth.signOut({ scope: 'local' });
 src/lib/auth/auth-provider.tsx:201:        // the verdict. (The user-facing `signOut` action is a different path
-src/lib/auth/auth-provider.tsx:325:      const { error } = await supabase.auth.signInWithOtp({
-src/lib/auth/auth-provider.tsx:333:  const verifyOtp = useCallback(async (email: string, token: string) => {
-src/lib/auth/auth-provider.tsx:335:      const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
-src/lib/auth/auth-provider.tsx:340:  const signOut = useCallback(async () => {
-src/lib/auth/auth-provider.tsx:351:      const { error } = await supabase.auth.signOut({ scope: 'local' });
-src/lib/auth/auth-provider.tsx:357:    () => ({ state, sendOtp, verifyOtp, signOut }),
-src/lib/auth/auth-provider.tsx:358:    [state, sendOtp, verifyOtp, signOut],
-src/lib/auth/session-storage.ts:243: * returns true only when every read succeeded and found nothing. A `signOut()`
+src/lib/auth/auth-provider.tsx:329:      const { error } = await supabase.auth.signInWithOtp({
+src/lib/auth/auth-provider.tsx:337:  const verifyOtp = useCallback(async (email: string, token: string) => {
+src/lib/auth/auth-provider.tsx:339:      const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+src/lib/auth/auth-provider.tsx:344:  const signOut = useCallback(async () => {
+src/lib/auth/auth-provider.tsx:355:      const { error } = await supabase.auth.signOut({ scope: 'local' });
+src/lib/auth/auth-provider.tsx:361:    () => ({ state, sendOtp, verifyOtp, signOut }),
+src/lib/auth/auth-provider.tsx:362:    [state, sendOtp, verifyOtp, signOut],
+src/lib/auth/session-storage.ts:141: * that invites: `signOut()` refreshes the residual on its way out
+src/lib/auth/session-storage.ts:242: * returns true only when every read succeeded and found nothing. A `signOut()`
 src/lib/supabase.ts:54:    // that `signOut()` loads, and can refresh, the stored session before
 src/lib/supabase.ts:59:    // from `signOut()`, and from paths not yet identified — are recorded,

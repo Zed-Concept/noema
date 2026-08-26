@@ -89,8 +89,7 @@ PASS src/__tests__/foreground-refresh.test.ts
     ✓ records the durable demand BEFORE it resolves, and before the flag is readable
     ✓ rejects with the ORIGINAL cause when the demand store also refuses — the recorded fallback
     ✓ still rethrows a refused write of a NON-session key
-    ✓ clears the durable demand when a session write later SUCCEEDS
-    ✓ does not touch the demand on a successful NON-session write
+    ✓ keeps the demand outstanding when a later session write succeeds
     ✓ does not record a refused REMOVAL as a persistence failure
   ADR-009 requirement 1 — the read-back is the only proof of deletion
     ✓ reports a populated key space after a refused removal — the residual is real
@@ -99,7 +98,7 @@ PASS src/__tests__/foreground-refresh.test.ts
     ✓ refuses to call a space empty when the backend refuses to answer
 
 Test Suites: 1 passed, 1 total
-Tests:       20 passed, 20 total
+Tests:       19 passed, 19 total
 Snapshots:   0 total
 Time:        <duration>
 Ran all test suites matching /foreground-refresh/i.

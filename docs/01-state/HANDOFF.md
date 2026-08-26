@@ -1,3 +1,184 @@
+## 2026-08-26 — Unit E, session durability, feat/session-durability
+
+**Controller:** CTRL-006 Auth Phase B and session durability.
+**Builder:** Claude Code, fresh session.
+**Model+Effort:** **Fable 5 / Ultracode (xhigh + workflows)** — the dispatched
+seat, verified before any work (learning 3); ruling 22 restored Fable 5 and no
+substitution occurred. Effort tier per ruling 5 for a build unit.
+**Answering:** the CTRL-006 Unit E dispatch — close REVIEW-022 finding 3 to
+ADR-009's three review-gated requirements. Ruling 21: the last unit that can
+close it.
+**Base:** `main` at `7caf23e10856601f17d52ae37ae59fbb9dbbac60`, branched from
+directly; main has not moved.
+**Head:** the pushed tip of `feat/session-durability` — four commits
+(`1693f60` implementation, `5fca7a2` evidence, `5bc1ba4` adversarial-review
+fix, plus the state/evidence commit carrying this block, which cannot name
+its own SHA — the ci.txt boundary). The completion report names the pushed
+SHA.
+**Evidence:** `docs/05-quality/evidence/006a-session-durability/`.
+
+### Preflight — both hard checks, one disclosure
+
+- `git fetch origin`: `origin/main` was exactly the dispatched
+  `7caf23e1`. **Local `main` and HEAD were one fast-forward behind** at
+  `b95913e1` — the owner's working copy had not been synced after the PR #15
+  merge (the learning-6 second clause). Since origin matched the pin, the
+  tree was clean, and the fix-cycle-3 precedent names exactly this shape a
+  stale LOCAL ref rather than a dispatch defect, local main was
+  fast-forwarded to origin (`git merge --ff-only`) and all three refs
+  re-verified equal to the pin before any work. Disclosed rather than
+  stopped on: the phantom-mismatch stop is the defect learning 6 records.
+- `BRANCH-NOTES.md` at the pin carries `## LOCK — feat/session-durability`,
+  `Status: BUILD`, reviewer of record Codex Sol / Ultra, advisory DeepSeek
+  V4 Pro. Verified before the branch was created.
+- `AGENTS.md` sha256 matched the dispatch pin byte-exact (5378 bytes) before
+  being trusted.
+
+### What closed — R1, R2, R3
+
+- **R1 — purge success is OBSERVED.** The adapter gains read-only
+  `confirmRemoved(key)`: a serialized sweep-read of the complete enumerable
+  key space (index + both generations × 256 chunk keys). The provider's
+  recovery purge treats that read-back as the ONLY proof — a `signOut()`
+  rejection before removal was attempted now reads as NOT purged because the
+  key space says so. The purge-failure flag whose silent absence encoded the
+  false inference is DELETED, not repaired, and the test that encoded it
+  (`auth-provider.test.tsx:573-590` as reviewed) is replaced.
+- **R2 — the demand is DURABLE.** New `reauth-demand.ts` records
+  `{v, reason, at}` — nothing from the session, asserted structurally — in
+  an app-sandbox file via expo-file-system, a store that does not share the
+  keychain's lock-state failure mode. The provider consults it at first
+  foreground BEFORE exposing any session; while outstanding, the observed
+  purge runs BEFORE the provider's own `getSession()` (REVIEW-022 found the
+  order reversed), and nothing bootstraps until the read-back proves the
+  space empty. A store that will not answer is treated as outstanding.
+  Library-internal loads that precede the consult are recorded behaviour
+  under ADR-009, contained by the purge that follows — no claim is made that
+  they cannot happen.
+- **R3 — refusals are handled.** The dispatch's recommended shape, adopted:
+  on a refused session-key write the observer records the durable demand
+  FIRST, the in-process flag second, then RESOLVES, so pinned auth-js never
+  enters the throw-and-reject Deferred path REVIEW-022 caught emitting two
+  unhandled rejections. If the demand cannot be recorded, the write rejects
+  with the ORIGINAL cause — the recorded fail-closed fallback, exercised by
+  test, and the one deliberate exception to "zero unhandled" (claims 13/15/18).
+- **Client change:** the session persists under an explicit `auth.storageKey`
+  app constant (`zc-auth-session`) so the read-back target is named in app
+  code rather than re-derived from library internals (learning 20). No
+  installed base exists to strand — no device has ever run this app.
+- **ADR-009 consequence edits:** every comment claiming construction does not
+  refresh or that a bounded number of entrances exist is corrected in
+  `supabase.ts`, `auth-provider.tsx`, `foreground-refresh.ts`, the adapter,
+  and the test files; stale ADR-007 citations now cite ADR-009 or name the
+  supersession.
+
+### Dependency — ruling on the permitted one
+
+**expo-file-system `~57.0.5`**, added with `npx expo install`, lockfile
+committed. Justification: R2's store must not live in the keychain; the
+package was ALREADY pinned in the lockfile as a dependency of `expo` itself,
+so the audit delta is minimal — the direct-dependency line plus a
+57.0.4→57.0.5 resolution bump, no new package in the tree. `npm-audit.txt`
+records 19 advisories (10 moderate, 9 high) at this head against the
+accepted 22-advisory baseline (Known issue 2); run-varying upstream data,
+recorded not claimed.
+
+### Evidence — every claim an artifact
+
+- **The finding-3 probe, committed** (`finding3-probe.tsx` + runner): the
+  real pinned client through the app's own modules, injected refusing
+  keychain, fake demand store, fake fetch. **RED at the base `7caf23e1`** —
+  zero delete attempts after a refused rotation, no durable record, unhandled
+  `refused-session-write` rejections (the probe's positive control, learning
+  14) — **GREEN at the head**, including the restart schedule: fresh module
+  registry over the same fakes, demand honoured before any session exposure,
+  purge proven by read-back once the store recovers.
+- **Mutation battery: 14/14 SENSITIVE, 0 build-invalid**, every mutant
+  typechecked before being counted (learning 16), tree restored
+  byte-identical.
+- **Gates 4/4** — typecheck, lint, test, format:check all exit 0; 10 suites,
+  **159 tests**.
+- **Stability 8/8** — gated artifacts identical across two fresh captures,
+  both exiting 0, all matching committed copies. `capture.sh` pins BASE
+  literally to `7caf23e1` and refuses a stale pin.
+- **RED lane clean** — `supabase/`, `.github/`, generated types
+  object-identical to base; 0 database-layer paths; every absence scan
+  validated against a positive control that contains the thing (learning 14).
+- **`ci.txt` ABSENT by design**; claim 26 NOT RUN until the post-push
+  follow-up (the REVIEW-022 claim-48a boundary). Locked-device and all live
+  behaviour NOT RUN — Unit F owns them.
+
+### Workflows run — ruling 6 disclosure
+
+**One workflow: `unit-e-adversarial-review` — 17 subagents** (3 finder
+lenses, one per ADR-009 requirement; 14 adversarial verifiers, one per
+finding), run against the committed implementation before handoff. It
+returned **14 confirmed findings**. Builder adjudication, in full:
+
+- **Fixed (commit `5bc1ba4`):** the HIGH class both the R1 and R2 lenses
+  converged on — the observer's clear-on-successful-write could be fired by
+  `signOut()`'s OWN internal refresh (REVIEW-022 finding 2, recorded
+  behaviour), erasing a purge-pending demand mid-purge before any proof;
+  a kill in the no-timeout network window that follows left a readable
+  session and no durable record. Remedied by SUBTRACTION: the clear is
+  deleted, the demand ends only on read-back proof, and mutant M14 now
+  re-creates the reviewed defect. Also fixed: a frozen-splash schedule —
+  with a demand outstanding, `signedOut` is now set BEFORE the purge await,
+  so a never-settling purge fetch strands the retry, not the UI.
+- **Claims narrowed:** 13 and 18 now name the deliberate exception — the
+  fail-closed fallback (both stores refusing) re-enters the pre-ADR-009
+  rejection path by design, per the dispatch's own R3 wording.
+- **Disclosed as Known limits 7–11** (006a README), not closed: the
+  non-atomic record window; the read-back proving an instant rather than a
+  barrier; the shipped demand backend's `File.exists` gate whose native
+  refusal semantics are unobservable offline (NOT RUN, Phase B); the
+  key-filtered absorb making a refused sign-in persist report success for
+  one bounded foreground cycle (and the oversized-payload variant); and a
+  source-read double-refusal schedule that could strand auth-js's refresh
+  Deferred pending and park the provider's machinery until restart.
+- Workflow self-verification is supplementary and is never the review
+  (ruling 6); the reviewer of record gates all of the above.
+
+### Adjacent findings — reported, not acted on
+
+- The double-refusal Deferred-stranding hazard (Known limit 11) is an
+  availability property of pinned auth-js internals that only a probe can
+  settle (learning 20); the durable demand is recorded before any such hang,
+  so R2 holds and restart recovers. Flagged for the controller: a candidate
+  named probe for the review or for Unit F, not built here (stop-rule
+  discipline).
+- The user-facing `signOut` action still reports a refused removal as an
+  error without a read-back; its residual is covered by the demand machinery
+  only when a write refusal preceded it. Out of finding-3 scope; noted.
+
+### Touch-set — recordable deltas (learning 9)
+
+32 files against base, +4129/−514: 2 new modules
+(`reauth-demand.ts` + its suite), 5 product files changed (`supabase.ts`,
+`session-storage.ts`, `secure-store-adapter.ts`, `auth-provider.tsx`,
+`foreground-refresh.ts`), 5 test files changed, `package.json` +
+`package-lock.json` (the one dependency), and the 19-file 006a evidence
+suite. Nothing under `supabase/`, `.github/`, or `src/lib/database.types.ts`
+(object-identity proven in `red-lane.txt`).
+
+### Operational disclosures
+
+- The editor was open throughout (the ENOTEMPTY caution names `npm ci` and
+  gate runs); `npm ci` was never run — the dependency was added with
+  `npx expo install`, additively — and no ENOTEMPTY occurred in any run.
+- The probe transcript names the head it ran against (the fix commit); the
+  evidence commit that carries it necessarily post-dates it. Rerunnable at
+  any head: `bash finding3-probe.sh`.
+- Every written file was read back or verified through its own gate before
+  being claimed (learning 11); the battery verifies its own restoration
+  byte-for-byte.
+
+**LOCK status line:** `Status: BUILD` — left untouched; transitions on this
+branch are controller-owned (the LOCK block's own registration note). A
+closing note is appended under the LOCK block.
+
+---
+
 ## 2026-08-26 — REVIEW-022, Unit D auth and session v1 fix cycle 3
 
 **Controller:** CTRL-005 Auth and session v1.

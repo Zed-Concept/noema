@@ -2,7 +2,7 @@
 #
 # baseline GREEN (>=1 test executed), mutated tree TYPECHECKS, mutant RED
 # (>=1 failed assertion). Anything else fails this run.
-# Backups for this run: /var/folders/nf/5n98ynn57fsc0fzmgpsc5rwm0000gn/T/tmp.sxaa4SiOuS
+# Backups for this run: /var/folders/nf/5n98ynn57fsc0fzmgpsc5rwm0000gn/T/tmp.00Ol5bHNeT
 
 ## readback-blind-to-stranded-material
 breaks:    confirmRemoved stops treating a present chunk as disproof, so fragments read as empty
@@ -121,9 +121,9 @@ build:     TYPECHECKS — the mutated tree is a program this project could ship
 mutant:    RED (1 failed, 0 passed)
 result:    SENSITIVE — the claim fails when the behaviour it names is removed
 
-## demand-outlives-a-successful-write
-breaks:    a completed session write no longer clears the demand, so a proven-fresh disk still gets purged
-claim:     M14 / claim 16 — a successful observed session write ends the demand
+## demand-erased-by-a-later-success
+breaks:    a successful session write clears the demand again — the adversarial-review HIGH re-created: signOut's own internal refresh write could erase a purge-pending demand mid-purge
+claim:     M14 / claim 16 — the demand outlives a successful write; only read-back proof ends it
 baseline:  GREEN (1 passed)
 edit:      applied to src/lib/auth/session-storage.ts
 build:     TYPECHECKS — the mutated tree is a program this project could ship

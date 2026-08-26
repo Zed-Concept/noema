@@ -125,6 +125,26 @@ branch are controller-owned throughout: the controller flips `BUILD` →
 builder leaves the line untouched and reports it in the HANDOFF — the
 REVIEW-019 practice, adopted so no reviewer stops on an unreconciled block.
 
+**Build closing note (2026-08-26, builder).** Build complete and pushed;
+`Status` left at `BUILD` per the paragraph above. All three ADR-009
+requirements closed with committed instruments: purge success proven by
+full key-space read-back (the purge-failure flag and its false inference
+deleted, the encoding test replaced); the re-authentication demand durable
+in an expo-file-system record consulted before any session exposure, with
+the observed purge ordered before the provider's own `getSession()`;
+refused session writes recorded (demand first, observer second) and
+absorbed, with a fail-closed rethrow when the demand store also refuses.
+The committed finding-3 probe is RED at base `7caf23e1` and GREEN at the
+head, including a restart schedule; mutation battery 14/14 SENSITIVE with
+0 build-invalid; stability 8/8; gates 4/4 (10 suites, 159 tests); RED lane
+clean with positive controls. One dependency: expo-file-system ~57.0.5
+(already SDK-pinned in the tree via `expo`). One pre-handoff adversarial
+workflow (17 subagents) found a real HIGH — the clear-on-success path could
+erase a purge-pending demand mid-purge — fixed by subtraction before
+handoff; full adjudication in the HANDOFF block. Evidence:
+`docs/05-quality/evidence/006a-session-durability/`. `ci.txt` follows
+post-push, bound to the pushed SHA.
+
 ---
 
 ## LOCK — chore/state-ctrl-005-closeout

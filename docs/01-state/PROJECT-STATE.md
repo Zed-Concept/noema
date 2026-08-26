@@ -147,7 +147,7 @@ What is in flight, who owns it, and what it is blocked on. One row per stream.
 
 | Stream | Owner | Status | Blocked on |
 |---|---|---|---|
-| Unit E — Session durability (REVIEW-022 finding 3) | Claude Code | **LOCK registered, BUILD** — `feat/session-durability`; reviewer of record Codex Sol, advisory DeepSeek V4 Pro. Dispatch issued after this commit merges, naming the post-merge tip. Evidence `006a-session-durability/`. | Merge of this commit |
+| Unit E — Session durability (REVIEW-022 finding 3) | Claude Code | **BUILD delivered 2026-08-26**, branch pushed — R1/R2/R3 closed with a committed probe (RED at base `7caf23e1`, GREEN at head, restart schedule included), 14/14 mutants sensitive, stability 8/8, gates 4/4. LOCK stays `BUILD` (controller-owned transitions). Reviewer of record Codex Sol, advisory DeepSeek V4 Pro. Evidence `006a-session-durability/`; HANDOFF top-inserted. | Controller review dispatch |
 | Unit F — Auth Phase B live evidence | — | **Not started.** Evidence only, against the tip that includes Unit E: live one-time-code round trip and provisioning, live session size, refresh rotation persisted through the adapter, `scope: 'local'` observed, and the ADR-named locked-device test as an owner attestation. LOCK registered at the state commit that records Unit E's merge. Evidence `007a-auth-phase-b/`. | Unit E merge |
 | Production Supabase project | Owner | Parked by ruling — create in East US (North Virginia) before any launch-facing unit | Free-tier slot or Pro upgrade at that time |
 
