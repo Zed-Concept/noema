@@ -22,22 +22,17 @@ export type AuthState =
   | { readonly status: 'signedOut' };
 
 /**
- * THE ONE PUBLICATION BARRIER — REVIEW-024 finding 2.
+ * THE PUBLICATION BARRIER — REVIEW-024 finding 2.
  *
- * Every publication of provider auth state flows through the `publish`
- * returned here, and `publish` re-checks the re-authentication demand and the
- * unconsumed write-refusal flag AT PUBLICATION TIME — after whatever awaits
- * the caller performed — refusing to publish `signedIn` while either stands.
+ * `publish` re-checks the re-authentication demand and the unconsumed
+ * write-refusal flag AT PUBLICATION TIME — after whatever awaits the caller
+ * performed — refusing to publish `signedIn` while either stands.
  *
- * WHY A BARRIER AND NOT ANOTHER GATE. REVIEW-023 closed the listener's exact
+ * WHY THE CHECK SITS AT PUBLICATION. REVIEW-023 closed the listener's exact
  * schedules with a gate at the listener; REVIEW-024 then found the same
  * exposure class recurring through a DIFFERENT publisher — the bootstrap
  * `getSession()` promise, which carried a rotated session across its await
- * and published it after a new demand had been recorded. Gating publishers
- * one by one is schedule-patching: every enumeration invites the next missed
- * publisher. The barrier inverts that: the check lives at the single point
- * every publication must pass, so a publisher added tomorrow is gated on the
- * day it is written.
+ * and published it after a new demand had been recorded.
  *
  * WHAT THE CHECK IS — publication input, not consumer exposure (narrowed by
  * ruling 28 after REVIEW-025 finding 1). `publish` samples the two signals
@@ -84,8 +79,7 @@ export type AuthState =
  *   of a refusal the provider's cache does not yet reflect.
  *
  * The registered predicate defaults to "no demand" only before the session
- * effect runs — no publisher exists before then, because every publisher
- * lives inside that effect.
+ * effect runs.
  */
 export function useAuthStatePublisher(): {
   readonly state: AuthState;

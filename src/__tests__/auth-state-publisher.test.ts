@@ -13,12 +13,12 @@ const nodeRequire = require as unknown as {
 };
 
 /**
- * THE ONE PUBLICATION BARRIER — REVIEW-024 finding 2, tested at the module
- * that carries it. Every publication of provider auth state flows through
- * `publish`, which re-checks the registered demand signal and the unconsumed
- * write-refusal flag AT PUBLICATION TIME and refuses to publish `signedIn`
- * while either stands — resolving to `signedOut` instead, never dropping
- * silently (a dropped bootstrap resolution would strand `bootstrapping`).
+ * THE PUBLICATION BARRIER — REVIEW-024 finding 2, tested at the module that
+ * carries it. `publish` re-checks the registered demand signal and the
+ * unconsumed write-refusal flag AT PUBLICATION TIME and refuses to publish
+ * `signedIn` while either stands — resolving to `signedOut` instead, never
+ * dropping silently (a dropped bootstrap resolution would strand
+ * `bootstrapping`).
  *
  * The flag is read through the real import seam (`session-storage.ts`),
  * mocked here so both barrier halves can be driven independently; the
