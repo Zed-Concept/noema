@@ -1,3 +1,141 @@
+## 2026-08-26 — REVIEW-023, Unit E session durability
+
+**Controller:** CTRL-006 Auth Phase B and session durability.
+**Reviewer of record:** Codex Sol / Ultra / fresh session — the dispatched
+seat. The harness does not expose model or effort metadata, so Sol / Ultra
+cannot be independently confirmed from runtime metadata.
+**Code target:** `feat/session-durability` builder head
+`caa31ee2ff77331d7ab976bff5bb7bb4588244c9`.
+**Review overlay:** `501c1635dfb8f9158e07d690279aec6b0acff3d1`, whose sole
+change above the builder head is the controller-owned LOCK transition.
+**Base:** `main` at `7caf23e10856601f17d52ae37ae59fbb9dbbac60`.
+**Output:** immutable `docs/04-reviews/REVIEW-023.md` plus this required
+append-only top insert; exactly two files in the review commit.
+**Verdict:** **FAIL**.
+
+### Preflight stop and controller-corrected resume
+
+- The initial preflight read a stale local checkout before fetching because the
+  dispatch put READ FIRST ahead of CHECKOUT. Its LOCK still read `BUILD`, so the
+  review stopped without product analysis or an artifact. CTRL-006 identified
+  the step-order defect and supplied the committed transition.
+- On resume: `git fetch origin`; checkout
+  `501c1635dfb8f9158e07d690279aec6b0acff3d1`; then
+  `git diff --stat caa31ee2..HEAD`. The diff shows
+  `docs/01-state/BRANCH-NOTES.md` alone, 20 changed lines.
+- At that exact checkout the LOCK reads `Status: REVIEW`, names Codex Sol /
+  Ultra / fresh session as reviewer of record, and names DeepSeek V4 Pro /
+  fresh session as advisory reviewer. The dispatched seat is recorded; the
+  harness cannot independently confirm model/effort metadata.
+- `AGENTS.md` matched the dispatched 5378-byte length and SHA-256
+  `0ff02d209247dadd94f217b441732baa87ed9f182f9b734cece668b1c3f0f013`
+  before it was trusted.
+- `REVIEW-023-ADVISORY.md` was absent when review began. A concurrent untracked
+  advisory probe in the shared checkout was not read, touched, or deleted.
+
+### Verdict by ADR-009 requirement
+
+- **R1 — FAIL / partial.** For the new `zc-auth-session` space, the read-back
+  is real: the exact ordered 513-address set is read, no write occurs, a final
+  stranded address is detected, and an upstream `signOut()` rejection with a
+  populated space reads as not purged. But Unit D's derived key is neither
+  enumerated nor removed; a rollback client recovers it as usable after Unit E
+  has declared its new key space empty.
+- **R2 — FAIL.** Ordinary demand recording, secretless shape, outstanding
+  bootstrap consult, purge-before-provider-`getSession()`, and read-refusal as
+  outstanding all pass over injected stores. If the demand store refuses its
+  write, no durable record survives and a fresh module process over the same
+  residual keychain exposes `signedIn`. Separately, the flag-driven path keeps
+  the already signed-in provider usable while an unbounded purge is pending.
+- **R3 — FAIL.** Ordinary demand-record success avoids the pinned client's
+  throw-and-reject path. When the demand store refuses, Jest reports two
+  unhandled `review-refused-session-write` failures. The controller's governing
+  wording authorizes no exception.
+
+### Verdict-driving probes
+
+1. The committed finding-3 runner was rerun independently: base `7caf23e1` RED
+   with test exit 1; candidate `caa31ee2` GREEN with test exit 0. Its restart
+   reuses the same fake stores with fresh module state. The base test aborts at
+   its first R1 assertion, so it is not credited for later base claims it never
+   reaches.
+2. Fresh mutation battery: **14/14 SENSITIVE, 0 build-invalid**; every mutant
+   typechecked and the tree restored byte-identically. M14 turns its instrument
+   red. A real pinned-client schedule confirmed the fixed path keeps the demand
+   during `signOut()`'s internal refresh, but also found provider
+   `state:"signedIn"`, one demand file, and logout still pending.
+3. Demand-store refusal: process 1 reached `signedOut` with no demand and two
+   residual session-space keys while Jest surfaced two unhandled failures.
+   After a module reset over the same stores, the recovered provider was
+   `signedIn` with no demand.
+4. The builder's source-read double-refusal strand was **NOT REPRODUCED**. The
+   provider attempted all 513 deletes, retained one demand, reached `signedOut`,
+   and recovered after restart. Two direct concurrent pinned-client
+   `getSession()` calls both fulfilled within one second. The broader hazard is
+   UNVERIFIED, not a credited finding.
+5. The pinned old/new-key probe established current-use false,
+   rollback-use true, and old material surviving. A pinned-client fake-web
+   probe established that web still uses localStorage/no observer but now uses
+   the new namespace. Native-only surfacing passes; “web unchanged” fails.
+
+### Findings and triage
+
+1. **HIGH / MUST CLOSE:** demand-store refusal loses restart durability and
+   deliberately re-enters the unhandled refresh-Deferred path.
+2. **HIGH / MUST CLOSE:** flag-driven recovery does not set `signedOut` until
+   the full observed purge settles, leaving the affected provider session
+   usable for an unbounded interval.
+3. **MEDIUM / MUST CLOSE:** the explicit storage key strands Unit D's namespace
+   for rollback and changes web's localStorage namespace.
+4. **MEDIUM / MUST RECONCILE:** builder commit `7705a969` added a closing note
+   to controller-owned `BRANCH-NOTES.md`, contrary to AGENTS session protocol
+   and the LOCK's own instruction to report through HANDOFF.
+5. **MEDIUM / MUST NARROW OR SUBTRACT:** evidence claims exceed their
+   instruments. Most concretely, a negative control made every `git diff`
+   producer return 77; `capture.sh` still exited 0 and reported an empty range.
+   Literal scanner universals, exact-head binding, count-only read-back credit,
+   base-probe reach, and dependency-instrument claims are narrowed in the
+   immutable review. The stop rule bars defending them with another scanner.
+6. **LOW / CORRECTED by this top insert:** the Unit E HANDOFF says four
+   commits, 32 files, `+4129/-514`; the exact range has five commits, 35 files,
+   `+4331/-515`. This block preserves the old text and supersedes its
+   bookkeeping.
+
+### Independent execution and classifications
+
+- Fresh candidate capture: typecheck, lint, test, and format check all exit 0;
+  10 suites / 159 tests. Fresh stability is 8/8, and all eight gated artifacts
+  match committed copies. GitHub PR #17's `typecheck, lint, test` check passes
+  at overlay `501c1635`.
+- Direct Git-object verification passes: `supabase/`, `.github/`, generated
+  database types, and `app.json` are object-identical to base; PROJECT-STATE
+  changes only its Active work row; the only direct dependency is
+  `expo-file-system ~57.0.5`; no migration, RLS, payment, secret, or outward
+  deployment surface changed. The client-auth delta is the dispatched RED-lane
+  scope under review.
+- Current `npm audit` is **NOT RUN** because the registry lookup failed with
+  sandbox DNS `ENOTFOUND`. The committed 19-advisory result is run-varying and
+  not credited as current.
+- Live Supabase, credentials, a real OS restart, actual native demand-file
+  behavior, locked-device behavior, and real-browser integration are **NOT
+  RUN**. All verdict probes used injected stores and fake fetch.
+- Three read-only subagents independently covered specification, standards,
+  and governance/evidence. The reviewer of record reproduced and adjudicated
+  all verdict-driving mechanisms. The builder's 17-subagent workflow was lead
+  material only.
+
+### Scope and close
+
+This review changed no product code, ADR, LOCK status, prior review, migration,
+RLS, payment, secret, or outward-facing system. REVIEW-022 finding 3 remains
+open. The review commit contains only the immutable REVIEW-023 record and this
+top insert; its pushed SHA is reported externally because a commit cannot name
+itself.
+
+**LOCK status line:** `Status: REVIEW` — read and left untouched.
+
+---
+
 ## 2026-08-26 — Unit E, session durability, feat/session-durability
 
 **Controller:** CTRL-006 Auth Phase B and session durability.
