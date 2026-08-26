@@ -32,7 +32,9 @@ jest.mock('@/lib/supabase', () => ({
 // in the finding-3 probe under `docs/05-quality/evidence/006a-*`; not here.
 jest.mock('@/lib/auth/session-storage', () => ({
   takeSessionPersistenceFailure: jest.fn(),
+  peekSessionPersistenceFailure: jest.fn(),
   confirmSessionPurged: jest.fn(),
+  readBackStoredSession: jest.fn(),
 }));
 
 // The durable demand — ADR-009 requirement 2. Mocked for the same reason as
@@ -45,11 +47,16 @@ jest.mock('@/lib/auth/reauth-demand', () => ({
   retryReauthDemandRecord: jest.fn(),
 }));
 
-const { takeSessionPersistenceFailure, confirmSessionPurged } = jest.requireMock(
-  '@/lib/auth/session-storage',
-) as {
+const {
+  takeSessionPersistenceFailure,
+  peekSessionPersistenceFailure,
+  confirmSessionPurged,
+  readBackStoredSession,
+} = jest.requireMock('@/lib/auth/session-storage') as {
   takeSessionPersistenceFailure: jest.Mock;
+  peekSessionPersistenceFailure: jest.Mock;
   confirmSessionPurged: jest.Mock;
+  readBackStoredSession: jest.Mock;
 };
 
 const {
@@ -122,7 +129,9 @@ beforeEach(() => {
   auth.startAutoRefresh.mockResolvedValue(undefined);
   auth.stopAutoRefresh.mockResolvedValue(undefined);
   takeSessionPersistenceFailure.mockReturnValue(null);
+  peekSessionPersistenceFailure.mockReturnValue(null);
   confirmSessionPurged.mockResolvedValue(true);
+  readBackStoredSession.mockResolvedValue(null);
   recordReauthDemand.mockResolvedValue('durable');
   isReauthDemandOutstanding.mockResolvedValue(false);
   clearReauthDemand.mockResolvedValue(undefined);
@@ -819,5 +828,136 @@ describe('auth provider — the durable demand at bootstrap', () => {
     await act(async () => emitAppState('active'));
 
     expect(isReauthDemandOutstanding).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * REVIEW-023-ADVISORY leads 1 and 3, adjudicated into this cycle. One
+ * invariant: NO path exposes a session while a re-authentication demand is
+ * outstanding, in memory or durable. The listener gates every setState on the
+ * demand AND on the unconsumed write-refusal flag (the advisory's A2/A3
+ * window: the observer records refusal and demand before the event fires,
+ * while this provider's own cache still says no demand). A fresh sign-in is
+ * the one thing that resolves a demand — and only once its session is
+ * persisted and READ BACK.
+ */
+describe('auth provider — the advisory invariant: no exposure while a demand stands', () => {
+  const REFUSED = {
+    key: 'zc-auth-session',
+    cause: new Error('errSecInteractionNotAllowed'),
+  };
+
+  it('drops a session event arriving under an unconsumed persistence failure', async () => {
+    // The advisory's A2/A3 shape at this suite's granularity: the write
+    // observer has recorded a refusal (flag set, demand recorded) but this
+    // provider has not yet taken the flag, so its demand cache is stale. The
+    // event carries a session no medium is known to hold; it must not
+    // surface.
+    const { result } = await renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
+
+    peekSessionPersistenceFailure.mockReturnValue(REFUSED);
+    await act(async () => emit('SIGNED_IN', FAKE_SESSION));
+    expect(result.current.state.status).toBe('signedOut');
+    await act(async () => emit('TOKEN_REFRESHED', FAKE_SESSION));
+    expect(result.current.state.status).toBe('signedOut');
+
+    // Flag consumed and no demand outstanding: events flow again.
+    peekSessionPersistenceFailure.mockReturnValue(null);
+    await act(async () => emit('SIGNED_IN', FAKE_SESSION));
+    await waitFor(() => expect(result.current.state.status).toBe('signedIn'));
+  });
+
+  it('resolves a demand outstanding at mount through a fresh sign-in that reads back', async () => {
+    // The advisory's B2 schedule: with the demand outstanding at mount the
+    // provider exposes nothing and starts no bootstrap; the old behaviour
+    // then destroyed a fresh sign-in with the stale purge. Lead 3: the
+    // sign-in RESOLVES the demand — clear, bootstrap, expose — because
+    // re-authentication is what the demand asked for.
+    isReauthDemandOutstanding.mockResolvedValue(true);
+    confirmSessionPurged.mockResolvedValue(false);
+    auth.getSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null });
+
+    const { result } = await renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
+    expect(auth.getSession).not.toHaveBeenCalled();
+
+    // The fresh sign-in persists and reads back.
+    readBackStoredSession.mockResolvedValue('stored-session-payload');
+    await act(async () => {
+      await expect(result.current.verifyOtp('someone@example.test', '123456')).resolves.toEqual({
+        error: null,
+      });
+    });
+
+    await waitFor(() => expect(clearReauthDemand).toHaveBeenCalledTimes(1));
+    // The bootstrap the demand had been holding back now runs and exposes
+    // the fresh session — not the purge.
+    await waitFor(() => expect(result.current.state.status).toBe('signedIn'));
+    expect(auth.getSession).toHaveBeenCalled();
+    // And no purge destroyed it: signOut ran only for the pre-sign-in purge
+    // attempts, never after the resolution.
+    const purgesBeforeSignIn = auth.signOut.mock.calls.length;
+    await act(async () => emitAppState('background'));
+    await act(async () => emitAppState('active'));
+    expect(auth.signOut.mock.calls.length).toBe(purgesBeforeSignIn);
+  });
+
+  it('resolves a mid-process demand through a fresh sign-in and re-exposes the session', async () => {
+    // The flag-driven variant: bootstrap already ran, the demand arrived
+    // mid-process, lead 1's gate dropped the sign-in event — resolution must
+    // re-read the session and expose it itself.
+    auth.getSession.mockResolvedValue({ data: { session: FAKE_SESSION }, error: null });
+    takeSessionPersistenceFailure.mockReturnValueOnce(REFUSED).mockReturnValue(null);
+    confirmSessionPurged.mockResolvedValue(false);
+
+    const { result } = await renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
+
+    readBackStoredSession.mockResolvedValue('stored-session-payload');
+    await act(async () => {
+      await result.current.verifyOtp('someone@example.test', '123456');
+    });
+
+    await waitFor(() => expect(clearReauthDemand).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(result.current.state.status).toBe('signedIn'));
+  });
+
+  it('does not resolve the demand when the sign-in persist was refused', async () => {
+    // `verifyOtp` can report success while the keychain refused the persist
+    // (the advisory's A3). The flag names that refusal; the "fresh" session
+    // exists nowhere durable, so the demand stands and nothing surfaces.
+    isReauthDemandOutstanding.mockResolvedValue(true);
+    confirmSessionPurged.mockResolvedValue(false);
+
+    const { result } = await renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
+
+    peekSessionPersistenceFailure.mockReturnValue(REFUSED);
+    readBackStoredSession.mockResolvedValue('whatever-the-disk-still-holds');
+    await act(async () => {
+      await result.current.verifyOtp('someone@example.test', '123456');
+    });
+
+    expect(clearReauthDemand).not.toHaveBeenCalled();
+    expect(result.current.state.status).toBe('signedOut');
+  });
+
+  it('does not resolve the demand when nothing reads back', async () => {
+    // "Persisted and read back" is conjunctive: a sign-in whose session the
+    // key space cannot return has not re-established anything durable.
+    isReauthDemandOutstanding.mockResolvedValue(true);
+    confirmSessionPurged.mockResolvedValue(false);
+
+    const { result } = await renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.state.status).toBe('signedOut'));
+
+    readBackStoredSession.mockResolvedValue(null);
+    await act(async () => {
+      await result.current.verifyOtp('someone@example.test', '123456');
+    });
+
+    expect(clearReauthDemand).not.toHaveBeenCalled();
+    expect(result.current.state.status).toBe('signedOut');
   });
 });

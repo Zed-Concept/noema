@@ -255,3 +255,86 @@ describe('reauth demand — every other failure falls closed', () => {
     await expect(demand.peek()).resolves.toBeNull();
   });
 });
+
+/**
+ * REVIEW-023-ADVISORY lead 2 (E1) — the SHIPPED file backend consults by
+ * READ. The previous backend gated on `File.exists` alone, so a native layer
+ * reporting `exists === false` under an I/O refusal would have read a
+ * refusal as "no demand"; the advisory's E1 probe demonstrated the residual
+ * session being loaded, rotated, and exposed under exactly that lie. These
+ * cases drive the DEFAULT (file) backend through a mocked `expo-file-system`
+ * — whether the INSTALLED package can actually produce the lying answer
+ * remains NOT RUN offline (Known limit; Phase B's physical device owns it).
+ */
+describe('reauth demand — the shipped file backend consults by READ (advisory E1)', () => {
+  function loadFileBackedDemand(impl: { existsImpl: () => boolean; textImpl: () => string }) {
+    let handle: import('@/lib/auth/reauth-demand').ReauthDemandHandle | undefined;
+    jest.isolateModules(() => {
+      jest.doMock('expo-file-system', () => ({
+        File: class {
+          get exists(): boolean {
+            return impl.existsImpl();
+          }
+          textSync(): string {
+            return impl.textImpl();
+          }
+          write(_value: string): void {}
+          delete(): void {}
+        },
+        Paths: { document: {} },
+      }));
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      handle = (require('@/lib/auth/reauth-demand') as typeof import('@/lib/auth/reauth-demand'))
+        .reauthDemand;
+    });
+    return handle as import('@/lib/auth/reauth-demand').ReauthDemandHandle;
+  }
+
+  it('reads the record even when `exists` denies it — the boolean is never the sole gate', async () => {
+    // The advisory's lying-exists shape: the record is there and readable,
+    // `exists` says false. The read leads, so the demand is OUTSTANDING.
+    const demand = loadFileBackedDemand({
+      existsImpl: () => false,
+      textImpl: () => JSON.stringify({ v: 1, reason: 'session-write-refused', at: 'sometime' }),
+    });
+
+    await expect(demand.isOutstanding()).resolves.toBe(true);
+  });
+
+  it('treats an unreadable existing record as outstanding', async () => {
+    const demand = loadFileBackedDemand({
+      existsImpl: () => true,
+      textImpl: () => {
+        throw new Error('io refusal');
+      },
+    });
+
+    await expect(demand.isOutstanding()).rejects.toThrow('io refusal');
+  });
+
+  it('treats a record whose existence cannot be determined as outstanding', async () => {
+    const demand = loadFileBackedDemand({
+      existsImpl: () => {
+        throw new Error('exists refused');
+      },
+      textImpl: () => {
+        throw new Error('io refusal');
+      },
+    });
+
+    await expect(demand.isOutstanding()).rejects.toThrow();
+  });
+
+  it('reads a provably absent record as no demand', async () => {
+    // The fresh-install case, which must stay a clean no: the read fails AND
+    // `exists` corroborates that there is nothing to read.
+    const demand = loadFileBackedDemand({
+      existsImpl: () => false,
+      textImpl: () => {
+        throw new Error('file does not exist');
+      },
+    });
+
+    await expect(demand.isOutstanding()).resolves.toBe(false);
+  });
+});

@@ -266,3 +266,21 @@ export function confirmSessionPurged(): Promise<boolean> {
   if (!nativeAdapter) return Promise.resolve(false);
   return nativeAdapter.confirmRemoved(AUTH_SESSION_STORAGE_KEY);
 }
+
+/**
+ * REVIEW-023-ADVISORY lead 3 (P3/B2) — the read-back half of "persisted and
+ * read back", for resolving a demand by a fresh sign-in.
+ *
+ * Returns the stored session payload when the key space READS BACK a value,
+ * and null for everything else — including a refused read: resolving a
+ * demand is the permissive act, so refusal falls toward NOT resolving, the
+ * safe direction (the opposite of `isOutstanding`, where refusal falls
+ * toward outstanding, for the same reason).
+ *
+ * Read-only, through the same serialized adapter as every other operation.
+ * On web there is no adapter and no demand to resolve; null.
+ */
+export function readBackStoredSession(): Promise<string | null> {
+  if (!nativeAdapter) return Promise.resolve(null);
+  return nativeAdapter.getItem(AUTH_SESSION_STORAGE_KEY).catch(() => null);
+}

@@ -164,11 +164,26 @@ function demandFile(): File {
 
 const fileBackend: DemandStoreBackend = {
   read: async () => {
+    // THE READ LEADS — REVIEW-023-ADVISORY lead 2 (E1). The previous version
+    // gated on `exists` alone: a native layer that reported `exists === false`
+    // under an I/O refusal would have turned that refusal into "no demand",
+    // and the advisory's E1 probe demonstrated the consequence — the residual
+    // session loaded, rotated, and exposed. Now the CONTENT is the answer
+    // whenever it can be read, whatever `exists` says; `exists` corroborates
+    // ABSENCE only, for the failed read of a file that provably is not there
+    // (a fresh install must read as no-demand, so some absence path must
+    // exist). A read failure on a record that exists — or whose existence
+    // cannot be determined — escapes as a rejection, which the provider
+    // treats as outstanding. Whether the INSTALLED expo-file-system can
+    // report `exists === false` on an I/O refusal remains NOT RUN offline;
+    // this shape just stops that answer from being the sole gate.
     const file = demandFile();
-    // `exists` is the observation that makes null mean "proven absent" rather
-    // than "could not look" — a backend refusal escapes as a rejection instead.
-    if (!file.exists) return null;
-    return file.textSync();
+    try {
+      return file.textSync();
+    } catch (cause) {
+      if (!file.exists) return null;
+      throw cause;
+    }
   },
   write: async (value) => {
     demandFile().write(value);

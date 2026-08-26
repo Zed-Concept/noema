@@ -1,5 +1,13 @@
 import type { Session } from '@supabase/supabase-js';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { ReactNode } from 'react';
 import { AppState } from 'react-native';
 import type { AppStateStatus } from 'react-native';
@@ -13,7 +21,12 @@ import {
   recordReauthDemand,
   retryReauthDemandRecord,
 } from './reauth-demand';
-import { confirmSessionPurged, takeSessionPersistenceFailure } from './session-storage';
+import {
+  confirmSessionPurged,
+  peekSessionPersistenceFailure,
+  readBackStoredSession,
+  takeSessionPersistenceFailure,
+} from './session-storage';
 
 /**
  * Session state as three mutually exclusive cases.
@@ -94,6 +107,12 @@ async function reportRatherThanThrow(
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ status: 'bootstrapping' });
 
+  // The bridge between the session effect (which owns the demand state) and
+  // the `verifyOtp` action (which is where a fresh sign-in is known to have
+  // completed). The effect assigns the real resolver; before the effect runs,
+  // and after it cleans up, resolving is a no-op.
+  const resolveDemandBySignInRef = useRef<() => Promise<void>>(async () => {});
+
   useEffect(() => {
     // ADR-009 / binding ruling 20: the durable re-authentication demand, the
     // observed purge, and the app's own foreground choices — in that order.
@@ -160,16 +179,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: { subscription },
       } = supabase.auth.onAuthStateChange((_event, session) => {
         if (!active) return;
-        // While a re-authentication demand is outstanding, NO event may
-        // expose a session (REVIEW-023 finding 2; ruling 25: the provider
-        // exposes no session from the moment of the refusal). The concrete
-        // schedule this bars: the observed purge's own `signOut()` refreshes
-        // the residual on its way out (REVIEW-022 finding 2, recorded
-        // behaviour) and emits TOKEN_REFRESHED with the very session being
-        // purged — without this gate that event would flip the state back to
-        // signedIn while the logout leg is still pending. Once the read-back
-        // proves the space empty and the demand ends, events flow again.
-        if (demandOutstanding) return;
+        // THE INVARIANT (REVIEW-023 finding 2 under ruling 25, and
+        // REVIEW-023-ADVISORY lead 1): no path exposes a session while a
+        // re-authentication demand is outstanding — so EVERY setState here is
+        // gated on the demand. Two sources, because the provider's own cache
+        // lags the truth:
+        //
+        // - `demandOutstanding` — the consulted demand. Bars the mid-purge
+        //   schedule: `signOut()` refreshes the residual on its way out
+        //   (REVIEW-022 finding 2, recorded behaviour) and emits
+        //   TOKEN_REFRESHED with the very session being purged.
+        // - `peekSessionPersistenceFailure()` — the unconsumed write-refusal
+        //   flag, readable synchronously. Bars the advisory's A2/A3 window:
+        //   the observer records the refusal and the demand BEFORE the event
+        //   carrying the unpersisted session fires, but this provider has not
+        //   yet taken the flag, so its cache still says no demand. The flag
+        //   is that record's in-process face; an event arriving under it
+        //   carries a session no medium is known to hold.
+        //
+        // A gated sign-in is not lost: the app's own `verifyOtp` resolves the
+        // demand once the fresh session is persisted AND read back (lead 3),
+        // and events flow again the moment no demand stands.
+        if (demandOutstanding || peekSessionPersistenceFailure() !== null) return;
         supersededByEvent = true;
         setState(stateForSession(session));
       }));
@@ -274,6 +305,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       demandOutstanding = !(await observedPurge());
     }
 
+    /**
+     * REVIEW-023-ADVISORY lead 3 (P3/B2) — a fresh sign-in RESOLVES the
+     * demand. Re-authentication is what the demand asks for: once a new
+     * sign-in's session is PERSISTED AND READ BACK, purging it would destroy
+     * exactly what the demand existed to obtain. The advisory's B2 probe
+     * showed the cost of not resolving: a sign-in that reports success, is
+     * never exposed, and is then swept by the stale demand's purge.
+     *
+     * Resolution is deliberately narrow. It runs only from the app's own
+     * `verifyOtp` success — the one entrance that mints a new session; no
+     * auth EVENT resolves anything (lead 1's gate stays unconditional). And
+     * it resolves only on evidence: no unconsumed write-refusal flag (a
+     * refused persist means the "fresh" session exists nowhere durable) and
+     * the key space actually reading the session back. Anything less keeps
+     * the demand, at the disclosed conservative cost of one consumed
+     * sign-in.
+     *
+     * The `evaluating` latch serialises this against the purge machinery: a
+     * purge already in flight when the sign-in completes could otherwise
+     * sweep the fresh session after the read-back saw it. Skipping the
+     * resolution in that window falls toward the old conservative behaviour
+     * — the safe direction — never toward exposure.
+     */
+    async function resolveDemandByFreshSignIn(): Promise<void> {
+      if (evaluating) return;
+      evaluating = true;
+      try {
+        if (!demandOutstanding) return;
+        if (peekSessionPersistenceFailure() !== null) return;
+        const storedSession = await readBackStoredSession();
+        if (storedSession === null) return;
+        demandOutstanding = false;
+        try {
+          await clearReauthDemand();
+        } catch {
+          // The durable record could not be removed; it remains for the next
+          // process, whose consult will purge — costing the disclosed one
+          // conservative re-authentication after a restart. This process has
+          // the read-back evidence and proceeds. Never a trusted session
+          // that should not be: the record's survival errs toward purging.
+        }
+        if (!active) return;
+        if (!bootstrapStarted) {
+          // The demand-at-mount path (the advisory's B2): nothing was
+          // registered while the demand stood, so the ordinary bootstrap now
+          // reads the fresh session and resolves the state from it.
+          startBootstrap();
+          return;
+        }
+        // The mid-process path: the listener was registered but lead 1's
+        // gate dropped the sign-in event. Re-read and expose.
+        const { data } = await supabase.auth.getSession();
+        if (active && data.session) {
+          supersededByEvent = true;
+          setState(stateForSession(data.session));
+        }
+      } finally {
+        evaluating = false;
+      }
+    }
+    resolveDemandBySignInRef.current = resolveDemandByFreshSignIn;
+
     async function evaluate(status: AppStateStatus): Promise<void> {
       // One evaluation at a time. AppState can deliver several transitions
       // faster than a network round trip completes, and two overlapping
@@ -349,6 +442,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       active = false;
+      resolveDemandBySignInRef.current = async () => {};
       if (bootstrapTimer) clearTimeout(bootstrapTimer);
       appStateSubscription.remove();
       subscription?.unsubscribe();
@@ -368,6 +462,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const verifyOtp = useCallback(async (email: string, token: string) => {
     return reportRatherThanThrow(async () => {
       const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+      // A completed sign-in is the one thing that may resolve an outstanding
+      // re-authentication demand (REVIEW-023-ADVISORY lead 3) — and only
+      // after the effect verifies the new session is persisted and reads
+      // back. A no-op when no demand stands.
+      if (!error) await resolveDemandBySignInRef.current();
       return error;
     });
   }, []);
