@@ -184,7 +184,7 @@ Advisory reviewer:  DeepSeek V4 Pro / fresh session — the ADR-001 auth trigger
                     so it does not duplicate the reviewer of record. Advisory
                     carries no merge authority; the controller adjudicates
                     against the RoR record.
-Status:             BUILD
+Status:             REVIEW
 Dispatch:           Unit D — the v1 CLIENT-SIDE authentication surface only:
                     email OTP sign-in/sign-up, session persistence behind a
                     chunked expo-secure-store adapter, route protection, and
@@ -268,6 +268,25 @@ remedy is deleting the claims, not building a sixth instrument to rescue them.
 the options are an owner override merge on a documented FAIL — the Unit C
 precedent — or further subtraction until the evidence suite is smaller and
 entirely true.
+
+**Phase transition BUILD -> REVIEW, 2026-08-25, CTRL-005 — REVIEW-022, final.**
+Fix cycle 3 delivered at `acb39305` (0 behind main at `6c925d1`). Two findings
+closed by implementation, five by subtraction, as adjudicated. Reviewer of
+record Codex Sol / Ultra, fresh session. The advisory seat is **spent**: it
+fired once at REVIEW-021-ADVISORY, found the entrance the reviewer of record
+missed, and its scope is closed — it is not re-dispatched here.
+
+**The fix-cycle budget is exhausted.** If REVIEW-022 is not a PASS, there is no
+cycle 4: the options are an owner override merge on a documented FAIL, the
+Unit C precedent, or further subtraction. Three builder disclosures are carried
+to the reviewer rather than buried: `ci.txt` is absent from 005d by design,
+because a head cannot be known before its own push and carrying cycle 2's
+forward would place a green CI artifact beside a different head; two tests were
+added in a subtraction cycle, instrumenting the B1 hole rather than rescuing the
+deleted claim, and the builder argued that distinction rather than letting it
+pass; and the early `gates.txt` anomaly stays DISCLOSED and unexplained across
+three cycles, recorded so "non-dispositive twice" is never quietly promoted to
+"resolved".
 
 This block was edited in the owner's working tree rather than through the
 GitHub API: the controller's Composio project key was revoked mid-session and
