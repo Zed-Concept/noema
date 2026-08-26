@@ -96,7 +96,7 @@ Advisory reviewer:  DeepSeek V4 Pro / fresh session — the ADR-001 auth trigger
                     not by reading it (learning 20). Advisory carries no merge
                     authority; the controller adjudicates against the RoR
                     record.
-Status:             REVIEW
+Status:             BUILD
 Dispatch:           Unit E — Session durability: close REVIEW-022 finding 3 to
                     ADR-009's three review-gated requirements — purge success
                     observed by read-back, never inferred from the absence of
@@ -162,6 +162,27 @@ origin mismatches to a local lag. A draft PR is opened by the controller so
 CI runs on the branch (`ci.yml` fires on pull_request and push-to-main
 only); the draft state is the merge block, the REVIEW-023 verdict is the
 merge gate. Written through the Composio GitHub connection.
+
+**Phase transition REVIEW -> BUILD (fix cycle 1 of 3), 2026-08-26, CTRL-006.**
+REVIEW-023 (Codex Sol / Ultra, record at `fed364d9`): **FAIL** — findings
+1–3 MUST CLOSE, 5 MUST NARROW/SUBTRACT, 4 controller-owned, 6 corrected by
+the reviewer's HANDOFF insert. Owner rulings 25 (R2 under double refusal)
+and 26 (the Unit D → Unit E storage-key transition is out of scope, on the
+fact that no one has ever signed in through the app) are recorded in the
+CTRL-006 cycle-1 state commit on main and restated in the fix dispatch,
+which governs (ruling 7). Fix cycle 1 dispatched to Claude Code, Fable 5 /
+Max / fresh session (ruling 5). REVIEW-023-ADVISORY (DeepSeek V4 Pro) had
+not landed at this transition; it is adjudicated on arrival and feeds cycle
+2 if it adds anything. Draft PR #17 stays open for CI only.
+
+**Controller annotation on the build closing note above (REVIEW-023
+finding 4).** The builder wrote that note on the controller's explicit
+authorisation in the Unit E dispatch. `AGENTS.md` permits builders to update
+only the Active work row and their HANDOFF block; the authorisation, not the
+builder, was the defect, recorded in the CTRL-006 ledger. The note stays —
+this record supersedes and never deletes — and no future dispatch authorises
+a builder write to this file. Written through the Composio GitHub
+connection.
 
 ---
 
