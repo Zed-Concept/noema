@@ -66,14 +66,16 @@ As of 2026-08-26, CTRL-006 opening:
   Pro or Kimi K2.7 Code) on the ADR-001 triggers only. The **Manus
   investigator seat lapsed 2026-08-25** — the trial end `AGENTS.md` names has
   passed; no dispatch names it until the owner renews.
-- **Staging auth posture** (rulings 23–24), owner-executed. **Applied in
-  CTRL-005 and unrecorded until now:** custom SMTP to the owner's Mailtrap
-  Email Sandbox, and a one-time-code template that renders `{{ .Token }}` —
-  evidenced by a captured message to `phaseb-check-1@example.com` at
-  2026-08-26 05:06Z, subject "Your sign-in code", a six-digit code in the
-  body. **Not yet confirmed:** Confirm email off; JWT expiry at the dashboard
-  minimum. The sandbox plan's monthly message meter is the live-run email
-  budget; the builder is told the number at the Unit F dispatch.
+- **Staging auth posture is applied** (rulings 23–24), all owner-executed.
+  Custom SMTP to the owner's Mailtrap Email Sandbox and a one-time-code
+  template rendering `{{ .Token }}` were applied in CTRL-005 and unrecorded
+  until now — evidenced by a captured message to `phaseb-check-1@example.com`
+  at 2026-08-26 05:06Z, subject "Your sign-in code", a six-digit code in the
+  body. Confirm email off and JWT expiry 600 seconds confirmed by the owner
+  2026-08-26. The sandbox meter shows a 50-message ceiling; that is the
+  live-run email budget until the owner states otherwise. **Device for the
+  ADR-named test: the owner's iPhone**, running the app in Expo Go — the
+  Unit F procedure is written for that runtime.
 - **Unit C is merged** at `d794328` (PR #8): `profiles`, `captures`,
   `transcripts` with FORCE RLS and owner-only policies, the
   `handle_new_user()` SECURITY DEFINER provisioning trigger, and the private
@@ -136,7 +138,7 @@ explicitly and get it overturned on the record.
 | 20 | **Refresh entrances are not enumerated and not gated.** Library-internal refreshes — from construction, from session loading, from `signOut()`, and from paths not yet identified — are recorded, expected behaviour. The guarantee is persistence, not initiation: any rotated session that cannot be persisted is detected and forces re-authentication, durably across process restart. `autoRefreshToken: false` stands. Supersedes ADR-007 in full. | 2026-08-26 | `docs/03-decisions/ADR-009-refresh-lifecycle-supersession.md` |
 | 21 | Unit D merged on **owner override of a REVIEW-022 FAIL**, over exactly one open finding — finding 3, non-durable purge demand. **ADR-009 is the last re-scope of Unit D.** If the CTRL-006 follow-up does not close finding 3, it ships as a Known Issue and the unit is finished regardless. A re-scope that reclassifies findings is legitimate once; twice is budget laundering. | 2026-08-26 | this row (owner ruling, CTRL-005) |
 | 22 | Fable 5 is available again. **Builder seats return to Fable 5** — Ultracode for build-class, Max for fix loops — retiring the Opus 5 substitution from future HANDOFFs and restoring ruling 4. The **controller seat moves to Fable 5 at CTRL-006**, not mid-session: CTRL-005 finishes on the recorded substitution rather than muddying the provenance of its own close-out. | 2026-08-26 | this row (owner ruling, CTRL-005) |
-| 23 | **Staging auth posture, permanent.** Confirm email **off**. The Magic Link and Confirm signup templates render `{{ .Token }}`, so the one-time code arrives as a code and never as a link (a link needs the scheme frozen by ruling 8). **Custom SMTP** on staging pointed at the owner's Mailtrap Email Sandbox — messages are captured, never delivered — with credentials in the Supabase dashboard only, owner-executed, never in the repo; the default sender's two messages an hour to pre-authorized addresses cannot sustain one review re-run, and a capture sandbox removes recipient constraints entirely. **JWT expiry at the dashboard minimum**, left low, so the ADR-named device test can force a refresh window without a test hook (learning 10). Staging only; production decides each item at its own creation. | 2026-08-26 | this row (owner ruling, CTRL-006) |
+| 23 | **Staging auth posture, permanent.** Confirm email **off**. The Magic Link and Confirm signup templates render `{{ .Token }}`, so the one-time code arrives as a code and never as a link (a link needs the scheme frozen by ruling 8). **Custom SMTP** on staging pointed at the owner's Mailtrap Email Sandbox — messages are captured, never delivered — with credentials in the Supabase dashboard only, owner-executed, never in the repo; the default sender's two messages an hour to pre-authorized addresses cannot sustain one review re-run, and a capture sandbox removes recipient constraints entirely. **JWT expiry lowered to 600 seconds** (ten minutes), left low, so the ADR-named device test can force a refresh window by keeping the phone locked longer than that, without a test hook (learning 10). Staging only; production decides each item at its own creation. | 2026-08-26 | this row (owner ruling, CTRL-006) |
 | 24 | **Test identities and code relay.** Live auth evidence signs in as disposable, run-namespaced addresses whose mail the Mailtrap sandbox captures — no real mailbox exists for them, so the recipient domain is whatever staging accepts (a message to `phaseb-check-1@example.com` was captured 2026-08-26 under custom SMTP; the default sender's `@example.com` rejection does not carry over). The one-time code is **relayed by the owner at runtime from the sandbox UI**: the producer reads it from a prompt, never from a committed file, and redacts it at source. No inbox API and no new provider key enters the loop — the sandbox's API tokens stay unused — and an admin-minted code (`service_role`) is not used, even for re-runs. | 2026-08-26 | this row (owner ruling, CTRL-006) |
 
 ## Active work
@@ -146,7 +148,7 @@ What is in flight, who owns it, and what it is blocked on. One row per stream.
 | Stream | Owner | Status | Blocked on |
 |---|---|---|---|
 | Unit E — Session durability (REVIEW-022 finding 3) | Claude Code | **LOCK registered, BUILD** — `feat/session-durability`; reviewer of record Codex Sol, advisory DeepSeek V4 Pro. Dispatch issued after this commit merges, naming the post-merge tip. Evidence `006a-session-durability/`. | Merge of this commit |
-| Unit F — Auth Phase B live evidence | — | **Not started.** Evidence only, against the tip that includes Unit E: live one-time-code round trip and provisioning, live session size, refresh rotation persisted through the adapter, `scope: 'local'` observed, and the ADR-named locked-device test as an owner attestation. LOCK registered at the state commit that records Unit E's merge. Evidence `007a-auth-phase-b/`. | Unit E merge; Confirm email off and JWT expiry confirmed by the owner; device (iPhone or Android, Expo Go) named by the owner |
+| Unit F — Auth Phase B live evidence | — | **Not started.** Evidence only, against the tip that includes Unit E: live one-time-code round trip and provisioning, live session size, refresh rotation persisted through the adapter, `scope: 'local'` observed, and the ADR-named locked-device test as an owner attestation. LOCK registered at the state commit that records Unit E's merge. Evidence `007a-auth-phase-b/`. | Unit E merge |
 | Production Supabase project | Owner | Parked by ruling — create in East US (North Virginia) before any launch-facing unit | Free-tier slot or Pro upgrade at that time |
 
 Unit A merged 2026-08-19 at `8d648bb` (PR #2, REVIEW-007 PASS); its full
