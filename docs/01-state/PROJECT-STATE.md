@@ -140,6 +140,8 @@ explicitly and get it overturned on the record.
 | 22 | Fable 5 is available again. **Builder seats return to Fable 5** — Ultracode for build-class, Max for fix loops — retiring the Opus 5 substitution from future HANDOFFs and restoring ruling 4. The **controller seat moves to Fable 5 at CTRL-006**, not mid-session: CTRL-005 finishes on the recorded substitution rather than muddying the provenance of its own close-out. | 2026-08-26 | this row (owner ruling, CTRL-005) |
 | 23 | **Staging auth posture, permanent.** Confirm email **off**. The Magic Link and Confirm signup templates render `{{ .Token }}`, so the one-time code arrives as a code and never as a link (a link needs the scheme frozen by ruling 8). **Custom SMTP** on staging pointed at the owner's Mailtrap Email Sandbox — messages are captured, never delivered — with credentials in the Supabase dashboard only, owner-executed, never in the repo; the default sender's two messages an hour to pre-authorized addresses cannot sustain one review re-run, and a capture sandbox removes recipient constraints entirely. **JWT expiry lowered to 600 seconds** (ten minutes), left low, so the ADR-named device test can force a refresh window by keeping the phone locked longer than that, without a test hook (learning 10). Staging only; production decides each item at its own creation. | 2026-08-26 | this row (owner ruling, CTRL-006) |
 | 24 | **Test identities and code relay.** Live auth evidence signs in as disposable, run-namespaced addresses whose mail the Mailtrap sandbox captures — no real mailbox exists for them, so the recipient domain is whatever staging accepts (a message to `phaseb-check-1@example.com` was captured 2026-08-26 under custom SMTP; the default sender's `@example.com` rejection does not carry over). The one-time code is **relayed by the owner at runtime from the sandbox UI**: the producer reads it from a prompt, never from a committed file, and redacts it at source. No inbox API and no new provider key enters the loop — the sandbox's API tokens stay unused — and an admin-minted code (`service_role`) is not used, even for re-runs. | 2026-08-26 | this row (owner ruling, CTRL-006) |
+| 25 | **R2 under double refusal (Unit E).** ADR-009's R3 stands unqualified: zero unhandled rejections on every refused-write path, including the path on which the demand store also refuses. R2 holds whenever any durable medium accepts a write: on a refused session write the provider exposes no session from that moment (`signedOut` before any purge is awaited), the demand is held in memory and its durable record retried until a medium answers or the process ends, and the demand clears only on read-back proof. The one schedule this leaves — every durable medium refuses and the process dies before any recovers — is a recorded Known limit, not a defect, bounded by Supabase's refresh-token rotation, which rejects a consumed refresh token outside the reuse interval so the on-disk residue cannot be refreshed into a usable session. Unit F measures that backstop live against staging. | 2026-08-26 | this row (owner ruling, CTRL-006, on REVIEW-023 finding 1) |
+| 26 | **The Unit D → Unit E storage-key transition is out of scope, on a fact.** No one has ever signed in through the app on any surface: Phase B never ran, no one-time code was ever delivered to the app, and no distribution unit exists (`expo.scheme` frozen, EAS never run). No Unit D session exists in any keychain, Keystore or browser. Unit E's explicit `auth.storageKey` therefore replaces the derived key without a sweep of the old space; the application comment asserting "no users" is deleted (code does not assert the world) and the evidence README cites this ruling. The dispatch's "web unchanged" narrows to "web keeps `localStorage` and gains no observer"; the namespace change on web is accepted under the same fact. | 2026-08-26 | this row (owner ruling, CTRL-006, on REVIEW-023 finding 3) |
 
 ## Active work
 
@@ -147,7 +149,7 @@ What is in flight, who owns it, and what it is blocked on. One row per stream.
 
 | Stream | Owner | Status | Blocked on |
 |---|---|---|---|
-| Unit E — Session durability (REVIEW-022 finding 3) | Claude Code | **LOCK registered, BUILD** — `feat/session-durability`; reviewer of record Codex Sol, advisory DeepSeek V4 Pro. Dispatch issued after this commit merges, naming the post-merge tip. Evidence `006a-session-durability/`. | Merge of this commit |
+| Unit E — Session durability (REVIEW-022 finding 3) | Claude Code | **REVIEW-023 FAIL** (2026-08-26, Codex Sol / Ultra; record `fed364d9` on the branch): findings 1–3 MUST CLOSE, 5 MUST NARROW, 4 controller-owned, 6 corrected by the reviewer. Builder head `caa31ee2`; **fix cycle 1 of 3** dispatched at Fable 5 / Max on the branch tip `27f5d8d6` (LOCK back to BUILD). Rulings 25–26 govern findings 1 and 3. Draft PR #17 carries CI only. REVIEW-023-ADVISORY (DeepSeek V4 Pro) in progress, adjudicated on arrival. Evidence `006b-session-durability-fix1/`. | REVIEW-024 |
 | Unit F — Auth Phase B live evidence | — | **Not started.** Evidence only, against the tip that includes Unit E: live one-time-code round trip and provisioning, live session size, refresh rotation persisted through the adapter, `scope: 'local'` observed, and the ADR-named locked-device test as an owner attestation. LOCK registered at the state commit that records Unit E's merge. Evidence `007a-auth-phase-b/`. | Unit E merge |
 | Production Supabase project | Owner | Parked by ruling — create in East US (North Virginia) before any launch-facing unit | Free-tier slot or Pro upgrade at that time |
 
@@ -374,6 +376,24 @@ auth posture remains unset" was partly false when written. Corrected in this
 branch's second commit; the first commit's ruling-24 wording (plus-addressed
 owner-mailbox identities) was drafted against the unrecorded state and is
 replaced before merge rather than superseded after it.
+
+Cycle-1 entries, 2026-08-26, all controller defects: (a) the Unit E review
+dispatch ordered READ FIRST ahead of CHECKOUT, so a fresh reviewer read the
+LOCK in a stale local tree and stopped; corrected mid-review, and every
+future dispatch puts fetch-and-checkout first. (b) The Unit E build dispatch
+recommended a fail-closed fallback — rethrow when the demand store refuses —
+that reproduced the REVIEW-022 pathology REVIEW-023 finding 1 then measured;
+the recommendation was the defect's origin, and ruling 25 replaces it.
+(c) The same dispatch authorised a builder closing note in BRANCH-NOTES.md,
+which `AGENTS.md`'s state-ownership rule does not permit (REVIEW-023 finding
+4); the note stays under a controller annotation, and no dispatch authorises
+a builder write to that file again. (d) Two reviewers were sent into one
+working copy; the advisory seat's probe file landed in the tree the reviewer
+of record was measuring, and the reviewer isolated itself in a worktree. The
+advisory seat was moved to its own worktree; parallel seats get separate
+worktrees by dispatch from now on. (e) The build dispatch's "stop on any
+mismatch" applied an origin rule to a local lag; accepted deviation,
+recorded at the phase transition.
 
 ## Known issues
 
