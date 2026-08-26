@@ -1,3 +1,70 @@
+## 2026-08-26 — REVIEW-022, Unit D auth and session v1 fix cycle 3
+
+**Controller:** CTRL-005 Auth and session v1.
+**Reviewer of record:** Codex Sol / Ultra / fresh session — authored
+REVIEW-019, REVIEW-020, and REVIEW-021, reopened none, and did not build this
+unit.
+**Target:** `feat/auth-session-v1` at
+`c86ed5c2b024f287208a3152697ac71a3f90d5df`.
+**Base:** `main` at
+`6c925d1c5b5e9aa4f8da660028482707e3763c8a`.
+**Outputs:** immutable `docs/04-reviews/REVIEW-022.md` plus this required
+append-only HANDOFF block.
+**Verdict:** **FAIL**.
+
+### Preflight and scope
+
+- Exact target, base, merge base, both named reviewers, and `Status: REVIEW`
+  verified before analysis and rechecked before record authoring.
+- The sole commit after `acb39305` is unsigned as disclosed and changes
+  `docs/01-state/BRANCH-NOTES.md` only. The stop condition did not fire.
+- Client auth surface only. Protected `supabase/`, `.github/`, and generated
+  database types are object-identical to base. No live Supabase call, credential,
+  migration, RLS, payment, or outward-facing action occurred.
+
+### Verdict-driving findings — MUST CLOSE
+
+1. Pinned supabase-js still registers an internal auth listener during client
+   construction. Its initial-session emission refreshes and writes a near-expiry
+   stored session without an application auth call or AppState gate. The cycle-3
+   mechanism correction and claim 51 are false.
+2. Pinned auth-js `signOut()` loads and can refresh the stored session before
+   deletion. The exported user sign-out has no explicit AppState gate, making it
+   the fourth app-initiated refresh entrance and fifth overall with the
+   constructor listener, falsifying the “exactly two” claims.
+3. A null purge-failure observation does not prove deletion: sign-out can reject
+   before any removal. The provider then clears the demand while the residual
+   session survives. All demand state is process-local, so it does not survive
+   restart; a second pre-removal rejection can also be mistaken for success.
+   The pinned-client path still produces unhandled sibling rejections.
+
+### Bookkeeping and accepted limits
+
+- **SHOULD DELETE / narrow, not merge-blocking:** exact-head claim 50 and the
+  cumulative clean-diff statement. Two fresh target captures were pair-stable,
+  but committed `red-lane.txt` matched only the earlier 81-path range while the
+  target has 99; `git diff --check` still fails on retained 005c whitespace.
+- **ACCEPT AND RECORD:** B1's two added tests instrument the alias hole rather
+  than rescue the deleted claim; B2 is honestly narrowed; B3's 2052–4617 figure
+  is correct for a completed removal over auth-js-maintained PKCE state and is
+  honestly labeled source-derived, not observed.
+- The literal base pin is real and its counterfactual refusal exits 1 with zero
+  artifact files. The absent `ci.txt` and claim 48a NOT RUN are honest; current
+  live CI separately passes at the exact target.
+- The early `gates.txt` anomaly remains disclosed, unexplained, and
+  non-dispositive for a third review. It is not resolved.
+
+### Owner routing
+
+The fix-cycle budget is exhausted. Findings 1–3 are real security/correctness
+defects that block a normal merge. Finding 4 is subtraction-only bookkeeping.
+The next action is an owner override-or-do-not-merge decision, plus controller
+reconciliation of the state records. There is no cycle 4.
+
+**LOCK status line:** `Status: REVIEW`.
+
+---
+
 ## 2026-08-25 — Unit D fix cycle 3 of 3 (FINAL), feat/auth-session-v1
 
 **Controller:** CTRL-005 Auth and session v1.
