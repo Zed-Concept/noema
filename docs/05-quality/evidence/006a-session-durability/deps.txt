@@ -1,0 +1,22 @@
+# Dependency delta against the base — this unit's whole range.
+#
+# Authorized for this unit: ONE dependency if the durable demand's store
+# needs one (dispatch), and it does: expo-file-system, the R2 store that
+# does not share the keychain's lock-state failure mode. Added with
+# npx expo install. It was ALREADY in the lockfile as a dependency of
+# the expo package itself, so the delta is the direct-dependency line
+# plus a 57.0.4 -> 57.0.5 resolution bump — no new package enters the
+# tree. The audit delta is recorded in npm-audit.txt and the HANDOFF.
+
+## git diff package.json (dependency lines only)
++    "expo-file-system": "~57.0.5",
+
+## installed version
+expo-file-system: 57.0.5
+
+## SDK compatibility — installed via npx expo install, so the SDK 57 pin holds
+package.json range: ~57.0.5
+expo range:         ~57.0.14
+
+## auth-js is pinned through the lockfile, and this unit does not move it
+@supabase/auth-js installed: 2.112.3
