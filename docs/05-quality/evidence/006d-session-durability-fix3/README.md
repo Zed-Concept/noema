@@ -43,8 +43,14 @@ it:
   expected-RED witness. The invariant wording is withdrawn wherever it
   appeared: the 006c README (superseded by this section), the
   `auth-provider.tsx` listener comment, the `auth-state-publisher.ts`
-  header, and the `auth-provider.test.tsx` describe head (all narrowed in
-  the comment-only commit this cycle).
+  header, and the `auth-provider.test.tsx` describe head. REVIEW-026
+  finding 1 found that withdrawal incomplete: the stale single-point /
+  every-publication universal survived beside the narrowing in the
+  `auth-state-publisher.ts` header and the `auth-state-publisher.test.ts`
+  header. It was deleted — not qualified — in the comment-only
+  subtraction-correction commit `811600fa` (comment-stripped executable
+  tokens verified identical to `9e90fdba` for both files), and the
+  withdrawal now holds at every named site.
 - **The lint/type "fact" — WITHDRAWN (REVIEW-025 finding 1; ruling 28).**
   006c claim 6's enforcement half asserted "no caller can reach `setState`
   by another route" as a scope-, lint-, and test-level fact. REVIEW-025's
@@ -108,9 +114,13 @@ it:
 **What is NOT withdrawn:** 006c claims 1–5, 7–13, 15, 17, 20–22 stand as
 named-schedule and execution facts; each is re-established at this head by
 the same instrument, re-run unchanged (the table below binds each row to
-its instrument and carries the 006c claim number). The 006c Known limits
-carry forward unchanged (REVIEW-025 narrowed none of them; it ACCEPTED
-limit 6 at its boundary).
+its instrument and carries the 006c claim number). All eleven 006c Known
+limits carry forward, itemised in the Known-limits section below: limit 8
+byte-verbatim; limits 1, 3, 4, 7, and 9 verbatim in substance (provenance
+trims only); limit 6 with its REVIEW-025 acceptance recorded; and limits
+2, 5, 10, and 11 carried with ruling-28 subtraction, each removal named
+there (REVIEW-026 finding 3 corrected this record's earlier "unchanged"
+wording; REVIEW-025 ACCEPTED limit 6 at its boundary).
 
 ---
 
@@ -164,10 +174,13 @@ refuse the NEXT publication at its input.
 
 **Compensating controls, exactly as ruling 28 names them (both issues):**
 
-1. **Any restart purges through the bootstrap path** — the durable demand
-   is consulted at bootstrap before any session load, and the observed
-   purge runs before the provider's own `getSession()` (claims 13–14; the
-   restart schedules in both committed probes).
+1. **Any restart purges through the bootstrap path** — the observed purge
+   runs before the provider's own `getSession()` (claims 13–14; the
+   restart schedules in both committed probes). ADR-009 qualifier:
+   library-internal loads during client construction — the pinned client
+   registers its own listener and can load and refresh a stored session
+   before any provider code runs — can precede the demand consult and are
+   contained by the purge that follows, never prevented.
 2. **Server-side refresh-token rotation makes the residue unrefreshable** —
    the exposed session's refresh token was superseded at rotation, so it
    dies at its next refresh attempt (the ruling-25 bound, recorded in
@@ -320,11 +333,40 @@ preconditions-GREEN-witnesses-RED.
 
 ## Known limits of the instruments
 
-Carried from 006c **unchanged** (S4: REVIEW-025 narrowed none of them; it
-ACCEPTED limit 6 at its boundary — "fail-closed, one redundant
-purge/re-authentication, no exposure"). The two REVIEW-025 exposure
-schedules are NOT limits of the instruments — they are defects of the
-mechanism, recorded as Known Issues 1–2 in the register above.
+Carried from 006c, itemised (REVIEW-026 finding 3: this record earlier
+called the carry "unchanged", which was false — four bodies were narrowed
+under ruling 28). The two REVIEW-025 exposure schedules are NOT limits of
+the instruments — they are defects of the mechanism, recorded as Known
+Issues 1–2 in the register above.
+
+**Carried verbatim:** limit 8 byte-for-byte; limits 1, 3, 4, 7, and 9
+verbatim in substance — only the "(carried)" provenance parentheticals
+(and limit 4's word "costing") are trimmed; no bound, cost, or direction
+changed. Limit 6 keeps its 006c bound and records its REVIEW-025
+acceptance ("ACCEPTED by REVIEW-025 at this boundary") in place of the
+cycle-2 read-path comparison prose.
+
+**Carried with ruling-28 subtraction:**
+
+- **Limit 2** — removed: "the flag-order fix (claim 7) narrows the
+  in-process ungated interval to nothing." An absolute interval claim of
+  the withdrawn kind; claim 7's instrument establishes the synchronous
+  flag order, not a to-nothing interval. The crash-window bound itself is
+  unchanged.
+- **Limit 5** — removed: the sign-in-success/resolution and
+  persistence-failure explanation ("reports success, resolves the old
+  demand, and is then never exposed …"). Its "never exposed" wording is
+  the withdrawn exposure universal; what the instrument measures stays —
+  signedOut with a new demand (claim 4's schedule).
+- **Limit 10** — removed: the web storage-key/ruling-26 clause. Decision
+  provenance, not a limit of these instruments; the accepted ruling-26
+  web namespace change remains recorded in the immutable 006c record and
+  the governance chain, and this cycle claims nothing on web.
+- **Limit 11** — replaced: "the flag and the barrier gate its exposure,
+  and the divergence ends at the next evaluation" with the narrower
+  NEXT-publication boundary plus Known Issue 2. The old sentence is the
+  exposure claim REVIEW-025 finding 1 disproved; this is the one limit a
+  REVIEW-025 finding narrowed.
 
 1. **The ruling-25 limit: death before any medium recovers** (the
    `review023-probe` Known-limit schedule demonstrates it at this head).
