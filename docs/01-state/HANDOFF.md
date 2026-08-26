@@ -1,3 +1,74 @@
+## 2026-08-26 — REVIEW-023-ADVISORY, Unit E session durability (advisory seat)
+
+**Controller:** CTRL-006 Auth Phase B and session durability.
+**Reviewer:** DeepSeek V4 Pro / fresh session — the advisory seat named in
+the feat/session-durability LOCK (ADR-001 auth-surface trigger; the
+controller's single pick). Advisory carries no merge authority; no verdict
+is issued. REVIEW-023.md was not read; nothing from it is referenced.
+**Code target:** `caa31ee2ff77331d7ab976bff5bb7bb4588244c9` (the dispatch's
+code under review), probed at the dispatch's checkout pin
+`501c1635dfb8f9158e07d690279aec6b0acff3d1` (= target + one controller state
+commit; ancestry verified, product code identical). Base `7caf23e1`.
+**Outputs:** immutable `docs/04-reviews/REVIEW-023-ADVISORY.md` plus this
+required append-only HANDOFF block — the two files the dispatch authorizes.
+No other file changed.
+
+**Method: probe, not read (learning 20; the dispatch's METHOD clause).** A
+throwaway jest suite (sha256
+`8294ba9d5cf6b05c02ed009c8195f0fa8eaf81c63ecd79fc3d3d48064dcb0609`, quoted in
+full in the record's Appendix A) ran the REAL pinned supabase-js 2.112.3
+through the app's own modules over switchable in-memory fakes — keychain,
+demand file store (including a `File.exists`-lies switch), and a fake auth
+server — in a worktree at the pin with `npm ci` from the committed lockfile.
+Result: 8/9 pass; D4a fails on jest's own detector reporting TWO unhandled
+`adv-refused-session-write` rejections — the finding, not a defect of the
+harness. The committed finding-3 probe reran at the pin: base RED (exit 1),
+head GREEN (exit 0), runner exit 0. Gates at the pin: typecheck 0 errors,
+lint pass, all 10 committed suites pass, format:check clean after the probe
+file's deletion.
+
+**The four questions, probed:**
+
+1. Demand lost or ignored: LOST on death between refusal and record
+   (Known limit 7, backstop-bounded) and on file-store refusal at record
+   (D4a: 0 demand files after a full schedule); IGNORED on the consult when
+   the shipped `File.exists` gate reads a refusal as absence — E1 shows the
+   consequence (residual loaded, rotated, exposed as signedIn) with the
+   native premise NOT RUN (Phase B); no loss when the keychain refuses while
+   the file store answers (D4e: retries 514→1027 deletes, demand survives).
+2. Session exposed while a demand is outstanding: YES — A2 (the auth
+   listener receives `event:TOKEN_REFRESHED:rot1` AFTER `demand-recorded`
+   and sets state unconditionally at `auth-provider.tsx:156-160`; window =
+   purge duration) and A3 (refused sign-in persist: `verifyOtp error: null`,
+   `event:SIGNED_IN:v1` after the demand, provider signedIn, key space 0).
+   The demand-at-bootstrap schedule (claims 7-8) stays closed (committed
+   probe; B2). B2 adds: a sign-in during an outstanding demand reports
+   success but never surfaces, and the next purge destroys it (2053 deletes
+   observed) — one CONSUMED sign-in, stronger than the disclosure's "one
+   conservative re-authentication".
+3. Absorb-and-record divergence: produced exactly (A3 + C3: rotation
+   consumed server-side, auth-js believes persisted, after recovery key
+   space 0, `getSession()` null, one OTP recovers). Acceptable under
+   ADR-009: forced re-authentication IS the requirement; the terminal state
+   is the ADR working. Live-server behaviour NOT RUN (Unit F).
+4. Double refusal: no probed schedule hangs (D4b/D4c: zero deletes occur on
+   the refresh path at all; D4e/D4a settle and retry) — the Known-limit-11
+   stranding stays source-read, unreproduced. Observed instead: durability
+   LOST (D4a: no demand survives) while availability holds (settles, retries,
+   truthful signedOut), plus the two unhandled rejections confirming claim
+   15's fallback at exactly the count REVIEW-022 saw at the base.
+
+**Operational disclosures.** The dispatch's CHECKOUT pin `501c1635` was not
+in the reused working copy and `git fetch` failed (github.com unresolvable
+from the harness); the owner redirected the work to a fresh worktree at the
+pin with `npm ci`, and the record was committed from that worktree after
+`git pull --rebase origin feat/session-durability` — the branch had advanced
+to `27f5d8d` (REVIEW-023 landed; LOCK moved REVIEW -> BUILD, fix cycle 1)
+while this advisory ran. The probe file was deleted before committing;
+`git status` showed exactly the two record files staged.
+
+---
+
 ## 2026-08-26 — REVIEW-023, Unit E session durability
 
 **Controller:** CTRL-006 Auth Phase B and session durability.
