@@ -1,0 +1,59 @@
+# RED-lane scope: the v1 CLIENT-SIDE auth surface only.
+# No migration, RLS policy, database function, grant, or storage-bucket
+# policy. Measured against the pinned base. Every git invocation below
+# checks its exit status (REVIEW-023 finding 5); every negative scan
+# carries a positive control (learning 14).
+# base: 7caf23e10856601f17d52ae37ae59fbb9dbbac60
+# The head this range ends at is in the non-gated binding-head.txt —
+# REVIEW-024 finding 3: this artifact is a function of the product
+# paths in the range, which docs-only commits do not extend.
+
+## Whole-tree object identity — the strongest form of 'unchanged'
+  supabase                     IDENTICAL  2b13461b9abd40f1c00afd316e3321d0931ef2fc
+  .github                      IDENTICAL  173fa30fae4f5f83a35a88ef29914fbf8016c39a
+  src/lib/database.types.ts    IDENTICAL  8c7fc943ffbadaf5a080999c34071a3b7cf3cbcc
+
+## Product paths in the range (REVIEW-024 finding 3: docs/05-quality/evidence
+## and docs/01-state are excluded from THIS LISTING — they grow with every
+## evidence and records commit; the database-layer filter below still runs
+## over the FULL unexcluded range)
+  product paths in range: 19
+    docs/04-reviews/REVIEW-023-ADVISORY.md
+    docs/04-reviews/REVIEW-023.md
+    docs/04-reviews/REVIEW-024.md
+    eslint.config.js
+    package-lock.json
+    package.json
+    src/__tests__/auth-provider.test.tsx
+    src/__tests__/auth-state-publisher.test.ts
+    src/__tests__/foreground-refresh.test.ts
+    src/__tests__/reauth-demand.test.ts
+    src/__tests__/secure-store-adapter.test.ts
+    src/__tests__/supabase-client.test.ts
+    src/lib/auth/auth-provider.tsx
+    src/lib/auth/auth-state-publisher.ts
+    src/lib/auth/foreground-refresh.ts
+    src/lib/auth/reauth-demand.ts
+    src/lib/auth/secure-store-adapter.ts
+    src/lib/auth/session-storage.ts
+    src/lib/supabase.ts
+
+## Paths in the FULL range that would be database-layer changes (expect none)
+  database-layer paths: 0
+  control MATCHED (a synthetic migration path is detected by this filter)
+
+## Added lines in the range that would be database-layer operations
+  added non-docs lines in range: 2711
+  CREATE[[:space:]]+POLICY                   hits: 0   (control MATCHED)
+  ALTER[[:space:]]+POLICY                    hits: 0   (control MATCHED)
+  DROP[[:space:]]+POLICY                     hits: 0   (control MATCHED)
+  ROW[[:space:]]+LEVEL[[:space:]]+SECURITY   hits: 0   (control MATCHED)
+  SECURITY[[:space:]]+DEFINER                hits: 0   (control MATCHED)
+  ^\+[[:space:]]*(GRANT|REVOKE)[[:space:]]   hits: 0   (control MATCHED)
+  storage\.buckets                           hits: 0   (control MATCHED)
+  storage\.objects                           hits: 0   (control MATCHED)
+  CREATE[[:space:]]+(OR[[:space:]]+REPLACE[[:space:]]+)?FUNCTION hits: 0   (control MATCHED)
+  \.rpc\(                                    hits: 0   (control MATCHED)
+
+  Non-vacuous by construction: every pattern above matched the synthetic
+  control that contains it, through the same grep invocation.
