@@ -1,3 +1,211 @@
+## 2026-08-27 — Unit E fix cycle 3 of 3 (SUBTRACTION, ruling 28), feat/session-durability
+
+**Controller:** CTRL-006 Auth Phase B and session durability.
+**Builder:** Claude Code, fresh session — same builder, same branch (AGENTS.md
+workflow step 5, answering REVIEW-025 **FAIL** under owner ruling 28).
+**Model+Effort:** **Fable 5 / Max / fresh session** — ruling 5's tier for a
+review-fix loop; the dispatched seat, model check passed at session start
+(model ID `claude-fable-5`).
+**Answering:** the CTRL-006 fix-cycle-3 dispatch — SUBTRACTION ONLY. Ruling 28
+governs: cycle 3 changes no behaviour; the exposure invariant is withdrawn
+and narrowed to the enumerated schedules; the two REVIEW-025 schedules ship
+as HIGH Known Issues with their compensating controls; the lint claim
+narrows to what it enforces; the evidence claim narrows to the heads it
+measured; the subscription-based fix gets a follow-up unit after Phase B.
+**Evidence:** `docs/05-quality/evidence/006d-session-durability-fix3/` — the
+unit's final claims table and its Known Issues register. 006a, 006b, and
+006c are superseded by the 006d README's opening section and stay
+byte-identical (tree OIDs verified at the evidence head: 006a
+`be85ba58558cd167f72ca88572f1aa687d4e7c15`, 006b
+`67d57d138cc5c99cfc5705cc312761f2408b818a`, 006c
+`6fbba42b97497065d4cb3972aaf3be0c58a90192`).
+**Head:** the pushed tip is this records commit (HANDOFF + `ci.txt` + the
+Active work row; a commit cannot name its own SHA — the completion report
+names it). The substantive evidence head beneath it is
+`afef2b2a544a84b562f068bc6a653925518033d5`; the comment-only subtraction
+commit beneath that is `5e787a6360a1cadeb7f95669f86cfeb0c6b74c96`.
+
+### Preflight — all three checks passed
+
+- `git fetch origin && git checkout feat/session-durability && git pull
+  --ff-only` landed exactly on the dispatched tip
+  `f72e63faee263f81097f532447a93248c53d750f`, tree clean.
+- `BRANCH-NOTES.md`: the Unit E LOCK read `Status: BUILD` with the
+  "fix cycle 3 of 3 — SUBTRACTION" transition note, as dispatched.
+- `AGENTS.md`: 5378 bytes, sha256
+  `0ff02d209247dadd94f217b441732baa87ed9f182f9b734cece668b1c3f0f013`.
+- REVIEW-025 read in full before anything was touched; the 006c README,
+  ADR-009, and the cycle-2 HANDOFF block likewise.
+
+### The subtraction — what was withdrawn or narrowed, item by item
+
+- **S1 — the exposure invariant is WITHDRAWN as a claim.** "No path exposes
+  a session while a re-authentication demand is outstanding" is narrowed to
+  the enumerated schedules in the committed probes (REVIEW-023
+  pending-logout; addendum A2/A3; REVIEW-024 bootstrap, mid-process,
+  event-before-record, fresh-sign-in resolution) and is NOT established in
+  general. Rewritten at every site that asserted it: the
+  `auth-provider.tsx` listener comment, the `auth-state-publisher.ts`
+  header (which now also states the input-not-exposure scope of the
+  barrier), the `auth-provider.test.tsx` describe head (renamed; every
+  `it()` text unchanged), and the 006c README via the 006d SUPERSESSION
+  section. The two REVIEW-025 schedules are **Known Issues 1 and 2** in
+  the 006d register — severity HIGH, class session exposure, schedule text
+  verbatim from the record, compensating controls exactly as ruling 28
+  names them (any restart purges through the bootstrap path; server-side
+  refresh-token rotation makes the residue unrefreshable; Unit F measures
+  that backstop live; a follow-up unit replaces gating with subscription)
+  — and are **witnessed by a committed expected-RED probe**:
+  `known-issue-witness.sh` exits 0 only when its 3 PRECONDITION tests PASS
+  (the schedules reproduce: refused rotation, durable demand, empty key
+  space, action error null, zero unhandled; both signals standing
+  pre-commit) AND its 3 WITNESS tests FAIL exactly as REVIEW-025 recorded
+  (expected `signedOut`, received `signedIn`). Committed transcript:
+  "counts: preconditions 3/3 passed, witnesses 3/3 failed-as-expected ·
+  verdict: WITNESS-HOLDS".
+- **S2 — the lint/type "fact" is WITHDRAWN.** What stays: the
+  named-import ESLint restriction (`no-restricted-imports` on `useState`
+  in `auth-provider.tsx`) and the source-shape test enumerating the
+  current publishers (five `publish(` sites; zero useState/setState in the
+  provider; one useState / two setState in the barrier). What shrank: the
+  claim. The REVIEW-025 aliasing bypass (`import React…; const { useState:
+  makeState } = React`) is documented beside the rule in
+  `eslint.config.js` and in the 006d README. The test describe phrased as
+  "no route to the setter exists" was renamed; no assertion was deleted
+  because none asserted impossibility — they were and remain byte counts
+  of current source (the dispatch's "delete any test assertion phrased as
+  'no other state channel can exist'" found no such executable assertion;
+  the phrasing lived in the describe name and comments, which are gone).
+- **S3 — the evidence invariant is NARROWED to the heads it measured.**
+  "By construction" and every universal are deleted from the 006d
+  capture.sh/stability.sh prose and the artifact headers they write. The
+  honest inputs are stated where the false claim stood: gated artifacts
+  depend on the bound product-tree OIDs AND on TypeScript under docs/
+  (tsconfig typechecks it) AND on the red-lane listing's range, which
+  includes docs/04-reviews. The false "NO commit SHA appears" sentence is
+  REMOVED from binding.txt (the smaller edit — the base-pin literal stays,
+  now described as "the one commit SHA in this file"). The red-lane
+  listing's "product paths" label is corrected in the artifact's own
+  heading; NO exclusion was added to the listing (that would be a scanner
+  change). The narrowed claim: stability demonstrated at evidence head
+  `afef2b2a` (both fresh captures exit 0, 9/9 gated artifacts pair- and
+  committed-identical, `stability.txt` regenerated byte-identically —
+  sha256 unchanged) and re-verified at the records head after this commit
+  (result in the completion report); review records added afterwards
+  change red-lane.txt by construction and are outside the claim.
+- **S4 — the final table is bound to its instruments.** Every 006d README
+  claim row quotes its instrument's output words; withdrawn claims are in
+  the SUPERSESSION list with the REVIEW-025 finding that caused each; the
+  006c Known limits carry forward unchanged (REVIEW-025 narrowed none;
+  it ACCEPTED limit 6); the publication log is credited as a
+  call-boundary mechanism instrument only (REVIEW-025 calibration).
+
+### Evidence — instruments re-run unchanged (ruling 28)
+
+- **Product-file edits: comment-only, proven.** For `auth-provider.tsx`,
+  `auth-state-publisher.ts`, and `eslint.config.js`, comment-stripped
+  executable tokens (TypeScript `transpileModule`, `removeComments`, JSX
+  preserved) are byte-identical across the subtraction commit:
+  "executable tokens IDENTICAL" for all three.
+- **`review023-probe` re-run:** "candidate RED (exit 1), head GREEN
+  (exit 0)" — 7/7 RED at `caa31ee2`, 7/7 GREEN at code head `5e787a6`,
+  runner exit 0. Probe source byte-identical to 006c's.
+- **`review024-probe` re-run:** "candidate RED (exit 1), head GREEN
+  (exit 0)" — the three discriminating schedules RED at `5f6d2e6c` (both
+  controls pass there by design), 5/5 GREEN at the code head, runner
+  exit 0. Probe source byte-identical to 006c's.
+- **`finding3-probe` re-run** (006a's instrument, byte-unchanged, output
+  into 006d): "base RED (exit 1), head GREEN (exit 0)" — the REVIEW-022
+  finding-3 closure is preserved through this cycle.
+- **Mutation battery: 33/33 SENSITIVE, 0 build-invalid** — the 006c
+  battery re-run UNCHANGED (no behaviour changed, so no mutant changed;
+  the comment-only edits touch no anchor), all five mutated files
+  restored byte-identical.
+- **Gates 4/4** — typecheck, lint, test, format:check all exit 0; **11
+  suites, 196 tests** (unchanged from 006c: this cycle deletes claims,
+  not tests).
+- **RED lane clean** — `supabase/`, `.github/`, generated types
+  object-identical to base; 0 database-layer paths in the full range; 0
+  database-operation hits; every scan's positive control matched; every
+  git exit checked. The range listing's heading now states its exclusions
+  honestly: 20 paths, `docs/04-reviews/REVIEW-025.md` included — the
+  growth the narrowed claim records instead of denying.
+- **`ci.txt`:** GitHub CI on PR #17 (draft — left draft) at the pushed
+  evidence head `afef2b2a544a84b562f068bc6a653925518033d5`: **success**
+  (`typecheck, lint, test`, 1m0s), run
+  `https://github.com/Zed-Concept/noema/actions/runs/33002759431`. Bound
+  to that SHA; this records commit necessarily post-dates it and gets its
+  own run, reported in the completion report.
+
+### Workflows run — ruling 6 disclosure
+
+**None.** No workflow, no subagent; every edit, probe, battery, and capture
+ran inline in this builder session. The fan-out disclosure is nil.
+
+### Touch-set — recordable deltas (learning 9)
+
+This cycle's builder commits, on top of `f72e63fa` (the controller's
+fix-cycle-3 LOCK transition):
+
+- `5e787a6` chore(auth), ruling-28 S1/S2: 5 files, +90/−42 — comments and
+  test names only (`auth-provider.tsx`, `auth-state-publisher.ts`,
+  `eslint.config.js` — all three proven token-identical — plus the
+  describe/comment narrowing in `auth-provider.test.tsx` and
+  `auth-state-publisher.test.ts`; zero assertions changed).
+- `afef2b2` evidence(006d): 30 files, +6068/−0 — the 006d pack: seven
+  runners/producers and two probe sources carried from 006c (paths
+  re-based, prose narrowed per S3; probe sources byte-identical), the new
+  `known-issue-witness.tsx`/`.sh` expected-RED witness, eighteen
+  transcripts/artifacts, and the README (final claims table + Known
+  Issues register).
+- The commit carrying this block: `ci.txt`, this HANDOFF insert, and the
+  PROJECT-STATE Active work row — nothing else.
+
+Nothing under `supabase/`, `.github/`, `src/lib/database.types.ts`,
+`app.json`, or `docs/01-state/BRANCH-NOTES.md` in any cycle commit
+(BRANCH-NOTES.md changed by zero bytes, as dispatched); `package.json` and
+`package-lock.json` untouched (no dependency work this cycle); no runtime
+code under src/ modified — the only src/ deltas are comments and test
+prose, token-proven.
+
+### Operational disclosures
+
+- An ambient automated security scanner in the builder environment flagged
+  `reauth-demand.ts`'s `isOutstanding` as fail-open MID-BATTERY: it had
+  read the working tree while `mutants.sh` had mutant M10
+  (demand-not-restart-visible) applied. The committed source carries the
+  fail-closed comparison; the battery restored all five mutated files
+  byte-identical (verified in `mutants.txt` and by `git status`), and the
+  scanner's suggested regression test already exists — it is M10's own
+  instrument. No action was taken on the flag.
+- Witness development left a transient debug copy of the witness at
+  `src/__tests__/known-issue-witness.test.tsx` for two direct jest runs
+  before the committed worktree runner existed; deleted before any
+  capture ran, never staged or committed. The witness runner's JSON
+  classifier had two defects during development (wrong jest field;
+  missing argv pass), fixed before its first committed transcript —
+  disclosed in 006d README Disclosures 3–4.
+- REVIEW-025's LOW adjacent mismatch (`auth-state-publisher.ts:47-48`
+  said "exactly one setState call site" where implementation and test
+  count two) did not survive as a separate item: the sentence lived
+  inside the S2-withdrawn "no other route" paragraph, and the ruling-28
+  rewrite of that paragraph states the accurate enumeration because
+  writing a knowingly false count into replacement prose was not an
+  option. Disclosed so the disappearance is attributable to S2, not to
+  silently acting on an adjacent finding. The other two REVIEW-025
+  adjacent findings (the `clear()`/`remove()` `exists` consult — Known
+  limit 6; the publication log's call-boundary scope — claim 14's
+  calibration) are carried in the 006d README exactly as the review
+  classified them; neither was acted on.
+- The editor was open throughout; no `npm ci` was run in this session (no
+  dependency work existed); no ENOTEMPTY occurred in any run. One
+  transient DNS-free session: no network anomaly at all this cycle.
+
+**LOCK status line:** `Status: BUILD` — read and left untouched, as
+dispatched; transitions on this branch are controller-owned.
+
+---
+
 ## 2026-08-27 — REVIEW-025, Unit E fix cycle 2 of 3
 
 **Controller:** CTRL-006 Auth Phase B and session durability.

@@ -1,0 +1,23 @@
+# GitHub CI on the exact pushed head — Unit E fix cycle 3 (006d claim 24).
+#
+# Captured post-push by 'gh run view', bound to the SHA below. The commit
+# that adds this file necessarily post-dates that head — the same
+# head-cannot-name-itself boundary as every ci.txt before it (REVIEW-022
+# claim-48a ruling). The trailing records commit (HANDOFF + this file +
+# the Active work row) gets its own CI run, reported in the completion
+# report but not capturable here.
+#
+# head:  afef2b2a544a84b562f068bc6a653925518033d5
+# PR:    #17 (draft — left draft; the draft state is the merge block)
+# run:   https://github.com/Zed-Concept/noema/actions/runs/33002759431
+
+
+
+✓ feat/session-durability CI Zed-Concept/noema#17 · 33002759431
+Triggered via pull_request about 1 minute ago
+
+JOBS
+✓ typecheck, lint, test in 1m0s (ID 98288562986)
+
+For more information about the job, try: gh run view --job=98288562986
+View this run on GitHub: https://github.com/Zed-Concept/noema/actions/runs/33002759431
