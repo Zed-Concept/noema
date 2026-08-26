@@ -1,3 +1,79 @@
+## 2026-08-27 — REVIEW-027, Unit E subtraction correction 3b
+
+**Controller:** CTRL-006 Auth Phase B and session durability.
+**Reviewer of record:** Codex Sol / Ultra / fresh session — the dispatched
+seat; the runtime harness does not expose model, reasoning-effort, or
+prior-session identity metadata, so those attributes cannot be independently
+confirmed.
+**Code target:** `988e7ff3f4bce4767d8a0ad8dc107372b547a575`.
+**Review overlay:** `9d6056b8f68ee246b6e94c075f39f3f0aeb36db1` — controller
+LOCK transition only.
+**Verdict:** **FAIL**.
+
+### Verdict
+
+REVIEW-026 findings 1 and 2 are closed. The stale publication universal is
+deleted at both named publisher headers; the 006d README names `811600fa`; the
+Known-Issue control now states purge before the provider's own `getSession()`
+with the ADR-009 construction-time-load qualifier. Both TypeScript files are
+token-/emit-identical to `9e90fdba`, all 18 assertions are identical, gates are
+4/4 at the exact correction head, the narrower `8b49f31` stability account is
+exact, all instruments are unchanged, and governance is clean.
+
+One prose defect remains. The direct 006c-to-006d limit-10 diff removes both
+the web storage-key/ruling-26 clause and “no demand is recorded.” The README's
+new itemisation and this correction HANDOFF's E3 itemisation name only the
+former. Because the dispatch requires each substantive subtraction to be
+named and explained, acceptance item 3 remains partial and the verdict is
+FAIL.
+
+### Acceptance items and fresh probes
+
+- **1 — PASS.** The future/single-point publication universal is deleted from
+  both named files; whole-tree synonym hits are bounded current-byte
+  enumerations or historical quotations; 006d names `811600fa`.
+- **2 — PASS.** Control 1 states the measured provider-`getSession()` boundary
+  and ADR-009 qualifier. “Before any session load” is absent from the register.
+- **3 — FAIL introduced by correction 3b.** Limits 2, 5, and 11 are itemised
+  accurately. Limit 10's itemisation omits the removed “no demand is recorded”
+  clause in both README and HANDOFF.
+- **4 — PASS.** Publisher 227/227 tokens and publisher-test 1,114/1,114 tokens
+  are identical against `9e90fdba`; emitted JS matches; 18/18 assertion
+  statements match.
+- **5 — PASS.** Exact `988e7ff3` gates: typecheck, lint, test, format all 0;
+  11/11 suites and 196/196 tests. At `8b49f31`, two captures 0, 9/9 pair-match,
+  7/9 committed-match; only the exact predicted binding/red-lane deltas. All
+  ten 006d instruments are blob-identical to `9e90fdba`.
+- **6 — PASS.** Exact five-file builder touch set; BRANCH-NOTES blob-identical;
+  excluded paths untouched; builder ruling-6 disclosure nil.
+- GitHub Actions run `33013820445`: completed success at exact
+  `head_sha=988e7ff3…`.
+- Live Supabase, a physical device, native backend, and a real process restart:
+  **NOT RUN by boundary**.
+
+### Required subtraction
+
+Name “no demand is recorded” as the second removed limit-10 clause in both the
+006d and correction-HANDOFF itemisations, and state why it was removed. Change
+no behaviour, assertion, instrument, mechanism, LOCK line, or other file.
+
+### Review workflow and boundary
+
+Three supplementary read-only subagents covered documented standards,
+correction-spec prose, and evidence/governance. The reviewer of record
+independently inspected the relevant bytes and reran every verdict-driving
+comparison and gate. The fixed-boundary standards/spec procedure and Supabase
+auth safety boundary were applied. No live Supabase endpoint, credential,
+secret, production system, device, deployment, or outward-facing product
+action was used. The two fresh captures ran the committed producer's non-gated
+`npm audit` step; that output is not part of the stability result.
+
+**Files written:** `docs/04-reviews/REVIEW-027.md` and this top-insert only.
+
+**LOCK status line:** `Status: REVIEW` — read and left untouched.
+
+---
+
 ## 2026-08-27 — Unit E SUBTRACTION CORRECTION 3b (REVIEW-026 findings 1–3), feat/session-durability
 
 **Controller:** CTRL-006 Auth Phase B and session durability.
