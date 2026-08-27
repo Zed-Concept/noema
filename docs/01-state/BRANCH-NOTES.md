@@ -103,6 +103,13 @@ moment this merges; the dispatch text is delivered separately, after the
 merge, naming the post-merge tip. Status transitions are controller-owned;
 the builder writes nothing in this file.
 
+**Checkpoint 2026-08-27, CTRL-006.** BUILD complete at
+`85ddbee274ad173e50c7dcfb2d9d20e8916fe156` (four commits above
+`ee015ac3`); status stays `BUILD` pending the owner's device attestation,
+which the builder commits verbatim before the controller flips to
+`REVIEW` and names REVIEW-029. Live results and findings F1–F2 are in
+PROJECT-STATE's Active work row. No PR open.
+
 ---
 
 ## LOCK — chore/state-ctrl-006-opening

@@ -77,10 +77,15 @@ As of 2026-08-26, CTRL-006 opening:
   until now — evidenced by a captured message to `phaseb-check-1@example.com`
   at 2026-08-26 05:06Z, subject "Your sign-in code", a six-digit code in the
   body. Confirm email off and JWT expiry 600 seconds confirmed by the owner
-  2026-08-26. The sandbox meter shows a 50-message ceiling; that is the
+  2026-08-26 — **but the Unit F live run measured 3600 s on 2026-08-27**
+  (F2); the owner restored 600 at 18:02 owner-clock; no artifact binds
+  the restored value yet (the device attestation or the next live round
+  will). The sandbox meter shows a 50-message ceiling; that is the
   live-run email budget until the owner states otherwise. **Device for the
-  ADR-named test: the owner's iPhone**, running the app in Expo Go — the
-  Unit F procedure is written for that runtime.
+  ADR-named test: the owner's iPhone**, running the app in Expo Go for
+  SDK 57 installed through sign.expo.dev (free Apple-ID provisioning,
+  ~7-day certificate) — the App Store Expo Go stops at SDK 54 and cannot
+  open this project.
 - **Unit C is merged** at `d794328` (PR #8): `profiles`, `captures`,
   `transcripts` with FORCE RLS and owner-only policies, the
   `handle_new_user()` SECURITY DEFINER provisioning trigger, and the private
@@ -156,7 +161,7 @@ What is in flight, who owns it, and what it is blocked on. One row per stream.
 
 | Stream | Owner | Status | Blocked on |
 |---|---|---|---|
-| Unit F — Auth Phase B live evidence | Claude Code | **LOCK registered, BUILD** — `evidence/auth-phase-b`, evidence only against main at `4e748741`; reviewer of record Codex Sol; no advisory seat unless flagged. Live one-time-code round trip and provisioning, live session size, refresh rotation through the adapter, `scope: 'local'`, the ruling-25 rotation backstop, and the ADR-named locked-device walk-through on the owner's iPhone (Expo Go) as an owner attestation. Dispatch issued after this commit merges, naming the post-merge tip. Evidence `007a-auth-phase-b/`. | Merge of this commit |
+| Unit F — Auth Phase B live evidence | Claude Code | **BUILD complete at `85ddbee2`** (four commits above `ee015ac3` by the compare API — the builder's report said five; evidence only, nothing under `src/`). Live round 2026-08-27, run `mtbab7s47u`, three captured messages, all redaction layers GREEN: **L1 PASS** (first one-time code ever delivered through this stack), **L2 PASS** (provisioning, cross-user RLS, anon refused 401/42501), **L3 PASS** (real session 2228 bytes → 2 chunks; the 005d §B3 gap closed), **L5 PASS** (`scope: 'local'` observed; revoked token refused at once), **L6a PASS / F2** (expiry mechanics hold, but at 3600 s — the dashboard had drifted from ruling 23), **L4a PASS / F1** (rotation persisted; **the superseded refresh token was accepted 30 s after rotation with reuse interval 10 s and detection on** — Known Issues 1–2's compensating control 2 unobserved in the schedule it was written for; hypothesis recorded, discriminating probes named, none run). Device claims D1–D4 pending the owner's attestation (procedure and template committed). LOCK stays BUILD until the attestation commit. | Owner attestation → controller flips to REVIEW → REVIEW-029 (Codex Sol) |
 | Production Supabase project | Owner | Parked by ruling — create in East US (North Virginia) before any launch-facing unit | Free-tier slot or Pro upgrade at that time |
 
 Unit A merged 2026-08-19 at `8d648bb` (PR #2, REVIEW-007 PASS); its full
@@ -195,7 +200,12 @@ through three fix cycles by living inside a unit whose budget the fix loops
 consumed; separate units keep separate budgets. Unit E is RED on arrival — the
 client auth surface — so the advisory seat fires per ADR-001 and standing
 rulings S1–S3 apply; Unit F changes no product code and needs no advisory seat
-unless the reviewer of record flags high risk. Unit E merged 2026-08-27; Unit F dispatched from this commit's merge. The
+unless the reviewer of record flags high risk. Unit E merged 2026-08-27; Unit F built the same day and paused at the
+owner's device attestation — the ADR-009 gate for Phase B exit. Resume:
+owner runs the device procedure (sign.expo.dev Expo Go for SDK 57), pastes
+the attestation into the Unit F builder session (or a fresh Claude Code
+session dispatched to commit it verbatim), the controller flips the LOCK
+to REVIEW and dispatches REVIEW-029 with F1 as its centrepiece. The
 successor session is named at close-out from this file.
 
 ## RED lane
@@ -419,6 +429,21 @@ the itemised-carry accuracy of a subtraction record. The next subtraction
 dispatch carries a diff-derived carry list as an instrument rather than
 prose the reviewer must re-derive.
 
+Unit F entries, 2026-08-27, controller defects unless noted: (j) the Unit F
+dispatch assumed the App Store Expo Go would open the project; it stops at
+SDK 54, the project is SDK 57, and the walk-through needs the sign.expo.dev
+build — the device step slipped a day on that. (k) The same dispatch named
+`004c` for the Unit C live round (it is `004b-schema-rls-live`) and "006d
+claim B3" for what lives in the 005d README; the builder resolved both.
+(l) The owner pasted the run transcript, consumed codes included, into the
+controller conversation; dead codes, no harm, but the procedure now says
+to paste from below the prompts. (m) The Mailtrap meter value was never
+captured numerically; the instrument-counted three messages is the
+recorded budget fact. Not a defect: ruling 23's 600-second JWT expiry was
+recorded on the owner's word and the live instrument disproved it — the
+first time a posture claim in this file was checked by measurement, which
+is the point of Unit F.
+
 ## Known issues
 
 ### Unit D — carried from REVIEW-022 (merged on owner override)
@@ -543,6 +568,17 @@ written here does not exist to the next session.
 | 1 | REVIEW-001 was committed without a HANDOFF block, under the same flawed dispatch wording as learning 4. | Accepted inconsistency; not to be repaired by editing history. | Accepted |
 | 2 | 22 npm audit advisories (7 moderate, 15 high), all transitive in Expo's SDK-pinned build tooling. | No runtime exposure identified; `npm audit fix --force` would break SDK pins. | Accepted — revisit at each Expo SDK upgrade |
 
+**Compensating control 2 status (2026-08-27, Unit F finding F1).** Not
+observed to hold in the schedule it was written for: staging honoured a
+superseded refresh token 30 seconds after rotation with the reuse interval
+at 10 s and compromised-token detection on. Configuration is eliminated as
+the cause; the builder's recorded hypothesis is that a superseded token
+whose successor was never used is honoured as a retry — which is the
+ruling-25 residue schedule itself. REVIEW-029 probes the discriminating
+cases (successor used; deeper ancestor). Until measured, Known Issues 1–2
+rest on controls 1, 3 and 4 only. Contrast from the same run: a token
+revoked by `signOut` died immediately.
+
 ## Backlog — recorded nits
 
 - `.prettierignore` entry for machine-local `supabase/.temp` — this residue
@@ -611,6 +647,10 @@ session.
   `exists` on deletion (fail-closed, one redundant purge — 006d Known limit
   6); the mutation publication log measures calls entering `publish()`, not
   consumer exposure — bounded mechanism instrument only.
+- Follow-up unit — refresh-token supersession semantics on staging: the
+  discriminating probes Unit F named (superseded token after its successor
+  was used; a deeper ancestor), each costing sessions and messages; after
+  REVIEW-029, before the subscription unit relies on control 2.
 - **Follow-up unit after Phase B — session exposure by subscription:** the
   provider subscribes to the demand signal and republishes `signedOut` on
   rise, replacing the publish-time gate; fresh three-cycle budget; closes
