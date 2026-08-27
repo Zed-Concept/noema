@@ -41,6 +41,70 @@ it (REVIEW-013 finding 4, REVIEW-015 finding 3).
 
 ---
 
+## LOCK — chore/state-ctrl-006-unit-e-merge
+
+```
+Project:            Noema
+Branch:             chore/state-ctrl-006-unit-e-merge
+Controller:         CTRL-006 Auth Phase B and session durability
+Builder:            Controller (state edit through the Composio GitHub
+                    connection; no product code)
+Model+Effort:       Fable 5 / Max / same session (ruling 22)
+Reviewer of record: none (controller-only state edits)
+Status:             BUILD
+Dispatch:           Post-merge state commit for Unit E: reconcile the
+                    feat/session-durability and ctrl-006-opening LOCKs to
+                    MERGED (first act), rebaseline PROJECT-STATE to
+                    4e748741, copy REVIEW-028's Known-Issue block verbatim,
+                    re-issue the unmerged PR #18 content (rulings 25–28,
+                    ledger, follow-up unit), register the Unit F LOCK.
+Evidence:           — (documentation-only; the diff is the evidence)
+```
+
+**Known lag.** Reads `BUILD` after the owner merges until the next state
+commit reconciles it.
+
+---
+
+## LOCK — evidence/auth-phase-b
+
+```
+Project:            Noema
+Branch:             evidence/auth-phase-b
+Controller:         CTRL-006 Auth Phase B and session durability
+Builder:            Claude Code
+Model+Effort:       Fable 5 / Max (ruling 5: evidence work) / fresh session
+Reviewer of record: Codex Sol / Ultra / fresh session
+Advisory reviewer:  none — no product code in this unit; the reviewer of
+                    record may flag high risk, which re-triggers a seat
+Status:             BUILD
+Dispatch:           Unit F — Auth Phase B live evidence, evidence only,
+                    against main at 4e748741. Live one-time-code round trip
+                    through the Mailtrap-captured staging SMTP with the
+                    code relayed by the owner (ruling 24); provisioning of
+                    the OTP-created user; live session size measured
+                    against the adapter's chunk threshold; refresh rotation
+                    observed and persisted through the adapter; signOut
+                    scope 'local' observed on two sessions; the ruling-25
+                    backstop measured (a consumed refresh token rejected by
+                    staging outside the reuse interval); and the ADR-named
+                    locked-device test as an owner attestation on the
+                    owner's iPhone in Expo Go, following a builder-authored
+                    procedure. No product code. No migration. Staging URL
+                    and publishable key only (ruling 10). Known Issues 1–2
+                    are measured where the schedules can be reached live,
+                    never "fixed". Three-cycle budget.
+Evidence:           docs/05-quality/evidence/007a-auth-phase-b/
+```
+
+Registered by the controller in the CTRL-006 post-merge state commit,
+ahead of the builder session. `BUILD` marks the branch owned from the
+moment this merges; the dispatch text is delivered separately, after the
+merge, naming the post-merge tip. Status transitions are controller-owned;
+the builder writes nothing in this file.
+
+---
+
 ## LOCK — chore/state-ctrl-006-opening
 
 ```
@@ -57,7 +121,7 @@ Model+Effort:       Fable 5 / Max / same session — the controller seat
                     owner set it. No session can verify its own effort tier
                     from inside; this line records the dispatched setting.
 Reviewer of record: none (controller-only state edits)
-Status:             BUILD
+Status:             MERGED
 Dispatch:           CTRL-006 opening state commit. Reconcile the
                     ctrl-005-closeout LOCK to MERGED (PR #15, b95913e1) —
                     first act per learning 5. Rebaseline PROJECT-STATE's
@@ -73,6 +137,12 @@ Evidence:           — (documentation-only state edit; the diff is the evidence
 
 **Known lag.** This block reads `BUILD` after the owner merges until the next
 controller state commit reconciles it.
+
+**Reconciled MERGED 2026-08-27 by CTRL-006 post-merge** — merged at
+`7caf23e10856601f17d52ae37ae59fbb9dbbac60` (PR #16, three commits). The
+reconciliation was owed at the first controller state commit after that
+merge and is recorded late here; the intervening controller commits were
+phase transitions on the feature branch, not state commits on main.
 
 ---
 
@@ -96,7 +166,7 @@ Advisory reviewer:  DeepSeek V4 Pro / fresh session — the ADR-001 auth trigger
                     not by reading it (learning 20). Advisory carries no merge
                     authority; the controller adjudicates against the RoR
                     record.
-Status:             REVIEW
+Status:             MERGED
 Dispatch:           Unit E — Session durability: close REVIEW-022 finding 3 to
                     ADR-009's three review-gated requirements — purge success
                     observed by read-back, never inferred from the absence of
@@ -319,6 +389,14 @@ by the two-item limit-10 itemisation, no other change, and — on PASS —
 the merge recommendation with the PROJECT-STATE copy block. Reviewer of
 record Codex Sol / Ultra / fresh session; record REVIEW-028 plus HANDOFF
 top-insert, two files. Written through the Composio GitHub connection.
+
+**Reconciled MERGED 2026-08-27 by CTRL-006 post-merge** — REVIEW-028 PASS at
+`ef3db3d8` (Codex Sol / Ultra); merged at
+`4e74874125ed483d08919d64ee3e85140cca5e39` (PR #17, GitHub-signed, parents
+`7caf23e1` + `ef3db3d8`), with Known Issues 1–2 open under ruling 28 —
+copied verbatim into PROJECT-STATE. Branch deleted from origin at merge.
+Verdict chain on this branch: REVIEW-023 FAIL, -024 FAIL, -025 FAIL (stop
+rule), -026 FAIL, -027 FAIL, -028 PASS; REVIEW-023-ADVISORY adjudicated.
 
 ---
 

@@ -3,17 +3,16 @@
 The authoritative record of what is true right now. If this file and your
 memory of the project disagree, this file is right and you are stale.
 
-**Last verified:** 2026-08-26, CTRL-006 opening, verified against main at
-`b95913e13bb82f97b75441f78c0a93dd0cb0c2e5` (the PR #15 merge of the CTRL-005
-close-out, a GitHub web-flow merge of `6ee4407d` + `bcb38a80`)
-**Verification method:** controller read of main via the GitHub API — both
-state files verbatim (byte identity proven against their blob SHAs before
-editing), the PR ledger #1–#15 (all merged, merge SHAs matching the LOCK
-record), the branch inventory (`main` is the sole branch on origin), and
-`AGENTS.md`'s path history: its last change is `71630bba`, the commit whose
-bytes carry the recorded sha256 (`0ff02d20…f013`, 5378 bytes), so the hash
-holds by blob identity rather than by a fresh re-hash. ADR-009, ADR-007 and
-REVIEW-022 read in full.
+**Last verified:** 2026-08-27, CTRL-006 post-merge (Unit E), verified against
+main at `4e74874125ed483d08919d64ee3e85140cca5e39` (the PR #17 merge of
+`feat/session-durability`, GitHub-signed, parents `7caf23e1` + `ef3db3d8`)
+**Verification method:** controller read of main via the GitHub API — the
+merge commit and its parents, the branch inventory (`main` plus the
+controller's own open state branch), PROJECT-STATE on main diffed against
+the CTRL-006 opening version (one hunk, the builder's Active work row —
+builders touched nothing else in this file), REVIEW-028's merge
+recommendation read in full and its Known-Issue block copied below
+byte-for-byte. `AGENTS.md` unchanged since `71630bba` (path history).
 
 ## Project facts
 
@@ -49,15 +48,21 @@ runs on, where it is deployed.
 As of 2026-08-26, CTRL-006 opening:
 
 - Repository `Zed-Concept/noema` is **private**; `main` is at
-  `b95913e13bb82f97b75441f78c0a93dd0cb0c2e5` (PR #15, the CTRL-005 close-out
-  merge). `main` is the **sole branch on origin**; every merged branch has
-  been deleted.
+  `4e74874125ed483d08919d64ee3e85140cca5e39` (PR #17, the Unit E merge).
+  Every merged branch has been deleted; the controller's open state branch
+  is the only other ref.
+- **Unit E is merged** at `4e748741` (PR #17) on REVIEW-028 PASS, with
+  **Known Issues 1–2 open at HIGH** under ruling 28 (see Known issues).
+  Chain on the branch: REVIEW-023 FAIL, REVIEW-024 FAIL, REVIEW-025 FAIL
+  (stop rule), subtraction cycle 3, REVIEW-026 FAIL, REVIEW-027 FAIL (one
+  line each), REVIEW-028 PASS; REVIEW-023-ADVISORY adjudicated into cycle 1.
+  One new dependency, `expo-file-system`. Evidence `006a`–`006d`; `006d` is
+  the final claims table and Known-Issue register.
 - **Unit D is merged** at `6ee4407d` (PR #11) — email one-time-code auth, the
   chunked SecureStore session adapter, route protection, the chrome gate — on
   owner override of a REVIEW-022 FAIL over one open finding, finding 3 (purge
   success inferred; re-authentication demand not restart-durable). **Unit E
-  closes it** (ruling 21: the last chance — otherwise it ships as a Known
-  Issue). **Phase B live evidence for the auth surface has never run**: no
+  closed it** (REVIEW-028; the exposure class it uncovered ships open). **Phase B live evidence for the auth surface has never run**: no
   one-time code has been delivered, no live session measured, no device has
   participated. Unit F carries it.
 - **Seats at CTRL-006** (ruling 22): controller Fable 5 / Max; primary builder
@@ -140,6 +145,10 @@ explicitly and get it overturned on the record.
 | 22 | Fable 5 is available again. **Builder seats return to Fable 5** — Ultracode for build-class, Max for fix loops — retiring the Opus 5 substitution from future HANDOFFs and restoring ruling 4. The **controller seat moves to Fable 5 at CTRL-006**, not mid-session: CTRL-005 finishes on the recorded substitution rather than muddying the provenance of its own close-out. | 2026-08-26 | this row (owner ruling, CTRL-005) |
 | 23 | **Staging auth posture, permanent.** Confirm email **off**. The Magic Link and Confirm signup templates render `{{ .Token }}`, so the one-time code arrives as a code and never as a link (a link needs the scheme frozen by ruling 8). **Custom SMTP** on staging pointed at the owner's Mailtrap Email Sandbox — messages are captured, never delivered — with credentials in the Supabase dashboard only, owner-executed, never in the repo; the default sender's two messages an hour to pre-authorized addresses cannot sustain one review re-run, and a capture sandbox removes recipient constraints entirely. **JWT expiry lowered to 600 seconds** (ten minutes), left low, so the ADR-named device test can force a refresh window by keeping the phone locked longer than that, without a test hook (learning 10). Staging only; production decides each item at its own creation. | 2026-08-26 | this row (owner ruling, CTRL-006) |
 | 24 | **Test identities and code relay.** Live auth evidence signs in as disposable, run-namespaced addresses whose mail the Mailtrap sandbox captures — no real mailbox exists for them, so the recipient domain is whatever staging accepts (a message to `phaseb-check-1@example.com` was captured 2026-08-26 under custom SMTP; the default sender's `@example.com` rejection does not carry over). The one-time code is **relayed by the owner at runtime from the sandbox UI**: the producer reads it from a prompt, never from a committed file, and redacts it at source. No inbox API and no new provider key enters the loop — the sandbox's API tokens stay unused — and an admin-minted code (`service_role`) is not used, even for re-runs. | 2026-08-26 | this row (owner ruling, CTRL-006) |
+| 25 | **R2 under double refusal (Unit E).** ADR-009's R3 stands unqualified: zero unhandled rejections on every refused-write path, including the path on which the demand store also refuses. R2 holds whenever any durable medium accepts a write: on a refused session write the provider exposes no session from that moment (`signedOut` before any purge is awaited), the demand is held in memory and its durable record retried until a medium answers or the process ends, and the demand clears only on read-back proof. The one schedule this leaves — every durable medium refuses and the process dies before any recovers — is a recorded Known limit, not a defect, bounded by Supabase's refresh-token rotation, which rejects a consumed refresh token outside the reuse interval so the on-disk residue cannot be refreshed into a usable session. Unit F measures that backstop live against staging. | 2026-08-26 | this row (owner ruling, CTRL-006, on REVIEW-023 finding 1) |
+| 26 | **The Unit D → Unit E storage-key transition is out of scope, on a fact.** No one has ever signed in through the app on any surface: Phase B never ran, no one-time code was ever delivered to the app, and no distribution unit exists (`expo.scheme` frozen, EAS never run). No Unit D session exists in any keychain, Keystore or browser. Unit E's explicit `auth.storageKey` therefore replaces the derived key without a sweep of the old space; the application comment asserting "no users" is deleted (code does not assert the world) and the evidence README cites this ruling. The dispatch's "web unchanged" narrows to "web keeps `localStorage` and gains no observer"; the namespace change on web is accepted under the same fact. | 2026-08-26 | this row (owner ruling, CTRL-006, on REVIEW-023 finding 3) |
+| 27 | **Advisory seats run on OpenCode Go, under a stall protocol.** The owner keeps the Go subscription; the gateway's upstream accounts degrade silently, so every advisory dispatch carries: a one-line health check in a throwaway session before dispatch (no answer within a minute → the other named seat); two short fresh sessions per review (probes to disk, then a fresh session writes the record), neither past ~120K context; reasoning variant high unless the dispatch says otherwise; on a five-minute silent spinner, Esc, then relaunch and resume; a second stall in one session → switch that session to the other named seat, disclosed in the seat line. Parallel seats get separate worktrees by dispatch. | 2026-08-26 | this row (owner decision, CTRL-006) |
+| 28 | **How Unit E ships (stop rule, third recurrence).** Cycle 3 changes no behaviour. The exposure invariant — no path exposes a session while a re-authentication demand is outstanding — is withdrawn as a claim and narrowed to the enumerated schedules that hold (REVIEW-023/024 probes, all passing at the cycle-2 head). The two REVIEW-025 schedules — a demand raised after a queued or standing `signedIn` is not retracted until the next publication, and `signOut()` under a refused mid-sign-out refresh leaves the provider `signedIn` with an empty key space — ship as **HIGH Known Issues** with their compensating controls named: any restart purges through the bootstrap path, server-side refresh-token rotation makes the residue unrefreshable, and Unit F measures that backstop live. The lint claim narrows to what it enforces (named-import ban plus test enumeration; the aliasing bypass documented). The evidence fixed-point claim narrows to the heads it measured. The subscription-based remedy — the provider subscribing to the demand signal and republishing on rise, not gating — is a follow-up unit with a fresh budget after Phase B. | 2026-08-26 | this row (owner ruling, CTRL-006, on REVIEW-025) |
 
 ## Active work
 
@@ -147,8 +156,7 @@ What is in flight, who owns it, and what it is blocked on. One row per stream.
 
 | Stream | Owner | Status | Blocked on |
 |---|---|---|---|
-| Unit E — Session durability (REVIEW-022 finding 3) | Claude Code | **Fix cycle 3 of 3 (SUBTRACTION, ruling 28) delivered 2026-08-27** — cycle 3 changed no behaviour: the exposure invariant is withdrawn as a claim and narrowed to the enumerated schedules in the committed probes (REVIEW-023 pending-logout, A2/A3; REVIEW-024 bootstrap, mid-process, event-before-record, fresh-sign-in resolution — all re-proven at this head); the two REVIEW-025 schedules ship as **HIGH Known Issues** (class session exposure) with ruling-28 compensating controls and a committed expected-RED witness (preconditions 3/3 GREEN, witnesses 3/3 RED-as-expected: expected signedOut, received signedIn); the lint claim narrowed to the named-import restriction plus current-source enumeration, aliasing bypass documented beside the rule; the evidence claim narrowed to the heads it measured (honest inputs stated in binding/red-lane/stability prose; the false "no commit SHA" sentence removed). Product-file changes comment-only, token-proven. Instruments re-run unchanged: review023-probe 7/7 RED→GREEN, review024-probe RED→GREEN, finding3-probe base-RED/head-GREEN, mutants 33/33 SENSITIVE 0 build-invalid (006c battery unchanged), gates 4/4 (11 suites, 196 tests), stability at the named heads. LOCK stays `BUILD` (controller-owned transitions). Evidence `006d-session-durability-fix3/` — the unit's final claims table and Known Issues register; HANDOFF top-inserted. | Controller review dispatch (REVIEW-026) |
-| Unit F — Auth Phase B live evidence | — | **Not started.** Evidence only, against the tip that includes Unit E: live one-time-code round trip and provisioning, live session size, refresh rotation persisted through the adapter, `scope: 'local'` observed, and the ADR-named locked-device test as an owner attestation. LOCK registered at the state commit that records Unit E's merge. Evidence `007a-auth-phase-b/`. | Unit E merge |
+| Unit F — Auth Phase B live evidence | Claude Code | **LOCK registered, BUILD** — `evidence/auth-phase-b`, evidence only against main at `4e748741`; reviewer of record Codex Sol; no advisory seat unless flagged. Live one-time-code round trip and provisioning, live session size, refresh rotation through the adapter, `scope: 'local'`, the ruling-25 rotation backstop, and the ADR-named locked-device walk-through on the owner's iPhone (Expo Go) as an owner attestation. Dispatch issued after this commit merges, naming the post-merge tip. Evidence `007a-auth-phase-b/`. | Merge of this commit |
 | Production Supabase project | Owner | Parked by ruling — create in East US (North Virginia) before any launch-facing unit | Free-tier slot or Pro upgrade at that time |
 
 Unit A merged 2026-08-19 at `8d648bb` (PR #2, REVIEW-007 PASS); its full
@@ -187,8 +195,8 @@ through three fix cycles by living inside a unit whose budget the fix loops
 consumed; separate units keep separate budgets. Unit E is RED on arrival — the
 client auth surface — so the advisory seat fires per ADR-001 and standing
 rulings S1–S3 apply; Unit F changes no product code and needs no advisory seat
-unless the reviewer of record flags high risk. The successor session is named
-at close-out from this file.
+unless the reviewer of record flags high risk. Unit E merged 2026-08-27; Unit F dispatched from this commit's merge. The
+successor session is named at close-out from this file.
 
 ## RED lane
 
@@ -375,19 +383,114 @@ branch's second commit; the first commit's ruling-24 wording (plus-addressed
 owner-mailbox identities) was drafted against the unrecorded state and is
 replaced before merge rather than superseded after it.
 
+Cycle-1 entries, 2026-08-26, all controller defects: (a) the Unit E review
+dispatch ordered READ FIRST ahead of CHECKOUT, so a fresh reviewer read the
+LOCK in a stale local tree and stopped; corrected mid-review, and every
+future dispatch puts fetch-and-checkout first. (b) The Unit E build dispatch
+recommended a fail-closed fallback — rethrow when the demand store refuses —
+that reproduced the REVIEW-022 pathology REVIEW-023 finding 1 then measured;
+the recommendation was the defect's origin, and ruling 25 replaces it.
+(c) The same dispatch authorised a builder closing note in BRANCH-NOTES.md,
+which `AGENTS.md`'s state-ownership rule does not permit (REVIEW-023 finding
+4); the note stays under a controller annotation, and no dispatch authorises
+a builder write to that file again. (d) Two reviewers were sent into one
+working copy; the advisory seat's probe file landed in the tree the reviewer
+of record was measuring, and the reviewer isolated itself in a worktree. The
+advisory seat was moved to its own worktree; parallel seats get separate
+worktrees by dispatch from now on. (e) The build dispatch's "stop on any
+mismatch" applied an origin rule to a local lag; accepted deviation,
+recorded at the phase transition.
+
+Cycle-2 entries, 2026-08-26: (f) the advisory seat stalled three times on
+OpenCode Go before landing its record; the owner keeps Go, so ruling 27
+records the operating protocol instead of a tool change. (g) The cycle-1
+addendum was pasted into another project's Claude Code session by mistake
+and stopped before it acted; no repo effect on either side; the dispatch
+message now names the target folder and branch in its first line.
+
+Post-merge entries, 2026-08-27: (h) PR #18, the cycle-1 state commit, was
+closed unmerged — cut from the pre-merge main, it would have conflicted
+with PR #17 on this file's Active work row; its content (rulings 25–28,
+ledger entries a–g, the follow-up unit) is re-issued in this commit, and the
+owner's approvals of rulings 25–28 were given in the controller
+conversation before any of them was recorded. (i) Unit E took six
+reviewer-of-record verdicts for one unit; three of them turned on prose —
+the itemised-carry accuracy of a subtraction record. The next subtraction
+dispatch carries a diff-derived carry list as an instrument rather than
+prose the reviewer must re-derive.
+
 ## Known issues
 
 ### Unit D — carried from REVIEW-022 (merged on owner override)
 
-**OPEN — must close before Phase B exit.** REVIEW-022 finding 3: purge success
-is **inferred**, not observed. The observer records only a `removeItem`
-rejection, so the absence of that record cannot distinguish "removal succeeded"
-from "`signOut()` rejected before removal was attempted", and the code clears
-the demand in both cases. Every demand flag is process-local, so a surviving
-superseded session outlives the demand across restart. Pinned auth-js also
-leaves rejected refresh Deferreds unhandled on this path. This is the sole
-subject of the merge override (ruling 21). **Closing unit: Unit E,
-`feat/session-durability`, CTRL-006** — LOCK registered 2026-08-26.
+**CLOSED by Unit E** (merged 2026-08-27 at `4e748741`, REVIEW-028 PASS).
+REVIEW-022 finding 3 — purge success inferred, demand not restart-durable,
+rejected Deferreds unhandled — is closed for the named offline schedules:
+purge success is determined by full key-space read-back; a non-secret
+re-authentication demand survives restart and read failures stay
+outstanding; bootstrap performs the observed purge before the provider's
+own `getSession()`; refused-write schedules produce a durable demand with
+zero unhandled rejections. The exposure class the fix uncovered ships open
+below.
+
+### Unit E — carried from REVIEW-025 (merged with the issue OPEN, ruling 28)
+
+**KNOWN ISSUE 1 — OPEN, severity HIGH, class session exposure.** A newly
+raised demand does not revoke standing `signedIn`: the pinned-client
+sign-out schedule. Verbatim from REVIEW-025:
+
+> With the real pinned auth client, a signed-in user called the provider's
+> `signOut()`. Its internal near-expiry refresh was refused, which
+> installed the flag and durable demand. The client then emitted both
+> `TOKEN_REFRESHED(session)` and `SIGNED_OUT(null)`. The provider dropped
+> both events while the signal stood, the action itself published no
+> state, and the provider remained `signedIn` with a durable demand
+> outstanding. There were zero unhandled rejections and no session bytes
+> remained, so neither an error nor a residual explains the stale usable
+> publication.
+
+**Witness:** `known-issue-witness.txt`, KI-1 — committed, **RED, expected
+RED** (the withdrawn invariant is asserted and fails exactly as the record
+states: expected `signedOut`, received `signedIn`); its PRECONDITION test
+proves the schedule reproduces (refused rotation, durable demand, empty
+key space, action error null, zero unhandled) before the witness fails.
+
+**KNOWN ISSUE 2 — OPEN, severity HIGH, class session exposure.** A newly
+raised demand does not revoke queued `signedIn`: the barrier checks
+publication input only. Verbatim from REVIEW-025:
+
+> Independently, `publish(signedIn)` can sample both signals as false and
+> enqueue React state; a real observed write can then install the flag and
+> durable demand before React commits. The queued `signedIn` still
+> commits, and changing the demand predicate does not cause re-evaluation.
+> The barrier checks publication input, not consumer exposure or standing
+> state.
+
+**Witness:** `known-issue-witness.txt`, KI-2 in both variants (flag — a
+REAL observed refused write installs the flag and durable demand through
+the real observer before commit; demand — the registered predicate rises
+before commit) — committed, **RED, expected RED**; each variant's
+PRECONDITION test proves the signals genuinely stand and the barrier does
+refuse the NEXT publication at its input.
+
+**Compensating controls, exactly as ruling 28 names them (both issues):**
+
+1. **Any restart purges through the bootstrap path** — the observed purge
+   runs before the provider's own `getSession()` (claims 13–14; the
+   restart schedules in both committed probes). ADR-009 qualifier:
+   library-internal loads during client construction — the pinned client
+   registers its own listener and can load and refresh a stored session
+   before any provider code runs — can precede the demand consult and are
+   contained by the purge that follows, never prevented.
+2. **Server-side refresh-token rotation makes the residue unrefreshable** —
+   the exposed session's refresh token was superseded at rotation, so it
+   dies at its next refresh attempt (the ruling-25 bound, recorded in
+   `reauth-demand.ts`).
+3. **Unit F measures that backstop live** (registered in PROJECT-STATE
+   Active work; blocked on Unit E's merge).
+4. **A follow-up unit replaces gating with subscription** — publication-time
+   sampling is the class defect; the fix direction is recorded here, not
+   attempted this cycle (ruling 28: no further fix inside Unit E).
 
 **SHOULD DELETE — bookkeeping, no product-code change.** REVIEW-022 finding 4:
 committed `red-lane.txt` is stale, so claim 50 does not reproduce at the exact
@@ -503,6 +606,15 @@ session.
 - AGENTS.md Roles still reads "Opus, high effort" for the primary
   builder — predates ruling 4. Refresh is its own reviewed chore; edits
   change the tracked sha256.
+- REVIEW-028 adjacent (Unit E): the user-facing `signOut` action can report a
+  refused removal without its own read-back; `clear()`/`remove()` trust
+  `exists` on deletion (fail-closed, one redundant purge — 006d Known limit
+  6); the mutation publication log measures calls entering `publish()`, not
+  consumer exposure — bounded mechanism instrument only.
+- **Follow-up unit after Phase B — session exposure by subscription:** the
+  provider subscribes to the demand signal and republishes `signedOut` on
+  rise, replacing the publish-time gate; fresh three-cycle budget; closes
+  the two Known Issues ruling 28 accepts. Not before Unit F.
 - Manus investigator seat: the trial end `AGENTS.md` names, 2026-08-25, has
   passed. Renew or retire is an owner decision; until ruled, no dispatch names
   the seat. Batch the Roles-section wording with the refresh chore above.
