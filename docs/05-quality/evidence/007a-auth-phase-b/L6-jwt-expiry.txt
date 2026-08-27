@@ -1,0 +1,24 @@
+# L6 — the 600-second JWT expiry (ruling 23) observed live: the access token expires on schedule and the client's refresh path takes over
+Unit F — Auth Phase B live evidence (007a). Producer: instruments/live-run.mjs.
+Redaction at source (ruling 24 / 004b discipline): registered values are
+replaced before buffering; a JWT-shape sweep runs on every line; the writer
+refuses any line a registered value survives. This file is written by the
+redacting writer only — process stdout is a progress channel and is not committed.
+
+run: mtbab7s47u · started 2026-08-27T08:55:45.712Z
+Session A1 as issued by the L5 rotation: expires_in=3600 s, expires_at=1787824545 (2026-08-27T09:55:45.000Z)
+Waiting 3644 s (until expiry plus a 45 s margin; no test hook shortens the schedule — the low expiry IS the ruling-23 posture).
+Waited 3644 s; wall clock now past expires_at.
+
+getSession() with the access token past expiry → error: null (2515 ms)
+refresh path took over: yes — the pinned client issued POST /auth/v1/token?grant_type=refresh_token → 200 (2504 ms)
+rotation: access token changed: true, refresh token changed: true
+new expires_in=3600 s (ruling 23 observed: NOT 600 — FINDING); new expires_at=1787828192 (2026-08-27T10:56:32.000Z)
+observed lifetime of the expired token: issued in L5, expired 3600 s later on schedule (the wait above ran to completion with no early refusal).
+
+Persistence of the rotated session through the real adapter:
+  fresh-adapter read-back holds the NEW refresh token: true (values never printed)
+
+HTTP calls this phase:
+  POST /auth/v1/token?grant_type=refresh_token → 200 (2504 ms)
+L6 FAIL/FINDING — see lines above · 2026-08-27T09:56:32.525Z

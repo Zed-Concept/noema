@@ -21,14 +21,14 @@ exit: 0
 > jest
 
 PASS src/__tests__/secure-store-accessibility.test.ts
-PASS src/__tests__/foreground-refresh.test.ts
 PASS src/__tests__/reauth-demand.test.ts
-PASS src/__tests__/auth-state-publisher.test.ts
 PASS src/__tests__/session-storage-platform.test.ts
-PASS src/__tests__/supabase-client.test.ts
+PASS src/__tests__/auth-state-publisher.test.ts
+PASS src/__tests__/foreground-refresh.test.ts
 PASS src/__tests__/auth-provider.test.tsx
-PASS src/__tests__/token-opacity.test.ts
 PASS src/__tests__/route-guards.test.tsx
+PASS src/__tests__/supabase-client.test.ts
+PASS src/__tests__/token-opacity.test.ts
 PASS src/__tests__/secure-store-adapter.test.ts
 PASS src/__tests__/home-screen.test.tsx
 

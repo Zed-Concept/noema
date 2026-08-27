@@ -1,0 +1,30 @@
+# L1 — live one-time-code round trip (signInWithOtp → captured message → owner relay → verifyOtp → session)
+Unit F — Auth Phase B live evidence (007a). Producer: instruments/live-run.mjs.
+Redaction at source (ruling 24 / 004b discipline): registered values are
+replaced before buffering; a JWT-shape sweep runs on every line; the writer
+refuses any line a registered value survives. This file is written by the
+redacting writer only — process stdout is a progress channel and is not committed.
+
+run: mtbab7s47u · started 2026-08-27T08:52:27.366Z
+Client: the real pinned @supabase/supabase-js 2.112.3 (auth-js 2.112.3) against staging; construction mirrors src/lib/supabase.ts — persistSession: true, storageKey: 'zc-auth-session' (extracted from session-storage.ts), autoRefreshToken: false, detectSessionInUrl: false. Storage: the real shipped chunking adapter over an instrumented in-memory backend (fake-secure-store.mjs) — the SESSION is real; SecureStore stays offline.
+Test identity (ruling 24): a disposable run-namespaced address, mail captured by the Mailtrap sandbox, recorded here only as <user-a-email>.
+
+signInWithOtp(shouldCreateUser: true) → error: null (1148 ms); data keys: session, user. Captured message 1 consumed.
+The captured message was read by the owner in the Mailtrap sandbox UI and its code relayed at the prompt (ruling 24) — the owner-executed event of this claim.
+verifyOtp(type: 'email') → error: null (1695 ms; owner relay took ~124 s including sandbox lookup). data keys: session, user.
+
+session shape: keys [access_token, expires_at, expires_in, refresh_token, token_type, user]
+session.user shape: keys [app_metadata, aud, confirmed_at, created_at, email, email_confirmed_at, id, identities, is_anonymous, last_sign_in_at, phone, recovery_sent_at, role, updated_at, user_metadata]
+token_type=bearer expires_in=3600 s expires_at=1787824474 (2026-08-27T09:54:34.000Z)
+user.id=7f6bca0b-7d8a-4515-97d4-6639a20a734d user.email=<user-a-email>
+user.created_at=2026-08-27T08:52:28.176843Z (a NEW user created by this OTP flow)
+
+Persistence through the real adapter at sign-in (op log, key names and sizes only):
+  set zc-auth-session.0.0 (1536 B)
+  set zc-auth-session.0.1 (694 B)
+  set zc-auth-session (48 B)
+
+HTTP calls this phase (instrumented fetch; paths only, bodies never recorded):
+  POST /auth/v1/otp → 200 (1146 ms)
+  POST /auth/v1/verify → 200 (1683 ms)
+L1 complete 2026-08-27T08:54:34.166Z

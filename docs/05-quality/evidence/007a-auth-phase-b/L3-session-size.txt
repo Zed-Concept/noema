@@ -1,0 +1,22 @@
+# L3 — live session size against the adapter's chunk threshold (the 005d §B3 gap: no real session had ever been measured)
+Unit F — Auth Phase B live evidence (007a). Producer: instruments/live-run.mjs.
+Redaction at source (ruling 24 / 004b discipline): registered values are
+replaced before buffering; a JWT-shape sweep runs on every line; the writer
+refuses any line a registered value survives. This file is written by the
+redacting writer only — process stdout is a progress channel and is not committed.
+
+run: mtbab7s47u · started 2026-08-27T08:55:45.710Z
+Subject: the CURRENT persisted payload of session A1 — a real session issued by staging, last written by the pinned client itself during the L5 rotation — read back through a FRESH instance of the real shipped adapter over the same instrumented backend (adapter path, not memory).
+
+payload length: 2228 UTF-16 code units · 2228 UTF-8 bytes
+adapter constants (imported from the shipped module): CHUNK_BUDGET_BYTES=1536, MAX_CHUNKS=256
+index (the adapter's own committed record): generation=0, chunks n=2, len=2228, checksum present: true
+index.len === payload length: true
+chunk count the real payload produces: 2 (splitByUtf8Budget predicts 2)
+chunk keys present: [zc-auth-session.0.0, zc-auth-session.0.1]
+per-chunk sizes (each must be ≤ CHUNK_BUDGET_BYTES):
+  zc-auth-session.0.0: 1536 B
+  zc-auth-session.0.1: 692 B
+payload top-level keys: [access_token, expires_at, expires_in, refresh_token, token_type, user] — a real session object (access_token, refresh_token, user all present): true; values never printed
+headroom: 2/256 chunks of the removal bound
+L3 PASS — first live measurement of a product session · 2026-08-27T08:55:45.711Z

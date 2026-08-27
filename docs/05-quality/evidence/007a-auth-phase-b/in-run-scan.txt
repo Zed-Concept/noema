@@ -1,0 +1,12 @@
+# In-run redaction totality scan (layer 1 — full ledger + JWT shape over exact file bytes)
+run: mtbab7s47u · 2026-08-27T09:57:05.290Z
+ledger distinct values scanned: 26
+GREEN L1-otp-roundtrip.txt sha256=5e696f1a04de2c05d1758f0dd970be17b7dd9b44487f8351aacba4e204fc30b4
+GREEN L2-provisioning-rls.txt sha256=b9effd7c42e228332ad3c56b49d7581e731a1362376596cc0cb4fde8261f8aec
+GREEN L5-signout-local.txt sha256=3ce0212669f6cf722380fbf3e9518807c4262f5771cd0290a12c92a60182330a
+GREEN L3-session-size.txt sha256=da5a25ee5c8978d8c0825e7e8a61c7d4d1dd8dcae59bdb5056cfb0b378c824c4
+GREEN L6-jwt-expiry.txt sha256=ec1afde7f37e4470fc2e3fc59a03dac1caa0fb67b16e8db1710f3877c6d33d45
+GREEN L4-rotation-backstop.txt sha256=9634ed430e63b17dd54e69b9279db494612308be4e31468ce16f3ed2e64acc1a
+GREEN run-summary.txt sha256=02dba1a09eefd462306bd371a15f1ef1fbc9f011ef6ba207dff6aee1db988588
+verdict: GREEN
+Every committed transcript byte was scanned against every registered value.

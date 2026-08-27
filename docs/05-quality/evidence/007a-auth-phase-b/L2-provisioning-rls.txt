@@ -1,0 +1,37 @@
+# L2 — provisioning and RLS live: the OTP-created users have their Unit C profile rows; own-row passes; cross-row refused; no-session refused
+Unit F — Auth Phase B live evidence (007a). Producer: instruments/live-run.mjs.
+Redaction at source (ruling 24 / 004b discipline): registered values are
+replaced before buffering; a JWT-shape sweep runs on every line; the writer
+refuses any line a registered value survives. This file is written by the
+redacting writer only — process stdout is a progress channel and is not committed.
+
+run: mtbab7s47u · started 2026-08-27T08:54:34.169Z
+User B is the second OTP-created identity (two users → two captured messages).
+
+signInWithOtp(shouldCreateUser: true) → error: null (515 ms); data keys: session, user. Captured message 2 consumed.
+verifyOtp(type: 'email') → error: null (3192 ms; owner relay took ~44 s including sandbox lookup). data keys: session, user.
+user B id=f129c3d8-fc01-4f21-8db5-4e3a9134440b
+
+A selects profiles (own row only visible): HTTP 200, rows=1, row keys [created_at, display_name, id, locale, updated_at], id===own uid: true, locale='en' → PASS (oracle: 200, exactly the own row, locale 'en' — the Unit C provisioning trigger ran for an OTP-created user)
+B selects profiles (own row only visible): HTTP 200, rows=1, row keys [created_at, display_name, id, locale, updated_at], id===own uid: true, locale='en' → PASS (oracle: 200, exactly the own row, locale 'en' — the Unit C provisioning trigger ran for an OTP-created user)
+A selects B's row by id: HTTP 200, rows=0 → PASS (oracle: exactly 200 with zero rows — RLS-invisible, the 004b claim-8 contract)
+B selects A's row by id: HTTP 200, rows=0 → PASS (oracle: exactly 200 with zero rows — RLS-invisible, the 004b claim-8 contract)
+
+No-session probes (the 004b anon set, live again against this schema; a fresh client with no session — the anon role):
+  SELECT profiles with no session: HTTP 401, code=42501, message="permission denied for table profiles" → PASS (oracle: exactly 401 code 42501)
+  SELECT captures with no session: HTTP 401, code=42501, message="permission denied for table captures" → PASS (oracle: exactly 401 code 42501)
+  SELECT transcripts with no session: HTTP 401, code=42501, message="permission denied for table transcripts" → PASS (oracle: exactly 401 code 42501)
+  INSERT profiles with no session: HTTP 401, code=42501, message="permission denied for table profiles" → PASS (oracle: exactly 401 code 42501)
+
+HTTP calls this phase:
+  B: POST /auth/v1/otp → 200 (514 ms)
+  B: POST /auth/v1/verify → 200 (3189 ms)
+  B: GET /rest/v1/profiles?select=* → 200 (1188 ms)
+  B: GET /rest/v1/profiles?select=*&id=eq.7f6bca0b-7d8a-4515-97d4-6639a20a734d → 200 (404 ms)
+  A: GET /rest/v1/profiles?select=* → 200 (1203 ms)
+  A: GET /rest/v1/profiles?select=*&id=eq.f129c3d8-fc01-4f21-8db5-4e3a9134440b → 200 (391 ms)
+  anon: GET /rest/v1/profiles?select=* → 401 (540 ms)
+  anon: GET /rest/v1/captures?select=* → 401 (352 ms)
+  anon: GET /rest/v1/transcripts?select=* → 401 (345 ms)
+  anon: POST /rest/v1/profiles → 401 (368 ms)
+L2 PASS (all oracles exact) · 2026-08-27T08:55:26.533Z

@@ -1,0 +1,38 @@
+# Unit F live run — summary
+Unit F — Auth Phase B live evidence (007a). Producer: instruments/live-run.mjs.
+Redaction at source (ruling 24 / 004b discipline): registered values are
+replaced before buffering; a JWT-shape sweep runs on every line; the writer
+refuses any line a registered value survives. This file is written by the
+redacting writer only — process stdout is a progress channel and is not committed.
+
+run: mtbab7s47u · finished 2026-08-27T09:57:05.280Z
+node v26.7.0 · @supabase/supabase-js 2.112.3 (installed) · @supabase/auth-js 2.112.3 (installed)
+storage key (extracted from session-storage.ts): 'zc-auth-session'
+
+Staging auth posture as observed by this run:
+  /auth/v1/settings → HTTP 200; disable_signup=false, mailer_autoconfirm=true
+  one-time code delivered as a CODE (owner relayed a 6-digit code from a
+  captured message — SMTP capture and the {{ .Token }} template observed as
+  owner-executed events; the message body itself is sandbox-side, not committed)
+  JWT expiry: see L6 (expires_in observed at sign-in, rotation, and expiry schedule)
+
+Captured messages consumed by this run: 3 (budget stated before the first send: 3)
+Test identities: <user-a-email>, <user-b-email> — disposable, run-namespaced, sandbox-captured (ruling 24)
+
+Phase results:
+  L1: PASS
+  L2: PASS
+  L5: PASS
+  L3: PASS
+  L6: FAIL/FINDING
+  L4: FAIL/FINDING
+
+Residual staging state (owner-class cleanup, the 004b pattern: deleting the
+two users in Auth → Users cascades away their rows):
+  - two auth users (<user-a-email>, <user-b-email>) with provisioned profiles rows
+  - user A's token family as L4 left it (see L4-rotation-backstop.txt)
+  - user B: signed out (scope local)
+
+The Mailtrap meter reading is sandbox-side state: the owner reports it; the
+README records the report, labelled owner-reported.
+exit summary written 2026-08-27T09:57:05.280Z
