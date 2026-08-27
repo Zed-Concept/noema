@@ -1,0 +1,51 @@
+# Unit F gates — the four non-install CI steps at this head
+# (producer: instruments/gates.sh; jest Time masked, suite durations stripped, env: lines dropped)
+
+== npm run typecheck ==
+
+> noema@0.1.0 typecheck
+> tsc --noEmit
+
+exit: 0
+
+== npm run lint ==
+
+> noema@0.1.0 lint
+> expo lint
+
+exit: 0
+
+== npm run test ==
+
+> noema@0.1.0 test
+> jest
+
+PASS src/__tests__/secure-store-accessibility.test.ts
+PASS src/__tests__/foreground-refresh.test.ts
+PASS src/__tests__/reauth-demand.test.ts
+PASS src/__tests__/auth-state-publisher.test.ts
+PASS src/__tests__/session-storage-platform.test.ts
+PASS src/__tests__/supabase-client.test.ts
+PASS src/__tests__/auth-provider.test.tsx
+PASS src/__tests__/token-opacity.test.ts
+PASS src/__tests__/route-guards.test.tsx
+PASS src/__tests__/secure-store-adapter.test.ts
+PASS src/__tests__/home-screen.test.tsx
+
+Test Suites: 11 passed, 11 total
+Tests:       196 passed, 196 total
+Snapshots:   0 total
+Time: <masked>
+Ran all test suites.
+exit: 0
+
+== npm run format:check ==
+
+> noema@0.1.0 format:check
+> prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
+exit: 0
+
+gates: 4/4 PASS

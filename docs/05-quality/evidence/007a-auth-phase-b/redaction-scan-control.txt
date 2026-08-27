@@ -1,0 +1,10 @@
+# Redaction scan — positive control (layer 2)
+A synthetic file carrying every banned shape is planted in scratch and scanned
+with the same patterns as the real scan. The control PASSES only when the scan
+turns RED with every pattern firing — proving the patterns can fail.
+
+pattern self-tests: all 7 fired on their exemplars
+RED   unitf-scan-control-deRNJ4/planted-synthetic-leak.txt — jwt-shape×1, jwt-marker-residue×2, supabase-host×1, sb-key-prefix×1, email-shape×1, project-ref-shape×1, url×1
+planted file detected RED with all patterns: true
+
+verdict: CONTROL PROVED RED — scan is falsifiable
