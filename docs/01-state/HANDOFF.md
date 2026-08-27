@@ -1,3 +1,63 @@
+## 2026-08-27 — REVIEW-028, Unit E subtraction correction 3c
+
+**Controller:** CTRL-006 Auth Phase B and session durability.
+**Reviewer of record:** Codex Sol / Ultra / fresh session — the dispatched
+seat; the runtime harness does not expose model, reasoning-effort, or
+prior-session identity metadata, so those attributes cannot be independently
+confirmed.
+**Code target:** `453c3c89ee04aea936e359b227b855789a1cd14d`.
+**Review overlay:** `5399f13d69912d6797db9b0e26a12d42b7668b5c` — controller
+LOCK transition only.
+**Verdict:** **PASS**.
+
+### Verdict
+
+Correction 3c closes REVIEW-027 finding 1 exactly. The 006d README and builder
+HANDOFF now itemise both limit-10 removals — “no demand is recorded” and the
+web storage-key/ruling-26 clause — one line each with a reason. The README
+change is exactly `+3/-0`; the final limit-10 body and correction-3b HANDOFF
+block remain byte-identical.
+
+The exact two-commit builder range touches only the 006d README, this HANDOFF,
+and `ci.txt`. It changes no source, test, assertion, instrument, mechanism, or
+LOCK record. The required `src` OIDs match; fresh exact-head gates are 4/4
+(11/11 suites, 196/196 tests); both exact-head CI runs are completed/success;
+and committed `ci.txt` is correctly bound to the `699e6f01` run. Both publisher
+files remain token-/emit-identical to `9e90fdba`, all 18 assertions are
+identical, and the Known Issues 1–2 register plus its four controls is unchanged.
+
+REVIEW-028 therefore recommends merge with Known Issues 1–2 open as recorded.
+Its final `Merge recommendation` section contains the verbatim PROJECT-STATE
+copy block, three adjacent backlog items, and the unit's final claims summary.
+
+### Evidence and classifications
+
+- **PASS:** correction itemisation, unchanged final body and correction-3b
+  block, exact three-file scope, source-tree identity, token/emit/assertion
+  identity, Known-Issue/control identity, 4/4 local gates, both exact-head CI
+  runs, and governance/RED-lane scope.
+- **FAIL introduced by this work:** none.
+- **FAIL pre-existing:** none within this correction verdict. Known Issues 1–2
+  are accepted open merge conditions under ruling 28, not newly discovered
+  correction failures.
+- **NOT RUN by boundary:** live Supabase, native File/keychain behavior, real
+  OS restart, and physical-device behavior; Unit F retains those gates.
+
+### Review workflow and boundary
+
+The Noema governance-review procedure was used. Three supplementary read-only
+subagents covered scope/tree identity, evidence/CI/executable identity, and
+subtraction/final-record material; the reviewer of record independently reran
+every verdict-driving check. No live endpoint, credential, secret, production
+system, deployment, PR-state mutation, merge, or outward-facing action was
+used or performed.
+
+**Files written:** `docs/04-reviews/REVIEW-028.md` and this top-insert only.
+
+**LOCK status line:** `Status: REVIEW` — read and left untouched.
+
+---
+
 ## 2026-08-27 — Unit E SUBTRACTION CORRECTION 3c (REVIEW-027 finding 1), feat/session-durability
 
 **Controller:** CTRL-006 Auth Phase B and session durability.
