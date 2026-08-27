@@ -358,6 +358,9 @@ cycle-2 read-path comparison prose.
   demand, and is then never exposed …"). Its "never exposed" wording is
   the withdrawn exposure universal; what the instrument measures stays —
   signedOut with a new demand (claim 4's schedule).
+- **Limit 10** — removed: "no demand is recorded." A statement about the
+  web mechanism outside this native evidence boundary, and redundant with
+  "gains no observer"; this cycle claims nothing on web.
 - **Limit 10** — removed: the web storage-key/ruling-26 clause. Decision
   provenance, not a limit of these instruments; the accepted ruling-26
   web namespace change remains recorded in the immutable 006c record and
