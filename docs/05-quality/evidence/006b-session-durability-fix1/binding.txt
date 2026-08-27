@@ -1,0 +1,15 @@
+# Binding — REVIEW-023 finding 5.
+# The candidate this artifact set describes, recorded by the producer at
+# run time. Every git invocation in this capture checks its own exit
+# status; any non-zero exit fails the run (the committed negative control
+# is capture-refusal-control.sh / capture-refusal-control.txt).
+
+base:  7caf23e10856601f17d52ae37ae59fbb9dbbac60
+head:  74024465e2f13f3ca93f4a779de07a9ea3b8f6e3
+tree:  clean beyond the evidence/output directories (git status --porcelain,
+       excluding exactly: docs/05-quality/evidence/006b-session-durability-fix1 and the output directory of this run;
+       those hold the measurement record this capture is writing)
+note:  this file is byte-stable across runs AT ONE HEAD. A stability rerun
+       at a different head differs on the head line BY DESIGN — that is
+       the binding working; stability.sh masks exactly that line when
+       comparing against the committed copy and prints both values.

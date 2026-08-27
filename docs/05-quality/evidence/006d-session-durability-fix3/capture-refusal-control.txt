@@ -1,0 +1,25 @@
+# capture.sh git-refusal negative control — REVIEW-023 finding 5.
+# A PATH-prepended git returns 77 for every 'git diff'; the producer
+# must exit non-zero. The 006a producer exited 0 under exactly this
+# refusal; this transcript is the committed proof the 006d producer
+# does not.
+
+## 1. Wrapper self-test (the control's positive control)
+  wrapped 'git diff HEAD~1 HEAD' exit: 77 (must be 77)
+  wrapped 'git rev-parse HEAD' exit:   0 (must be 0; passthrough)
+  self-test passed: the wrapper refuses diffs and only diffs.
+
+## 2. capture.sh under the refusing git (must exit non-zero)
+  capture.sh exit: 1
+
+  capture stdout/stderr:
+    capture.sh: at least one gate, scan, control, or git invocation FAILED — see the transcripts.
+
+  git-failure lines in the produced transcripts:
+    /var/folders/nf/5n98ynn57fsc0fzmgpsc5rwm0000gn/T/tmp.UBEtwN4MY2/deps.txt:9:  FAILURE: git diff 7caf23e10856601f17d52ae37ae59fbb9dbbac60 -- package.json exited 77 — the producer did not run; nothing below
+    /var/folders/nf/5n98ynn57fsc0fzmgpsc5rwm0000gn/T/tmp.UBEtwN4MY2/red-lane.txt:26:  FAILURE: git diff --name-only 7caf23e10856601f17d52ae37ae59fbb9dbbac60 -- . (range listing) exited 77 — the producer did not run; nothing below
+    /var/folders/nf/5n98ynn57fsc0fzmgpsc5rwm0000gn/T/tmp.UBEtwN4MY2/red-lane.txt:30:  FAILURE: git diff --name-only 7caf23e10856601f17d52ae37ae59fbb9dbbac60 -- exited 77 — the producer did not run; nothing below
+    /var/folders/nf/5n98ynn57fsc0fzmgpsc5rwm0000gn/T/tmp.UBEtwN4MY2/red-lane.txt:34:  FAILURE: git diff -U0 7caf23e10856601f17d52ae37ae59fbb9dbbac60 -- . :(exclude)docs/ exited 77 — the producer did not run; nothing below
+
+  VERDICT: capture.sh refused (exit 1) under refused git
+  diffs — the producer fails closed. Control PASSES.

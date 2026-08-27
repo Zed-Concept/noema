@@ -1,0 +1,245 @@
+# REVIEW-023 findings 1+2 probe — one probe, two trees.
+# See review023-probe.tsx for what is asserted and review023-probe.sh for how.
+#
+# candidate: caa31ee2ff77331d7ab976bff5bb7bb4588244c9 (pinned; the head REVIEW-023 measured; must be RED)
+# head:      5e787a6360a1cadeb7f95669f86cfeb0c6b74c96 (the fix candidate at the time of this run; must be GREEN)
+# NOTE the head SHA above is the commit the probe ran against. The commit
+# that adds this transcript necessarily post-dates it — the same
+# head-cannot-name-itself boundary as ci.txt (REVIEW-022 claim 48a ruling).
+
+==========================================================================
+## RUN 1 — reviewed candidate caa31ee2ff77331d7ab976bff5bb7bb4588244c9 (expected: RED)
+==========================================================================
+FAIL src/__tests__/review023-probe.test.tsx
+  REVIEW-023 findings 1 and 2 — the probe (RED at reviewed candidate caa31ee2, GREEN at the head)
+    ✕ finding 1 — double refusal absorbs, holds, retries once a medium recovers, and the restart honours the record
+    ✕ the ruling-25 Known limit, demonstrated — death before ANY medium recovers loses the demand
+    ✕ finding 2 — signedOut with the demand present WHILE the logout leg is held; release, read-back, cleared
+    ✕ advisory A2 — no rendered state ever holds an unpersisted rotated session
+    ✕ advisory A3 — a sign-in whose persist was refused is never exposed
+    ✕ advisory E1 — a demand the exists gate denies is still honoured: the consult READS
+    ✕ advisory B2 — a fresh sign-in resolves the demand and the stale purge never destroys it
+
+  ● REVIEW-023 findings 1 and 2 — the probe (RED at reviewed candidate caa31ee2, GREEN at the head) › finding 1 — double refusal absorbs, holds, retries once a medium recovers, and the restart honours the record
+
+    probe-refused-session-write
+
+      103 |   setItemAsync: async (key: string, value: string) => {
+      104 |     mockKeychain.writeAttempts += 1;
+    > 105 |     if (mockKeychain.refuseWrites) throw new Error('probe-refused-session-write');
+          |                                          ^
+      106 |     mockKeychain.map.set(key, value);
+      107 |   },
+      108 |   deleteItemAsync: async (key: string) => {
+
+      at Object.<anonymous> (src/__tests__/review023-probe.test.tsx:105:42)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at <node_modules>/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+      at Object.apply [as setItemAsync] (src/__tests__/review023-probe.test.tsx:103:15)
+      at Object.setItemAsync (src/lib/auth/secure-store-adapter.ts:291:17)
+      at setItemAsync (src/lib/auth/secure-store-adapter.ts:569:21)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● REVIEW-023 findings 1 and 2 — the probe (RED at reviewed candidate caa31ee2, GREEN at the head) › finding 1 — double refusal absorbs, holds, retries once a medium recovers, and the restart honours the record
+
+    probe-refused-session-write
+
+      103 |   setItemAsync: async (key: string, value: string) => {
+      104 |     mockKeychain.writeAttempts += 1;
+    > 105 |     if (mockKeychain.refuseWrites) throw new Error('probe-refused-session-write');
+          |                                          ^
+      106 |     mockKeychain.map.set(key, value);
+      107 |   },
+      108 |   deleteItemAsync: async (key: string) => {
+
+      at Object.<anonymous> (src/__tests__/review023-probe.test.tsx:105:42)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at <node_modules>/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+      at Object.apply [as setItemAsync] (src/__tests__/review023-probe.test.tsx:103:15)
+      at Object.setItemAsync (src/lib/auth/secure-store-adapter.ts:291:17)
+      at setItemAsync (src/lib/auth/secure-store-adapter.ts:569:21)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● REVIEW-023 findings 1 and 2 — the probe (RED at reviewed candidate caa31ee2, GREEN at the head) › the ruling-25 Known limit, demonstrated — death before ANY medium recovers loses the demand
+
+    probe-refused-session-write
+
+      103 |   setItemAsync: async (key: string, value: string) => {
+      104 |     mockKeychain.writeAttempts += 1;
+    > 105 |     if (mockKeychain.refuseWrites) throw new Error('probe-refused-session-write');
+          |                                          ^
+      106 |     mockKeychain.map.set(key, value);
+      107 |   },
+      108 |   deleteItemAsync: async (key: string) => {
+
+      at Object.<anonymous> (src/__tests__/review023-probe.test.tsx:105:42)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at <node_modules>/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+      at Object.apply [as setItemAsync] (src/__tests__/review023-probe.test.tsx:103:15)
+      at Object.setItemAsync (src/lib/auth/secure-store-adapter.ts:291:17)
+      at setItemAsync (src/lib/auth/secure-store-adapter.ts:569:21)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● REVIEW-023 findings 1 and 2 — the probe (RED at reviewed candidate caa31ee2, GREEN at the head) › the ruling-25 Known limit, demonstrated — death before ANY medium recovers loses the demand
+
+    probe-refused-session-write
+
+      103 |   setItemAsync: async (key: string, value: string) => {
+      104 |     mockKeychain.writeAttempts += 1;
+    > 105 |     if (mockKeychain.refuseWrites) throw new Error('probe-refused-session-write');
+          |                                          ^
+      106 |     mockKeychain.map.set(key, value);
+      107 |   },
+      108 |   deleteItemAsync: async (key: string) => {
+
+      at Object.<anonymous> (src/__tests__/review023-probe.test.tsx:105:42)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at <node_modules>/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+      at Object.apply [as setItemAsync] (src/__tests__/review023-probe.test.tsx:103:15)
+      at Object.setItemAsync (src/lib/auth/secure-store-adapter.ts:291:17)
+      at setItemAsync (src/lib/auth/secure-store-adapter.ts:569:21)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● REVIEW-023 findings 1 and 2 — the probe (RED at reviewed candidate caa31ee2, GREEN at the head) › finding 2 — signedOut with the demand present WHILE the logout leg is held; release, read-back, cleared
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "signedOut"
+    Received: "signedIn"
+
+      583 |     // At the reviewed candidate the provider still read signedIn here.
+      584 |     expect(pendingLogoutReleases.length).toBeGreaterThan(0);
+    > 585 |     expect(first.result.current.state.status).toBe('signedOut');
+          |                                               ^
+      586 |     expect(mockDemandStore.files.size).toBe(1);
+      587 |
+      588 |     // The purge's own internal refresh emitted TOKEN_REFRESHED with the very
+
+      at Object.toBe (src/__tests__/review023-probe.test.tsx:585:47)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● REVIEW-023 findings 1 and 2 — the probe (RED at reviewed candidate caa31ee2, GREEN at the head) › advisory A2 — no rendered state ever holds an unpersisted rotated session
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "signedOut"
+    Received: "signedIn"
+
+      644 |     // when the demand was made, not when the purge settled.
+      645 |     expect(pendingLogoutReleases.length).toBeGreaterThan(0);
+    > 646 |     expect(hook.result.current.state.status).toBe('signedOut');
+          |                                              ^
+      647 |     expect(historyExposed(history, 'probe-access-rot')).toBe(false);
+      648 |     // The demand store is healthy here: the refusal's record went durable
+      649 |     // before the event fired.
+
+      at Object.toBe (src/__tests__/review023-probe.test.tsx:646:46)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● REVIEW-023 findings 1 and 2 — the probe (RED at reviewed candidate caa31ee2, GREEN at the head) › advisory A3 — a sign-in whose persist was refused is never exposed
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: false
+    Received: true
+
+      687 |     await p1.rtl.act(drain);
+      688 |
+    > 689 |     expect(history.some((state) => state.status === 'signedIn')).toBe(false);
+          |                                                                  ^
+      690 |     expect(hook.result.current.state.status).toBe('signedOut');
+      691 |     // Nothing landed in the keychain, and the refusal's demand is durable.
+      692 |     expect(mockKeychain.map.size).toBe(0);
+
+      at Object.toBe (src/__tests__/review023-probe.test.tsx:689:66)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● REVIEW-023 findings 1 and 2 — the probe (RED at reviewed candidate caa31ee2, GREEN at the head) › advisory E1 — a demand the exists gate denies is still honoured: the consult READS
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "signedOut"
+    Received: "signedIn"
+
+      727 |     await p2.rtl.act(drain);
+      728 |
+    > 729 |     await p2.rtl.waitFor(() => expect(hook.result.current.state.status).toBe('signedOut'));
+          |                  ^
+      730 |     expect(history.some((state) => state.status === 'signedIn')).toBe(false);
+      731 |     // Honoured all the way: the purge ran and the read-back proved the
+      732 |     // residual gone.
+
+      at Object.waitFor (src/__tests__/review023-probe.test.tsx:729:18)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● REVIEW-023 findings 1 and 2 — the probe (RED at reviewed candidate caa31ee2, GREEN at the head) › advisory B2 — a fresh sign-in resolves the demand and the stale purge never destroys it
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "signedIn"
+    Received: "signedOut"
+
+      783 |     // began only after the fresh session read back, the demand ended, and
+      784 |     // the material is durable.
+    > 785 |     await p2.rtl.waitFor(() => expect(hook.result.current.state.status).toBe('signedIn'));
+          |                  ^
+      786 |     expect(mockDemandStore.files.size).toBe(0);
+      787 |     expect(sessionKeySpace(sessionKey).length).toBeGreaterThan(0);
+      788 |
+
+      at Object.waitFor (src/__tests__/review023-probe.test.tsx:785:18)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+Test Suites: 1 failed, 1 total
+Tests:       7 failed, 7 total
+Snapshots:   0 total
+Time:        <duration>
+Ran all test suites matching /review023-probe/i.
+
+exit: 1
+
+==========================================================================
+## RUN 2 — head 5e787a6360a1cadeb7f95669f86cfeb0c6b74c96 (expected: GREEN)
+==========================================================================
+PASS src/__tests__/review023-probe.test.tsx
+  REVIEW-023 findings 1 and 2 — the probe (RED at reviewed candidate caa31ee2, GREEN at the head)
+    ✓ finding 1 — double refusal absorbs, holds, retries once a medium recovers, and the restart honours the record
+    ✓ the ruling-25 Known limit, demonstrated — death before ANY medium recovers loses the demand
+    ✓ finding 2 — signedOut with the demand present WHILE the logout leg is held; release, read-back, cleared
+    ✓ advisory A2 — no rendered state ever holds an unpersisted rotated session
+    ✓ advisory A3 — a sign-in whose persist was refused is never exposed
+    ✓ advisory E1 — a demand the exists gate denies is still honoured: the consult READS
+    ✓ advisory B2 — a fresh sign-in resolves the demand and the stale purge never destroys it
+
+Test Suites: 1 passed, 1 total
+Tests:       7 passed, 7 total
+Snapshots:   0 total
+Time:        <duration>
+Ran all test suites matching /review023-probe/i.
+
+exit: 0
+
+==========================================================================
+## VERDICT
+==========================================================================
+candidate RED (exit 1), head GREEN (exit 0):
+the probe fails where REVIEW-023 findings 1 and 2 live and passes at
+the fix candidate. NON-VACUOUS by the candidate run itself (learning 14).
+runner exit: 0

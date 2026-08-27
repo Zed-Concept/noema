@@ -1,0 +1,247 @@
+# Mutation sensitivity — every 006b claim with an instrument, checked both ways.
+#
+# baseline GREEN (>=1 test executed), mutated tree TYPECHECKS, mutant RED
+# (>=1 failed assertion). Anything else fails this run.
+# Backups for this run: /var/folders/nf/5n98ynn57fsc0fzmgpsc5rwm0000gn/T/tmp.1vTphxtqkH
+
+## readback-blind-to-stranded-material
+breaks:    confirmRemoved stops treating a present chunk as disproof, so fragments read as empty
+claim:     M1 — the read-back detects material getItem would never return
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## readback-launders-a-refused-chunk-read
+breaks:    a refused chunk read no longer withholds the proof, so refusal reads as emptiness
+claim:     M2 — a refused read is never proof of absence
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## readback-launders-a-refused-index-read
+breaks:    a refused index read no longer withholds the proof
+claim:     M3 — a refused index read is never proof of absence
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## readback-skips-part-of-the-address-set
+breaks:    the sweep stops one generation short, so the exact enumerable address set is no longer read
+claim:     M24 — the read-back reads exactly the ordered 513-address set (the REVIEW-023 exact-address upgrade)
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/secure-store-adapter.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## purge-verdict-decoupled-from-readback
+breaks:    the provider believes the purge regardless of what the read-back found — the REVIEW-022 inference, re-created
+claim:     M4 — the read-back is the only proof the provider accepts
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/auth-provider.tsx
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## demand-cleared-without-proof
+breaks:    the demand clears whether or not the read-back proved the space empty
+claim:     M5 — the demand clears only on proof (same instrument as M4, different failing assertion)
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/auth-provider.tsx
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## purge-no-longer-precedes-getSession
+breaks:    at mount the demand branch defers to the bootstrap, so the provider reads before it purges — the REVIEW-022 order, re-created
+claim:     M6 — the observed purge comes before the provider's own getSession
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/auth-provider.tsx
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## bootstrap-consult-skipped
+breaks:    the provider never asks the durable store, so a restart forgets the demand
+claim:     M7 — the demand is consulted before any session is exposed
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/auth-provider.tsx
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## consult-refusal-read-as-absence
+breaks:    a demand store that cannot answer is treated as having answered no
+claim:     M8 — refusal to answer is never absence
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/auth-provider.tsx
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## flag-path-demand-not-durable
+breaks:    requireReauthentication keeps the demand in memory only, so a crash mid-purge loses it
+claim:     M9 — the demand is recorded durably before the purge is attempted
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/auth-provider.tsx
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## demand-not-restart-visible
+breaks:    isOutstanding inverts its backend read, so a recorded demand reads as absent to the next process
+claim:     M10 — a fresh handle over the same backend still sees the demand
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/reauth-demand.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## refused-write-rethrown
+breaks:    the session-key refusal is rethrown, re-entering the pinned client's throw-and-reject path
+claim:     M11 — a refused session write is recorded and absorbed (also the double-refusal absorb of the ruling-25 claim)
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/session-storage.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## durable-record-skipped-at-the-write
+breaks:    the refused write is absorbed WITHOUT the durable record — silence instead of durability
+claim:     M12 — the demand is recorded before the write resolves
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/session-storage.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## refused-record-lost-not-held
+breaks:    record() rejects on a refused backend write instead of holding the demand in memory — the withdrawn pre-ruling-25 contract, re-created
+claim:     M13 — a refused record is held, not lost (ruling 25)
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/reauth-demand.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## demand-erased-by-a-later-success
+breaks:    a successful session write clears the demand again — the adversarial-review HIGH re-created
+claim:     M14 — the demand outlives a successful write; only read-back proof ends it. Sensitivity measured at the observer boundary by a generic later write; the real-client signOut internal-refresh schedule is the review023 probe's finding-2 test (REVIEW-023 finding 5 narrowed the attribution)
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/session-storage.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## held-record-never-flushed
+breaks:    retryHeldRecord becomes a no-op reporting success, so a held demand never goes durable
+claim:     M15 — the retry flushes a held demand once a medium answers
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/reauth-demand.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## next-write-opportunity-deleted
+breaks:    the observer stops retrying the held record at its next-write opportunity
+claim:     M16 — the next write through the observer retries the held record
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/session-storage.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## foreground-retry-opportunity-deleted
+breaks:    the outstanding branch stops retrying the durable record on foreground evaluations
+claim:     M17 — the foreground/purge-retry opportunity retries the durable record
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/auth-provider.tsx
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## signedout-deferred-to-purge-settle
+breaks:    requireReauthentication stops setting signedOut before its awaits — the REVIEW-023 finding-2 exposure, re-created
+claim:     M18 — signedOut is set while the purge is still pending
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/auth-provider.tsx
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## listener-demand-gate-deleted
+breaks:    the listener stops gating on the consulted demand, so a mid-purge TOKEN_REFRESHED re-exposes the purged session
+claim:     M19 — the demand half of the listener gate
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/auth-provider.tsx
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## demand-not-outstanding-during-purge
+breaks:    requireReauthentication no longer marks the demand outstanding before purging, so the listener gate has no signal
+claim:     M20 — the in-memory outstanding mark that feeds the gate (shares M19's instrument; different mechanism — M19 removes the door, this removes the signal)
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/auth-provider.tsx
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## listener-flag-gate-deleted
+breaks:    the listener stops gating on the unconsumed write-refusal flag — the advisory A2/A3 window, re-opened
+claim:     M21 — the flag half of the listener gate (advisory lead A)
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/auth-provider.tsx
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## consult-gates-on-exists-alone
+breaks:    the file backend goes back to gating its read on the exists boolean — the advisory E1 lie, believed again
+claim:     M22 — the consult reads content first (advisory lead B)
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/reauth-demand.ts
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## resolution-skips-the-read-back
+breaks:    a fresh sign-in resolves the demand without the stored session reading back
+claim:     M23 — resolution requires the read-back (advisory lead C)
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/auth-provider.tsx
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## resolution-ignores-a-refused-persist
+breaks:    a fresh sign-in resolves the demand even though its own persist was refused
+claim:     M25 — resolution requires no unconsumed refusal (advisory lead C)
+baseline:  GREEN (1 passed)
+edit:      applied to src/lib/auth/auth-provider.tsx
+build:     TYPECHECKS — the mutated tree is a program this project could ship
+mutant:    RED (1 failed, 0 passed)
+result:    SENSITIVE — the claim fails when the behaviour it names is removed
+
+## Tree restored
+  byte-identical to its pre-run copy: src/lib/auth/secure-store-adapter.ts
+  byte-identical to its pre-run copy: src/lib/auth/auth-provider.tsx
+  byte-identical to its pre-run copy: src/lib/auth/reauth-demand.ts
+  byte-identical to its pre-run copy: src/lib/auth/session-storage.ts
+  all mutated files restored
+
+## Summary
+mutants:       25
+sensitive:     25
+build-invalid: 0
+
+# 'sensitive' is an EXECUTION FACT — each edit landed, the mutated tree
+# typechecked, and the named instrument turned red. It is not a coverage
+# measure and not a claim that every behaviour has a mutant. Learning 16.
+exit:      0

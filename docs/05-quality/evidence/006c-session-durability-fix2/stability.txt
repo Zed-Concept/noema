@@ -1,0 +1,40 @@
+# Byte-stability across two fresh capture.sh runs.
+# Compares the gated artifacts — binding.txt included, strictly: it is
+# tree-bound (REVIEW-024 finding 3) and carries no commit SHA, so it must
+# be byte-identical between runs AND against the committed copy at every
+# commit whose product trees match. No run head is recorded here either,
+# for the same reason: this transcript must regenerate byte-identically
+# at the records head. The commit each capture ran at is in the run
+# directories' non-gated binding-head.txt, not compared and not kept.
+
+## Binding of this stability run
+product trees: as recorded in binding.txt — the comparison against the
+               committed copy below IS the verification that this run
+               measured the same product trees the committed set binds
+tree: clean beyond this evidence directory (git status exit 0)
+
+capture run A exit: 0
+capture run B exit: 0
+
+## Gated artifacts (fresh run A vs fresh run B, then run A vs committed)
+  binding.txt                IDENTICAL
+  binding.txt                matches the committed copy
+  gates.txt                  IDENTICAL
+  gates.txt                  matches the committed copy
+  adapter-properties.txt     IDENTICAL
+  adapter-properties.txt     matches the committed copy
+  session-properties.txt     IDENTICAL
+  session-properties.txt     matches the committed copy
+  route-guards.txt           IDENTICAL
+  route-guards.txt           matches the committed copy
+  banned-apis.txt            IDENTICAL
+  banned-apis.txt            matches the committed copy
+  red-lane.txt               IDENTICAL
+  red-lane.txt               matches the committed copy
+  chrome.txt                 IDENTICAL
+  chrome.txt                 matches the committed copy
+  deps.txt                   IDENTICAL
+  deps.txt                   matches the committed copy
+
+gated artifacts: 9
+differing-or-failing comparisons: 0

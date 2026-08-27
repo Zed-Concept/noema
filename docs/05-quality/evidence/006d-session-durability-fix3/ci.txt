@@ -1,0 +1,27 @@
+# GitHub CI on the exact pushed head — Unit E subtraction correction 3c
+# (006d claim 24).
+#
+# Captured post-push by 'gh run view', bound to the SHA below. The commit
+# that adds this file necessarily post-dates that head — the same
+# head-cannot-name-itself boundary as every ci.txt before it (REVIEW-022
+# claim-48a ruling). The trailing records commit (HANDOFF + this file)
+# gets its own CI run, reported in the completion report but not
+# capturable here. The prior binding of this file (correction-3b
+# substantive head 8b49f314, run 33013603097) is preserved in git history
+# and in REVIEW-027, which also independently confirmed run 33013820445
+# at 988e7ff3.
+#
+# head:  699e6f016f4208021c1c1fd069e8bf067c9c05d7
+# PR:    #17 (draft — left draft; the draft state is the merge block)
+# run:   https://github.com/Zed-Concept/noema/actions/runs/33036173449
+
+
+
+✓ feat/session-durability CI Zed-Concept/noema#17 · 33036173449
+Triggered via pull_request about 1 minute ago
+
+JOBS
+✓ typecheck, lint, test in 51s (ID 98399226355)
+
+For more information about the job, try: gh run view --job=98399226355
+View this run on GitHub: https://github.com/Zed-Concept/noema/actions/runs/33036173449

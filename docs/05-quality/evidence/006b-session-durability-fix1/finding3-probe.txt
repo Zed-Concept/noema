@@ -1,0 +1,157 @@
+# REVIEW-022 finding-3 probe — one probe, two trees.
+# See finding3-probe.tsx for what is asserted and finding3-probe.sh for how.
+#
+# base: 7caf23e10856601f17d52ae37ae59fbb9dbbac60 (pinned; must be RED — the positive control)
+# head: 74024465e2f13f3ca93f4a779de07a9ea3b8f6e3 (the candidate at the time of this run; must be GREEN)
+# NOTE the head SHA above is the commit the probe ran against. The commit
+# that adds this transcript necessarily post-dates it — the same
+# head-cannot-name-itself boundary as ci.txt (REVIEW-022 claim 48a ruling).
+
+==========================================================================
+## RUN 1 — base 7caf23e10856601f17d52ae37ae59fbb9dbbac60 (expected: RED)
+==========================================================================
+FAIL src/__tests__/finding3-probe.test.tsx
+  REVIEW-022 finding 3 — the probe (RED at base 7caf23e1, GREEN at the candidate)
+    ✕ purge is observed, the demand survives restart, and no rejection goes unhandled
+
+  ● REVIEW-022 finding 3 — the probe (RED at base 7caf23e1, GREEN at the candidate) › purge is observed, the demand survives restart, and no rejection goes unhandled
+
+    probe-refused-session-write
+
+      68 |   setItemAsync: async (key: string, value: string) => {
+      69 |     mockKeychain.writeAttempts += 1;
+    > 70 |     if (mockKeychain.refuseWrites) throw new Error('probe-refused-session-write');
+         |                                          ^
+      71 |     mockKeychain.map.set(key, value);
+      72 |   },
+      73 |   deleteItemAsync: async (key: string) => {
+
+      at Object.<anonymous> (src/__tests__/finding3-probe.test.tsx:70:42)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at <node_modules>/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+      at Object.apply [as setItemAsync] (src/__tests__/finding3-probe.test.tsx:68:15)
+      at Object.setItemAsync (src/lib/auth/secure-store-adapter.ts:290:17)
+      at setItemAsync (src/lib/auth/secure-store-adapter.ts:561:21)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● REVIEW-022 finding 3 — the probe (RED at base 7caf23e1, GREEN at the candidate) › purge is observed, the demand survives restart, and no rejection goes unhandled
+
+    probe-refused-session-write
+
+      68 |   setItemAsync: async (key: string, value: string) => {
+      69 |     mockKeychain.writeAttempts += 1;
+    > 70 |     if (mockKeychain.refuseWrites) throw new Error('probe-refused-session-write');
+         |                                          ^
+      71 |     mockKeychain.map.set(key, value);
+      72 |   },
+      73 |   deleteItemAsync: async (key: string) => {
+
+      at Object.<anonymous> (src/__tests__/finding3-probe.test.tsx:70:42)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at <node_modules>/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+      at Object.apply [as setItemAsync] (src/__tests__/finding3-probe.test.tsx:68:15)
+      at Object.setItemAsync (src/lib/auth/secure-store-adapter.ts:290:17)
+      at setItemAsync (src/lib/auth/secure-store-adapter.ts:561:21)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● REVIEW-022 finding 3 — the probe (RED at base 7caf23e1, GREEN at the candidate) › purge is observed, the demand survives restart, and no rejection goes unhandled
+
+    probe-refused-session-write
+
+      68 |   setItemAsync: async (key: string, value: string) => {
+      69 |     mockKeychain.writeAttempts += 1;
+    > 70 |     if (mockKeychain.refuseWrites) throw new Error('probe-refused-session-write');
+         |                                          ^
+      71 |     mockKeychain.map.set(key, value);
+      72 |   },
+      73 |   deleteItemAsync: async (key: string) => {
+
+      at Object.<anonymous> (src/__tests__/finding3-probe.test.tsx:70:42)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at <node_modules>/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+      at Object.apply [as setItemAsync] (src/__tests__/finding3-probe.test.tsx:68:15)
+      at Object.setItemAsync (src/lib/auth/secure-store-adapter.ts:290:17)
+      at setItemAsync (src/lib/auth/secure-store-adapter.ts:561:21)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● REVIEW-022 finding 3 — the probe (RED at base 7caf23e1, GREEN at the candidate) › purge is observed, the demand survives restart, and no rejection goes unhandled
+
+    probe-refused-session-write
+
+      68 |   setItemAsync: async (key: string, value: string) => {
+      69 |     mockKeychain.writeAttempts += 1;
+    > 70 |     if (mockKeychain.refuseWrites) throw new Error('probe-refused-session-write');
+         |                                          ^
+      71 |     mockKeychain.map.set(key, value);
+      72 |   },
+      73 |   deleteItemAsync: async (key: string) => {
+
+      at Object.<anonymous> (src/__tests__/finding3-probe.test.tsx:70:42)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at <node_modules>/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+      at Object.apply [as setItemAsync] (src/__tests__/finding3-probe.test.tsx:68:15)
+      at Object.setItemAsync (src/lib/auth/secure-store-adapter.ts:290:17)
+      at setItemAsync (src/lib/auth/secure-store-adapter.ts:561:21)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● REVIEW-022 finding 3 — the probe (RED at base 7caf23e1, GREEN at the candidate) › purge is observed, the demand survives restart, and no rejection goes unhandled
+
+    expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+      326 |     // silence was read as success, and NO delete was ever attempted: this
+      327 |     // count stays zero there.
+    > 328 |     expect(mockKeychain.deleteAttempts).toBeGreaterThan(deleteAttemptsBeforeRecovery);
+          |                                         ^
+      329 |
+      330 |     // ADR-009 requirement 2 (record half): while the purge is unproven, a
+      331 |     // DURABLE demand exists outside the keychain — a version, a reason, a
+
+      at Object.toBeGreaterThan (src/__tests__/finding3-probe.test.tsx:328:41)
+      at asyncGeneratorStep (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (<node_modules>/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 total
+Snapshots:   0 total
+Time:        <duration>
+Ran all test suites matching /finding3-probe/i.
+
+exit: 1
+
+==========================================================================
+## RUN 2 — head 74024465e2f13f3ca93f4a779de07a9ea3b8f6e3 (expected: GREEN)
+==========================================================================
+PASS src/__tests__/finding3-probe.test.tsx
+  REVIEW-022 finding 3 — the probe (RED at base 7caf23e1, GREEN at the candidate)
+    ✓ purge is observed, the demand survives restart, and no rejection goes unhandled
+
+Test Suites: 1 passed, 1 total
+Tests:       1 passed, 1 total
+Snapshots:   0 total
+Time:        <duration>
+Ran all test suites matching /finding3-probe/i.
+
+exit: 0
+
+==========================================================================
+## VERDICT
+==========================================================================
+base RED (exit 1), head GREEN (exit 0):
+the probe fails where REVIEW-022 finding 3 lives and passes at the
+candidate. NON-VACUOUS by the base run itself (learning 14).
+runner exit: 0

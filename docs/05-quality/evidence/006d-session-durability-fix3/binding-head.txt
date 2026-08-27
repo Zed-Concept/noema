@@ -1,0 +1,10 @@
+# Binding head — NON-GATED by design (REVIEW-024 finding 3).
+# The commit the capture ran at, and the clean-tree verdict. This file
+# changes on every commit — that is why it is not in the gated set: the
+# artifact set's identity is the product trees in binding.txt, and this
+# file only says which commit carried them at run time.
+
+head:  5e787a6360a1cadeb7f95669f86cfeb0c6b74c96
+tree:  clean beyond the evidence/output directories (git status --porcelain,
+       excluding exactly: docs/05-quality/evidence/006d-session-durability-fix3 and the output directory of this run;
+       those hold the measurement record this capture is writing)

@@ -1,0 +1,33 @@
+# Dependency delta against the base — this branch's whole range.
+#
+# Authorized for Unit E: ONE dependency (expo-file-system, the R2 store).
+# This fix cycle adds NOTHING. REVIEW-023 finding 5: the 006a artifact
+# printed the direct dependency but did not prove the lockfile
+# package-key set stayed identical — this one does, from the lockfile
+# objects themselves.
+
+## git diff package.json (dependency lines only)
++    "expo-file-system": "~57.0.5",
+
+## Lockfile package-key set, base vs head — the REVIEW-023 finding 5 proof
+package keys at base: 1131
+package keys at head: 1131
+keys added:   0 []
+keys removed: 0 []
+entries changed: 2 ["","node_modules/expo-file-system"]
+  expo-file-system: 57.0.4 -> 57.0.5
+  root dependencies added:   ["expo-file-system"]
+  root dependencies removed: []
+VERDICT: package-key set IDENTICAL; the only changed entries are the root
+         manifest (one added direct dependency line) and expo-file-system
+         (the authorized 57.0.4 -> 57.0.5 resolution).
+
+## installed version
+expo-file-system: 57.0.5
+
+## SDK compatibility — installed via npx expo install, so the SDK 57 pin holds
+package.json range: ~57.0.5
+expo range:         ~57.0.14
+
+## auth-js is pinned through the lockfile, and this cycle does not move it
+@supabase/auth-js installed: 2.112.3

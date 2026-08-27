@@ -19,6 +19,7 @@ const PLACEHOLDER_KEY = 'sb_publishable_placeholder_not_a_real_key';
 type AuthOptions = {
   persistSession?: unknown;
   storage?: unknown;
+  storageKey?: unknown;
   autoRefreshToken?: unknown;
   detectSessionInUrl?: unknown;
 };
@@ -98,26 +99,33 @@ describe('supabase client — session storage is actually wired in', () => {
   it('never lets the client self-schedule a refresh', () => {
     const { authOptions } = loadClientModule();
 
-    // ADR-007 / binding ruling 17, and the whole of its first clause. This one
-    // option is the enforcement mechanism: in pinned auth-js 2.112.3 both
-    // restart paths are gated on it — `_recoverAndRefresh` gates its recovery
-    // refresh on `if (this.autoRefreshToken && currentSession.refresh_token)`
-    // (`GoTrueClient.js:4104`), and `_handleVisibilityChange` gates the
-    // non-browser ticker on `if (this.autoRefreshToken)` (`:4693`). With this
-    // false, neither path exists to be raced.
+    // ADR-009 / binding ruling 20 carries this forward from the superseded
+    // ADR-007: `autoRefreshToken: false` eliminates the recurring ticker, and
+    // REVIEW-022's probe confirmed that elimination against the real pinned
+    // client (zero interval starts, zero scheduled fetches).
     //
-    // The predecessor of this test asserted `true`, on the reasoning that
-    // `auth-provider` gated WHEN the ticker ran. REVIEW-020 finding 1 proved
-    // that gate could not hold: `stopAutoRefresh()` clears only the timers that
-    // exist at that moment and cancels neither initialization nor an in-flight
-    // refresh, and the library exposes no cancellation API for either.
-    //
-    // What is deliberately NOT disabled by this is auth-js's on-demand refresh
-    // inside `getSession()` (`:2554`), which is what recovers a long
-    // backgrounded session. That fires only on a call this app makes, and
-    // `auth/foreground-refresh.ts` is the gate that keeps those calls
-    // foreground-only.
+    // What this option does NOT do — and what no assertion here claims — is
+    // gate refresh entrances. ADR-009 records that pinned supabase-js can
+    // refresh from construction, from session loading, and from `signOut()`,
+    // with no `autoRefreshToken` check on those paths. Those are recorded
+    // library behaviour; the containment is the persistence guarantee, not
+    // this flag.
     expect(authOptions.autoRefreshToken).toBe(false);
+  });
+
+  it('persists under the app-constant storage key, not the derived default', () => {
+    const { authOptions } = loadClientModule();
+
+    // ADR-009 requirement 1: the session layer proves a purge by reading the
+    // session's key space back, so the key must be an app constant it can
+    // name. Left unset, the client derives the key from the project URL
+    // inside its own constructor — a formula this app would otherwise have to
+    // re-derive from library internals (learning 20) to know what to verify.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { AUTH_SESSION_STORAGE_KEY } = require('@/lib/auth/session-storage');
+    expect(authOptions.storageKey).toBe(AUTH_SESSION_STORAGE_KEY);
+    expect(typeof authOptions.storageKey).toBe('string');
+    expect((authOptions.storageKey as string).length).toBeGreaterThan(0);
   });
 
   it('does not parse a session out of the URL', () => {

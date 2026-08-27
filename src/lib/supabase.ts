@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-import { authSessionStorage } from './auth/session-storage';
+import { AUTH_SESSION_STORAGE_KEY, authSessionStorage } from './auth/session-storage';
 import type { Database } from './database.types';
 
 // EXPO_PUBLIC_* values are inlined into client bundles by Expo at build time;
@@ -25,49 +25,48 @@ export const supabase = createClient<Database>(supabaseUrl, supabasePublishableK
     persistSession: true,
     storage: authSessionStorage,
 
-    // ADR-007 / binding ruling 17: THE CLIENT NEVER SELF-SCHEDULES A REFRESH.
+    // The key the session persists under, made an app constant rather than
+    // left to the client's URL-derived default. ADR-009 requirement 1 has the
+    // session layer read this key space back to PROVE a purge happened
+    // (`session-storage.ts`, `confirmSessionPurged`), and a verification
+    // target the app cannot name without re-deriving library internals would
+    // be the reading-of-internals learning 20 warns against. A documented
+    // public option, shared by the client, the session layer, and the
+    // evidence probes. The transition from the derived default is out of
+    // scope by owner ruling 26, recorded in the evidence README.
+    storageKey: AUTH_SESSION_STORAGE_KEY,
+
+    // ADR-009 / binding ruling 20: THE CLIENT NEVER SELF-SCHEDULES A REFRESH —
+    // AND THAT IS ALL THIS FLAG DOES.
     //
-    // This single option is the whole enforcement mechanism, which is exactly
-    // why ADR-007 preferred it to the three lifecycle patches it replaces. The
-    // property is checkable by reading this line, rather than by reasoning
-    // about the internals of a pinned dependency.
+    // REVIEW-022 confirmed by probe that with this `false` the recurring
+    // ticker is permanently eliminated: a real pinned client produced zero
+    // interval starts and zero fetches from scheduling. The flag is retained
+    // for exactly that, carried forward from the superseded ADR-007.
     //
-    // REVIEW-020 finding 1 proved with three probes that `stopAutoRefresh()`
-    // cannot bound refresh execution while this is `true`: it clears only the
-    // interval and pending timeout that exist at that moment, and cancels
-    // neither initialization nor a refresh already in flight. Pinned auth-js
-    // 2.112.3 exposes no cancellation API for either, so there was nothing to
-    // patch this against.
+    // WHAT THIS FLAG DOES NOT DO — and no comment here may claim otherwise:
+    // refresh entrances are NOT enumerated and NOT gated. Three fix cycles
+    // tried to stand a foreground gate in front of every entrance and each
+    // cycle found one more. REVIEW-022 finding 1 then established by probe
+    // that pinned supabase-js registers an INTERNAL auth listener during
+    // construction — `createClient()` alone refreshed and persisted a
+    // near-expiry stored session with no application auth call — and finding 2
+    // that `signOut()` loads, and can refresh, the stored session before
+    // deleting it. Earlier comments here claimed construction no longer
+    // refreshes and that a bounded number of entrances existed; ADR-009
+    // records those claims as unenforceable and requires their deletion.
+    // Library-internal refreshes — from construction, from session loading,
+    // from `signOut()`, and from paths not yet identified — are recorded,
+    // expected behaviour.
     //
-    // Both restart paths are gated on this flag in the pinned source, so
-    // turning it off REMOVES them rather than racing them:
-    //   - `_recoverAndRefresh()` gates its recovery refresh on
-    //     `if (this.autoRefreshToken && currentSession.refresh_token)`
-    //     (`GoTrueClient.js:4104`), so construction no longer refreshes a
-    //     stored session.
-    //   - `_handleVisibilityChange()` on a non-browser runtime gates the ticker
-    //     on `if (this.autoRefreshToken)` (`GoTrueClient.js:4693`), so no
-    //     ticker is ever started and `_autoRefreshTokenTick` never runs.
-    //
-    // What deliberately REMAINS is auth-js's ON-DEMAND refresh: `getSession()`
-    // still calls `_callRefreshToken` when the stored access token is inside
-    // its 90s `EXPIRY_MARGIN_MS` (`GoTrueClient.js:2554`). That is not
-    // self-scheduling — it fires only on a call this app makes — and ADR-007
-    // requires those calls to be foreground-gated. `auth/foreground-refresh.ts`
-    // is that gate and `auth-provider.tsx` is where it is wired to AppState.
-    //
-    // THE FLAG ALONE IS NOT THE BOUNDARY, and the previous version of this
-    // comment implied it was. REVIEW-021 finding 1 and REVIEW-021-ADVISORY
-    // finding 1 established that `__loadSession` refreshes a near-expiry stored
-    // session with no `autoRefreshToken` check on the path, and that it is
-    // reachable without any application `getSession()` call: registering an
-    // `onAuthStateChange` listener schedules `_emitInitialSession`
-    // (`GoTrueClient.js:3640`), which enters it. The advisory verified that
-    // `supabase-js` registers no auth listener itself — the app's own
-    // registration at mount was the trigger, which is why the fix is app-side.
-    // `auth-provider.tsx` now defers BOTH that registration and the cold-start
-    // `getSession()` until AppState is `active`. The enforcement of ADR-007 is
-    // therefore this option AND that deferral together, not this option alone.
+    // THE GUARANTEE IS PERSISTENCE, NOT INITIATION. Detection sits at the
+    // write: any rotated session that cannot be persisted is recorded by the
+    // observer in `auth/session-storage.ts` — durably, through
+    // `auth/reauth-demand.ts`, so the record survives restart — and forces
+    // re-authentication, with the recovery purge proven by read-back rather
+    // than inferred. That mechanism is indifferent to how many entrances
+    // exist, which is what makes it an architecture where the gate inventory
+    // was not (ADR-009).
     autoRefreshToken: false,
 
     // No `lock` option, deliberately. The pinned auth-js 2.112.3 marks the only

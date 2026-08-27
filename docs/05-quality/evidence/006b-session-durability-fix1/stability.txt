@@ -1,0 +1,38 @@
+# Byte-stability across two fresh capture.sh runs at this head.
+# Compares the gated artifacts; environment.txt and npm-audit.txt are
+# run-varying by construction; mutants.txt and the probe/control
+# transcripts have their own producers and contracts.
+
+## Binding of this stability run (REVIEW-023 finding 5)
+head at run time: 74024465e2f13f3ca93f4a779de07a9ea3b8f6e3 (git exit 0)
+tree: clean beyond this evidence directory (git status exit 0)
+
+capture run A exit: 0
+capture run B exit: 0
+
+## Gated artifacts
+  gates.txt                  IDENTICAL
+  gates.txt                  matches the committed copy
+  adapter-properties.txt     IDENTICAL
+  adapter-properties.txt     matches the committed copy
+  session-properties.txt     IDENTICAL
+  session-properties.txt     matches the committed copy
+  route-guards.txt           IDENTICAL
+  route-guards.txt           matches the committed copy
+  banned-apis.txt            IDENTICAL
+  banned-apis.txt            matches the committed copy
+  red-lane.txt               IDENTICAL
+  red-lane.txt               matches the committed copy
+  chrome.txt                 IDENTICAL
+  chrome.txt                 matches the committed copy
+  deps.txt                   IDENTICAL
+  deps.txt                   matches the committed copy
+
+## binding.txt — two-tier comparison
+  run A vs run B:            IDENTICAL
+  committed head:  74024465e2f13f3ca93f4a779de07a9ea3b8f6e3
+  fresh     head:  74024465e2f13f3ca93f4a779de07a9ea3b8f6e3
+  vs committed copy:         IDENTICAL (same head)
+
+gated artifacts: 8 (+ binding.txt, two-tier)
+differing-or-failing comparisons: 0

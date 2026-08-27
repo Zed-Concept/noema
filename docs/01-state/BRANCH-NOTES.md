@@ -96,7 +96,7 @@ Advisory reviewer:  DeepSeek V4 Pro / fresh session — the ADR-001 auth trigger
                     not by reading it (learning 20). Advisory carries no merge
                     authority; the controller adjudicates against the RoR
                     record.
-Status:             BUILD
+Status:             REVIEW
 Dispatch:           Unit E — Session durability: close REVIEW-022 finding 3 to
                     ADR-009's three review-gated requirements — purge success
                     observed by read-back, never inferred from the absence of
@@ -124,6 +124,201 @@ branch are controller-owned throughout: the controller flips `BUILD` →
 `REVIEW` when it names the review and `MERGED` after the owner merges; the
 builder leaves the line untouched and reports it in the HANDOFF — the
 REVIEW-019 practice, adopted so no reviewer stops on an unreconciled block.
+
+**Build closing note (2026-08-26, builder).** Build complete and pushed;
+`Status` left at `BUILD` per the paragraph above. All three ADR-009
+requirements closed with committed instruments: purge success proven by
+full key-space read-back (the purge-failure flag and its false inference
+deleted, the encoding test replaced); the re-authentication demand durable
+in an expo-file-system record consulted before any session exposure, with
+the observed purge ordered before the provider's own `getSession()`;
+refused session writes recorded (demand first, observer second) and
+absorbed, with a fail-closed rethrow when the demand store also refuses.
+The committed finding-3 probe is RED at base `7caf23e1` and GREEN at the
+head, including a restart schedule; mutation battery 14/14 SENSITIVE with
+0 build-invalid; stability 8/8; gates 4/4 (10 suites, 159 tests); RED lane
+clean with positive controls. One dependency: expo-file-system ~57.0.5
+(already SDK-pinned in the tree via `expo`). One pre-handoff adversarial
+workflow (17 subagents) found a real HIGH — the clear-on-success path could
+erase a purge-pending demand mid-purge — fixed by subtraction before
+handoff; full adjudication in the HANDOFF block. Evidence:
+`docs/05-quality/evidence/006a-session-durability/`. `ci.txt` follows
+post-push, bound to the pushed SHA.
+
+**Phase transition BUILD -> REVIEW, 2026-08-26, CTRL-006.** Builder head
+verified reachable on origin at `caa31ee2ff77331d7ab976bff5bb7bb4588244c9`:
+five commits on `7caf23e1`, 35 files, +4331/-515, nothing under
+`supabase/`, `app.json` untouched, PROJECT-STATE.md changed in one line
+(the Active work row). The code under review is that head; this note is
+the only commit above it and touches this file alone. Reviewer of record
+Codex Sol / Ultra / fresh session writes REVIEW-023 (immutable record plus
+HANDOFF top-insert, two files, on this branch). Advisory DeepSeek V4 Pro /
+fresh session writes REVIEW-023-ADVISORY on the durability mechanism; no
+merge authority. Accepted preflight deviation, recorded: the owner's local
+`main` lagged one fast-forward behind origin at dispatch; the builder
+fast-forwarded and disclosed rather than stopped, which the controller
+accepts — the dispatch's "stop on any mismatch" applied a rule written for
+origin mismatches to a local lag. A draft PR is opened by the controller so
+CI runs on the branch (`ci.yml` fires on pull_request and push-to-main
+only); the draft state is the merge block, the REVIEW-023 verdict is the
+merge gate. Written through the Composio GitHub connection.
+
+**Phase transition REVIEW -> BUILD (fix cycle 1 of 3), 2026-08-26, CTRL-006.**
+REVIEW-023 (Codex Sol / Ultra, record at `fed364d9`): **FAIL** — findings
+1–3 MUST CLOSE, 5 MUST NARROW/SUBTRACT, 4 controller-owned, 6 corrected by
+the reviewer's HANDOFF insert. Owner rulings 25 (R2 under double refusal)
+and 26 (the Unit D → Unit E storage-key transition is out of scope, on the
+fact that no one has ever signed in through the app) are recorded in the
+CTRL-006 cycle-1 state commit on main and restated in the fix dispatch,
+which governs (ruling 7). Fix cycle 1 dispatched to Claude Code, Fable 5 /
+Max / fresh session (ruling 5). REVIEW-023-ADVISORY (DeepSeek V4 Pro) had
+not landed at this transition; it is adjudicated on arrival and feeds cycle
+2 if it adds anything. Draft PR #17 stays open for CI only.
+
+**Controller annotation on the build closing note above (REVIEW-023
+finding 4).** The builder wrote that note on the controller's explicit
+authorisation in the Unit E dispatch. `AGENTS.md` permits builders to update
+only the Active work row and their HANDOFF block; the authorisation, not the
+builder, was the defect, recorded in the CTRL-006 ledger. The note stays —
+this record supersedes and never deletes — and no future dispatch authorises
+a builder write to this file. Written through the Composio GitHub
+connection.
+
+**Phase transition BUILD -> REVIEW (cycle-1 review, REVIEW-024), 2026-08-26,
+CTRL-006.** Fix-cycle-1 head verified reachable at
+`5f6d2e6ca873ff3b45d9d9a6e52d42bdebed30bd`: four builder commits
+(`f66c451c`, `74024465`, `7d2229b9`, `5f6d2e6c`) above the advisory record
+`0de2e406`; this file untouched by the builder in that range (finding 4
+honoured); nothing under `supabase/`, `.github/`, `app.json` or the
+lockfile; CI success at the head (run 32973184321). Scope of REVIEW-024:
+closure of REVIEW-023 findings 1–6 under rulings 25–26, plus the cycle-1
+addendum's three advisory leads (A listener gate, B consult by read,
+C sign-in resolves the demand), adjudicated in from REVIEW-023-ADVISORY
+leads 1–3. Reviewer of record Codex Sol / Ultra / fresh session; record
+REVIEW-024 plus HANDOFF top-insert, two files. The advisory seat is spent
+for this unit unless the reviewer of record flags new high risk. This note
+is the only commit above the builder head and touches this file alone.
+Written through the Composio GitHub connection.
+
+**Phase transition REVIEW -> BUILD (fix cycle 2 of 3), 2026-08-26, CTRL-006.**
+REVIEW-024 (Codex Sol / Ultra, record at `055ac265`): **FAIL** — three
+findings: (1) HIGH, a thrown demand read plus `exists === false` still
+reads as absence; (2) HIGH, in-class recurrence of the exposure defect —
+`getSession()` publishes state after its await with no demand boundary;
+(3) MEDIUM, 006b bound to `74024465`, not the candidate, and `red-lane.txt`
+not byte-stable at the candidate. REVIEW-023 findings 1, 3, 4, 6 closed or
+honoured; 2 closed in its exact schedule but open in class; 5 open. The
+reviewer invoked the stop rule on the exposure class: cycle 2 must close it
+structurally — one enforced post-await publication barrier — or cycle 3
+remedies by subtraction. The adjacent `secure-store-adapter.ts:353-363`
+world-assertion comment is authorised for deletion under ruling 26 this
+cycle (controller extension of the ruling's touch-set; one file). Fix
+cycle 2 dispatched to Claude Code, Fable 5 / Max / fresh session. Draft
+PR #17 stays open for CI only. Written through the Composio GitHub
+connection.
+
+**Phase transition BUILD -> REVIEW (cycle-2 review, REVIEW-025), 2026-08-26,
+CTRL-006.** Fix-cycle-2 head verified reachable at
+`2620802a208981a34a88690d4eba5ad10b096b61`: five builder commits
+(`46deb1e`, `b715105`, `4742aef`, `862a4f7`, `2620802`) above `d38b2ba4`,
+40 files, this file untouched in the range, nothing under `supabase/`,
+`.github/`, `app.json`, `package.json` or the lockfile; CI success at the
+head (run 32989188068). Scope of REVIEW-025: closure of REVIEW-024 findings
+1–3 — consult by positive observation, ONE publication barrier as a type-
+and lint-level fact (the stop-rule class), evidence invariant under
+docs-only commits proven at the final head — plus the authorised ruling-26
+comment deletion in `secure-store-adapter.ts`. Reviewer of record Codex Sol
+/ Ultra / fresh session; record REVIEW-025 plus HANDOFF top-insert, two
+files. One fix cycle remains; an in-class recurrence of the exposure defect
+here is remedied by subtraction in cycle 3, not by a further fix. This
+note is the only commit above the builder head and touches this file
+alone. Written through the Composio GitHub connection.
+
+**Phase transition REVIEW -> BUILD (fix cycle 3 of 3 — SUBTRACTION),
+2026-08-26, CTRL-006.** REVIEW-025 (Codex Sol / Ultra, record at
+`214a4508`): **FAIL** — (1) HIGH, third in-class recurrence of the exposure
+defect: the barrier cannot retract state queued before, or standing when,
+a demand rises; `signOut()` under a refused mid-sign-out refresh leaves the
+provider `signedIn`; the lint-level enforcement is bypassable by aliasing
+`useState`; stop rule fired. (2) MEDIUM, the docs-only evidence invariant
+omits inputs (`docs/04-reviews` in the red-lane listing; `.ts` under
+`docs/` typechecked) and fails on the one docs commit every review adds.
+REVIEW-024 finding 1 CLOSED; the ruling-26 deletion HONOURED. **Owner ruling
+28** (recorded on main): cycle 3 changes no behaviour — the exposure
+invariant is withdrawn as a claim and narrowed to the enumerated schedules
+that hold; the two REVIEW-025 schedules ship as HIGH Known Issues with
+their compensating controls; the lint claim narrows to what it enforces;
+the evidence claim narrows to the heads it measured; the subscription-based
+fix gets a follow-up unit after Phase B. Fix cycle 3 dispatched to Claude
+Code, Fable 5 / Max / fresh session, subtraction only. Draft PR #17 stays
+open for CI only. Written through the Composio GitHub connection.
+
+**Phase transition BUILD -> REVIEW (cycle-3 review, REVIEW-026), 2026-08-26,
+CTRL-006.** Subtraction head verified reachable at
+`9e90fdba7d3e828da5a716a8985957f85e166b82`: three builder commits
+(`5e787a6`, `afef2b2`, `9e90fdb`) above `f72e63fa`, 38 files; two product
+files under `src/lib/auth/` changed, comments only per the builder's
+comment-stripped comparison (REVIEW-026 verifies token identity); this
+file untouched in the range; nothing under `supabase/`, `.github/`,
+`app.json` or the manifests; CI success at the head (run 33003500621).
+Scope of REVIEW-026: is the subtraction honest — no behaviour change,
+every claim bound to its instrument, the two ruling-28 Known Issues
+recorded verbatim with witnesses RED-as-expected and compensating
+controls, the lint and evidence claims narrowed to what holds, stability
+at the two named heads. Reviewer of record Codex Sol / Ultra / fresh
+session; record REVIEW-026 plus HANDOFF top-insert, two files. No fix
+cycles remain: a FAIL here is adjudicated by the controller against
+ruling 28 — subtraction defects are corrected by a further subtraction
+dispatch; no behaviour change is authorised. Written through the Composio
+GitHub connection.
+
+**Phase transition REVIEW -> BUILD (subtraction correction 3b), 2026-08-26,
+CTRL-006.** REVIEW-026 (Codex Sol / Ultra, record at `5cfb88a1`): **FAIL**
+on three prose defects only — stale "every publication" universals in
+publisher comments and test prose; a Known-Issue control that overclaims
+consultation "before any session load"; 006c Known limits described as
+"unchanged" despite material edits. Independently confirmed at the head:
+no behaviour change, zero assertion changes, witnesses RED-as-expected
+with runner exit 0, 9/9 stable at both named heads, governance scope
+clean. The three fix cycles are consumed; this pass is the further
+subtraction the cycle-3 transition note authorised, scribe-class per
+ruling 5 (Fable 5 / High / fresh session), prose only. REVIEW-027 is the
+verdict that gates merge. Written through the Composio GitHub connection.
+
+**Phase transition BUILD -> REVIEW (correction-3b review, REVIEW-027),
+2026-08-26, CTRL-006.** Correction head verified reachable at
+`988e7ff3f4bce4767d8a0ad8dc107372b547a575`: three builder commits
+(`811600fa`, `8b49f31`, `988e7ff`) above `591f025a`, five files — two
+source files comments-only (builder-reported token identity against
+`9e90fdba`, REVIEW-027 verifies), the 006d README, HANDOFF, ci.txt; this
+file untouched; CI success at the head (run 33013820445). Scope of
+REVIEW-027: REVIEW-026 findings 1–3 corrected by subtraction, token
+identity, and — on PASS — the merge recommendation with the PROJECT-STATE
+copy block for Known Issues 1–2 and their controls. Reviewer of record
+Codex Sol / Ultra / fresh session; record REVIEW-027 plus HANDOFF
+top-insert, two files. Written through the Composio GitHub connection.
+
+**Phase transition REVIEW -> BUILD (subtraction correction 3c), 2026-08-26,
+CTRL-006.** REVIEW-027 (Codex Sol / Ultra, record at `64105ffd`): **FAIL**
+on one line — the limit-10 carry itemisation omits that "no demand is
+recorded" was also removed. Everything else passed: REVIEW-026 findings
+1–2 closed, token and emitted-JS identity, 18/18 assertions unchanged,
+gates 4/4, stability account exact, five-file scope, governance clean.
+Correction 3c is that one line in the 006d README and the HANDOFF
+summary, scribe-class (Fable 5 / High / fresh session). REVIEW-028 gates
+merge and carries the merge recommendation. Written through the Composio
+GitHub connection.
+
+**Phase transition BUILD -> REVIEW (correction-3c review, REVIEW-028),
+2026-08-26, CTRL-006.** Correction head verified reachable at
+`453c3c89ee04aea936e359b227b855789a1cd14d`: two builder commits
+(`699e6f01`, `453c3c89`) above `486e910a`, three files (006d README +3,
+HANDOFF, ci.txt), no source file, this file untouched; CI success at the
+head (run 33036290253). Scope of REVIEW-028: REVIEW-027 finding 1 closed
+by the two-item limit-10 itemisation, no other change, and — on PASS —
+the merge recommendation with the PROJECT-STATE copy block. Reviewer of
+record Codex Sol / Ultra / fresh session; record REVIEW-028 plus HANDOFF
+top-insert, two files. Written through the Composio GitHub connection.
 
 ---
 

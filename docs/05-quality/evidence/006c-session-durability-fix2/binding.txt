@@ -1,0 +1,26 @@
+# Binding — REVIEW-024 finding 3.
+# The PRODUCT TREES this artifact set is a function of, recorded as git
+# tree/blob object ids by the producer at run time. NO commit SHA appears
+# here: a docs-only commit (the evidence pack, the HANDOFF, ci.txt)
+# changes none of these objects, so this file — and every gated artifact —
+# regenerates byte-identically at the records head. That is the evidence
+# invariant under docs-only commits, BY CONSTRUCTION. The commit SHA and
+# clean-tree verdict live in the non-gated binding-head.txt.
+#
+# Every git invocation in this capture checks its own exit status; any
+# non-zero exit fails the run (the committed negative control is
+# capture-refusal-control.sh / capture-refusal-control.txt).
+
+base:  7caf23e10856601f17d52ae37ae59fbb9dbbac60
+src                  6497b4445de28e05e77555f83a95da4f56fd6bb5
+package.json         09eae8fbc414cf3a3e780cba20b5e5a692845cd4
+package-lock.json    aaa5e798d0db1aef09472bf86fdf72399927837a
+app.json             f39882f401b1b772e87934ee9b15eb7708f0fcd2
+tsconfig.json        652c8428f7b7a1505a2ed2faf010896a8f3b92d7
+jest.config.js       d34279a9c5e26b9d79a420e475733402112ea6a6
+eslint.config.js     12996904e24c2ceff4d580a984a470ebf4a97f39
+.prettierrc          4cbc711cddff7e40d799d6322949b2c671ceb893
+.prettierignore      e3e8dadc0b07043fe2070211a42ec1f167c94f81
+scripts              94e1e6354b1bdde1a4b72da3757facb35aaf233a
+supabase             2b13461b9abd40f1c00afd316e3321d0931ef2fc
+.github              173fa30fae4f5f83a35a88ef29914fbf8016c39a
