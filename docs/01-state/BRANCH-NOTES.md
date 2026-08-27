@@ -96,7 +96,7 @@ Advisory reviewer:  DeepSeek V4 Pro / fresh session — the ADR-001 auth trigger
                     not by reading it (learning 20). Advisory carries no merge
                     authority; the controller adjudicates against the RoR
                     record.
-Status:             BUILD
+Status:             REVIEW
 Dispatch:           Unit E — Session durability: close REVIEW-022 finding 3 to
                     ADR-009's three review-gated requirements — purge success
                     observed by read-back, never inferred from the absence of
@@ -308,6 +308,17 @@ Correction 3c is that one line in the 006d README and the HANDOFF
 summary, scribe-class (Fable 5 / High / fresh session). REVIEW-028 gates
 merge and carries the merge recommendation. Written through the Composio
 GitHub connection.
+
+**Phase transition BUILD -> REVIEW (correction-3c review, REVIEW-028),
+2026-08-26, CTRL-006.** Correction head verified reachable at
+`453c3c89ee04aea936e359b227b855789a1cd14d`: two builder commits
+(`699e6f01`, `453c3c89`) above `486e910a`, three files (006d README +3,
+HANDOFF, ci.txt), no source file, this file untouched; CI success at the
+head (run 33036290253). Scope of REVIEW-028: REVIEW-027 finding 1 closed
+by the two-item limit-10 itemisation, no other change, and — on PASS —
+the merge recommendation with the PROJECT-STATE copy block. Reviewer of
+record Codex Sol / Ultra / fresh session; record REVIEW-028 plus HANDOFF
+top-insert, two files. Written through the Composio GitHub connection.
 
 ---
 
