@@ -1,3 +1,86 @@
+## 2026-08-27 — Unit E SUBTRACTION CORRECTION 3c (REVIEW-027 finding 1), feat/session-durability
+
+**Controller:** CTRL-006 Auth Phase B and session durability.
+**Builder:** Claude Code, fresh session — scribe-class pass: README prose
+only, answering REVIEW-027 **FAIL** (one line, acceptance item 3).
+**Model+Effort:** **Fable 5 / High / fresh session** — model check passed at
+session start (model ID `claude-fable-5`).
+**Answering:** the CTRL-006 subtraction-correction-3c dispatch — one edit,
+recorded in two places (the 006d limit-10 itemisation and this block).
+**Head:** the pushed substantive head is
+`699e6f016f4208021c1c1fd069e8bf067c9c05d7` (the README itemisation commit,
++3 lines, one file). The records commit carrying this block and `ci.txt`
+sits on top; a commit cannot name its own SHA — the completion report
+names it.
+
+### Preflight — all checks passed
+
+- `git fetch origin && git checkout feat/session-durability && git pull
+  --ff-only` landed exactly on the dispatched tip
+  `486e910ae79dbb5fcc30370267d7ea785a536208`, tree clean.
+- `BRANCH-NOTES.md`: the Unit E LOCK read `Status: BUILD` with the
+  "subtraction correction 3c" transition note (2026-08-26, CTRL-006), as
+  dispatched.
+- `AGENTS.md`: 5378 bytes, sha256
+  `0ff02d209247dadd94f217b441732baa87ed9f182f9b734cece668b1c3f0f013`.
+- REVIEW-027 finding 1 and its Required subtraction read in full, and the
+  immutable 006c limit 10 diffed directly, before the edit was worded.
+
+### The one edit — the limit-10 two-item account, nothing else
+
+The 006d README's "Carried with ruling-28 subtraction" itemisation now
+records BOTH removals from the immutable 006c limit 10, one line each, in
+the same form as the other subtraction lines:
+
+- **Limit 10** — removed: "no demand is recorded." A statement about the
+  web mechanism outside this native evidence boundary, and redundant with
+  "gains no observer"; this cycle claims nothing on web.
+- **Limit 10** — removed: the web storage-key/ruling-26 clause. Decision
+  provenance, not a limit of these instruments; the accepted ruling-26
+  web namespace change remains recorded in the immutable 006c record and
+  the governance chain, and this cycle claims nothing on web.
+
+This block is the HANDOFF half of the correction: the correction-3b block
+below stays as written (append-only); its one-clause E3 limit-10 account
+is superseded by the two-item account above. Per REVIEW-027's Required
+subtraction the final limit-10 body (README lines the finding cites as
+402–404) is untouched — the review requires it kept unchanged, and the
+diff proves it: the substantive commit is exactly +3 lines inside the
+itemisation bullet list, no deletions, one file.
+
+### Verification at the pushed head
+
+- **Gates 4/4 at `699e6f01`:** typecheck, lint, test, format:check all
+  exit 0 — **11 suites, 196 tests** (unchanged).
+- **Stability at the README head per the claim-16 boundary:** the
+  README's stability claim remains bound to the head it names
+  (`8b49f314`, the correction-3b account REVIEW-027 verified as exact).
+  No capture was re-run and none is owed: `git rev-parse` proves the
+  bound `src` tree OID at `699e6f01` is byte-identical to `8b49f314`
+  (`9dce1c5f…`), so the commit above the captured head is docs prose
+  only — zero executable delta, instruments untouched (no file under
+  006d's producers/probes changed; only README, this HANDOFF, and
+  `ci.txt` move).
+- **Touch set:** exactly three files across the two commits — the 006d
+  README (+3), this HANDOFF top-insert, and `ci.txt` rebound.
+  `BRANCH-NOTES.md` changed by zero bytes; nothing under `supabase/`,
+  `.github/`, `app.json`, or the package manifests/lockfile.
+- **`ci.txt`:** GitHub CI at the pushed substantive head `699e6f01` —
+  **success** (`typecheck, lint, test`, 51s), run
+  `https://github.com/Zed-Concept/noema/actions/runs/33036173449`;
+  PR #17 confirmed still **draft**. The prior binding (8b49f314, run
+  33013603097) is preserved in git history and in REVIEW-027.
+
+### Workflows run — ruling 6 disclosure
+
+**None.** No workflow, no subagent; every edit, gate, and check was run
+inline by the builder session. The ruling-6 fan-out disclosure is nil.
+
+**LOCK status line:** `Status: BUILD` — read and left untouched; status
+transitions on this branch are controller-owned (the REVIEW-019 practice).
+
+---
+
 ## 2026-08-27 — REVIEW-027, Unit E subtraction correction 3b
 
 **Controller:** CTRL-006 Auth Phase B and session durability.
