@@ -1,3 +1,164 @@
+## 2026-08-27 — Unit F Auth Phase B live evidence, BUILD complete, evidence/auth-phase-b
+
+**Controller:** CTRL-006 Auth Phase B and session durability.
+**Builder:** Claude Code, fresh session — evidence-only unit: no product
+code, no test change under `src/`, no migration, no config, no dependency.
+**Model+Effort:** **Fable 5 / Max / fresh session** (ruling 5: evidence
+work) — model check passed at session start (model ID `claude-fable-5`).
+**Answering:** the CTRL-006 Unit F dispatch, against main at
+`ee015ac34cd2aae5a36a244b0e22027cdbaed359` (verified as the origin tip at
+preflight, tree clean; AGENTS.md sha256 `0ff02d20…f013`, 5378 bytes,
+verified; the LOCK read `Status: BUILD` with this builder and Codex Sol as
+reviewer of record before any work).
+**Head:** substantive commits `b5dfacee` (instruments, procedures, gates,
+redaction control) and `62248884` (the live round, findings, final README).
+The records commit carrying this block and the Active work row sits on
+top; a commit cannot name its own SHA — the completion report names it.
+
+### Delivered
+
+- **The live round ran** (run `mtbab7s47u`, owner-executed 2026-08-27,
+  ruling 24 code relay): **L1 PASS** — the first one-time-code round trip
+  ever delivered through this stack (send 200 → sandbox capture → owner
+  relay → verify 200 → real session, shapes and timings recorded);
+  **L2 PASS** — both OTP-created users provisioned with their Unit C
+  profiles rows, own-row visible, cross-row RLS-invisible both directions,
+  the anon set refused at exactly 401/42501 (four probes); **L3 PASS** —
+  the first non-synthetic session-size measurement: 2228 UTF-8 bytes → 2
+  chunks (1536+692) through the real shipped adapter, index n = predicted
+  n, 2/256 headroom (the 005d §B3 gap closed); **L5 PASS** — scope-local
+  sign-out live: 204, store purge proven by adapter read-back
+  (`confirmRemoved` true; the 513-delete sweep observed — the 005d derived
+  figure now measured), the dead token refused verbatim
+  (`refresh_token_not_found`), the sibling session still refreshing
+  (ADR-005 live); **L6a PASS** — expiry-on-schedule mechanics: full honest
+  wait, the pinned client's refresh path took over, rotation persisted and
+  read back. All against the real pinned client, the real staging, the
+  real shipped adapter over an instrumented fake backend (the session
+  real, SecureStore offline — stated in every transcript).
+- **Device procedure and attestation template committed**
+  (`device-procedure.md`, `attestation-template.md`); device claims D1–D4
+  **NOT RUN** — no attestation this session. The attestation must postdate
+  the owner's 18:02 expiry reset (D3's locked window must out-live the
+  token).
+- **Redaction:** three layers; in-run totality GREEN (26 ledger values,
+  every committed transcript byte scanned, sha256-bound, verified against
+  the committed bytes); commit-time shape scan GREEN over the whole
+  directory with the positive control PROVED RED on all 7 patterns.
+- **Gates 4/4** at the head — typecheck, lint, test, format:check all exit
+  0, **11 suites, 196 tests**, exactly main's REVIEW-028 figures (nothing
+  under `src/` changed).
+
+### FINDINGS — reported, not acted on (each becomes a new unit or owner action)
+
+1. **F1 — staging ACCEPTED a superseded refresh token 30 seconds after
+   rotation** (`L4-rotation-backstop.txt`; the dispatch pre-classified
+   acceptance as a finding). Explicit rotation → 30 s wait (past GoTrue's
+   default 10 s reuse interval, the stated assumption) → the SUPERSEDED
+   token returned HTTP 200 with a usable session; the family survived the
+   informative follow-up. Consequence: **the ruling-25 bound — Known
+   Issues 1–2's compensating control 2 — was not observed to hold at 30
+   seconds.** Consistent with a staging reuse interval configured longer
+   than 30 s; the dashboard reuse-interval/reuse-detection values were not
+   read by this unit (stated boundary), so cause is undetermined here.
+   Contrast measured in the same run: L5's REVOKED token (local sign-out)
+   died immediately. Disposition: owner reads — and if the owner so rules,
+   tightens — the interval and detection posture; the backstop is then
+   re-measured. L4a (rotation persisted through the adapter, read back)
+   PASSED; the L4b backstop row is the finding.
+2. **F2 — JWT-expiry posture drift** (`L6-jwt-expiry.txt`). Ruling 23 and
+   PROJECT-STATE record 600 s, owner-confirmed 2026-08-26; at run time the
+   dashboard held **3600 s** and every session said so (the instrument
+   waited the honest 3644 s). The owner found 3600 in the dashboard after
+   the run, set 600 and saved at 18:02 local (post-run: the last
+   transcript closed 09:57:05Z) — an owner-executed config event, reported
+   in-session, **unbound by any artifact here**; first bound by the next
+   artifact measuring a session issued after it (the device attestation or
+   a future live round). L6a's mechanics PASSED at the 3600 s schedule;
+   the L6b 600-second row is the finding.
+
+### NOT RUN — with reasons (the dispatch's required list)
+
+1. Known Issues 1–2 live schedules — not reachable without a test hook
+   (learning 10): both need a refused keychain write at an exact instant,
+   and no React renderer runs in these instruments. Their compensating
+   control 2 WAS measured — and is Finding F1.
+2. GitHub CI on this branch — `ci.yml` fires on `pull_request` and
+   push-to-main only; the dispatch forbids a PR. The controller opens the
+   draft PR post-handoff (the Unit E pattern); this block names the head
+   for the run to bind to.
+3. Mutation battery — none; there is no code to mutate (stated, not
+   padded).
+4. Byte-stability of the live transcripts — run-varying, captured once
+   (004b class); a re-run costs captured messages.
+5. Staging's reuse-interval and reuse-detection dashboard values — not
+   read; F1's cause undetermined here.
+6. The post-run 600 s expiry — owner-reported, unbound (F2).
+7. The locked-window write refusal — observed only if it happens; device
+   claims entirely NOT RUN this session.
+8. Standalone-build keychain behaviour — the procedure targets Expo Go
+   (the PROJECT-STATE-named runtime); recorded boundary.
+9. Web — no claim (ADR-008, ruling 18).
+
+### Owner-executed events on the record
+
+1. Repo-root `.env` held both staging values from an earlier hand-off;
+   verified by variable name only, values never read or printed.
+2. Three one-time codes relayed at the terminal from the Mailtrap sandbox
+   UI (ruling 24); codes registered and redacted at source, in no
+   artifact.
+3. Post-run expiry reset: dashboard read 3600 s, set to 600 s, saved
+   18:02 local (F2).
+4. Meter report: the owner's in-session report gave the meter without a
+   numeric value ("reads N"); the number is requested and lands in a
+   follow-up note or the attestation. Instrument-counted consumption: 3.
+
+### Disclosures — ruling 6 and deviations
+
+1. **Workflows run: NONE.** No multi-agent workflow, no subagent; every
+   edit, run, scan and gate was inline in this session. The ruling-6
+   fan-out disclosure is nil.
+2. **Dispatch-path resolutions, recorded rather than silently mapped:**
+   the dispatch's `004c-*` resolves to `004b-schema-rls-live` (the Unit C
+   live round; no 004c directory exists); "006d claim B3" resolves to the
+   005d README §B3 record, carried in 006d's constants prose. Both stated
+   in the README provenance note.
+3. **L4's HTTP log carries one L5 line** (the dead-token 400): the
+   throwaway probes share one fetch log and L5 prints only its client
+   logs. Labeling nit in a captured transcript, disclosed in the README,
+   not edited.
+4. **L5's transcript is ~97 KB** — the full 513-delete sweep and 513-read
+   confirm printed; first live observation of the sweep; left as captured.
+5. **Budget design:** 3 messages, not the dispatch-sketched 4 — session
+   A1 is reused as L5's surviving sibling, and L4 runs last because reuse
+   detection could revoke the family. Stated to the owner before the first
+   send; no contingency consumed.
+6. The producer settles 250 ms before reading the sign-in op log
+   (race-proofing the one paid run); disclosed as instrument behaviour.
+7. Live-run stdout is not committed (progress channel); the committed
+   stream is the redacting writer's only — the structural narrowing of the
+   004b totality problem, stated in the README.
+
+### Touch-set — recordable deltas (learning 9)
+
+- 28 files created under `docs/05-quality/evidence/007a-auth-phase-b/`
+  across `b5dfacee` (17) and `62248884` (11, plus README finalised and
+  gates/scan regenerated).
+- `docs/01-state/HANDOFF.md` — this top-insert (records commit).
+- `docs/01-state/PROJECT-STATE.md` — the Active work row only (records
+  commit).
+- `BRANCH-NOTES.md` by zero bytes. Nothing under `src/`, `supabase/`,
+  `.github/`; `app.json` and the manifests untouched; no dependency
+  change; no expo scheme change; no user-visible name change.
+
+**Messages consumed: 3** (the stated Node budget exactly); the device
+procedure's 1 is unconsumed.
+
+**LOCK status line:** `Status: BUILD` — read and left untouched
+(controller-owned transitions; reported here per AGENTS.md).
+
+---
+
 ## 2026-08-27 — REVIEW-028, Unit E subtraction correction 3c
 
 **Controller:** CTRL-006 Auth Phase B and session durability.

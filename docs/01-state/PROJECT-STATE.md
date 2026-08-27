@@ -156,7 +156,7 @@ What is in flight, who owns it, and what it is blocked on. One row per stream.
 
 | Stream | Owner | Status | Blocked on |
 |---|---|---|---|
-| Unit F — Auth Phase B live evidence | Claude Code | **LOCK registered, BUILD** — `evidence/auth-phase-b`, evidence only against main at `4e748741`; reviewer of record Codex Sol; no advisory seat unless flagged. Live one-time-code round trip and provisioning, live session size, refresh rotation through the adapter, `scope: 'local'`, the ruling-25 rotation backstop, and the ADR-named locked-device walk-through on the owner's iPhone (Expo Go) as an owner attestation. Dispatch issued after this commit merges, naming the post-merge tip. Evidence `007a-auth-phase-b/`. | Merge of this commit |
+| Unit F — Auth Phase B live evidence | Claude Code | **BUILD — live round complete, pushed** (`evidence/auth-phase-b`): L1/L2/L3/L5 and the L4a/L6a mechanics PASS; **two findings reported, nothing fixed** — F1: staging ACCEPTED a superseded refresh token 30 s after rotation (the ruling-25 backstop, Known Issues 1–2's control 2, did not hold at the measured interval); F2: JWT-expiry drift (dashboard held 3600 s vs ruling 23's 600; owner reset to 600 saved 18:02, post-run, unbound). Device claims D1–D4 NOT RUN — procedure and attestation template committed; the attestation must postdate the 18:02 reset. Evidence `007a-auth-phase-b/`; details in the HANDOFF top-insert. | Controller review routing (Codex Sol); draft PR for CI (the Unit E pattern) |
 | Production Supabase project | Owner | Parked by ruling — create in East US (North Virginia) before any launch-facing unit | Free-tier slot or Pro upgrade at that time |
 
 Unit A merged 2026-08-19 at `8d648bb` (PR #2, REVIEW-007 PASS); its full
