@@ -104,9 +104,10 @@ Stated design: Node run **3** messages, device procedure **1**, contingency
 
 **Used by the Node run: exactly 3** (instrument-counted, `run-summary.txt`;
 no contingency was consumed). The absolute meter reading is sandbox-side
-state the owner reports; the report is recorded in the HANDOFF, labelled
-owner-reported. The device procedure's 1 message is consumed only when the
-owner runs it.
+state the owner reports; the owner's in-session reports gave it twice as
+"reads N" with no numeric value, recorded verbatim in the HANDOFF — the
+instrument count is the load-bearing budget fact. The device procedure's 1
+message is consumed only when the owner runs it.
 
 ## Staging posture as observed — including one drift
 
@@ -143,18 +144,40 @@ run waited 30 s — past GoTrue's DEFAULT 10 s reuse interval, the assumption
 the transcript states — and presented the SUPERSEDED refresh token from a
 throwaway client. Staging answered HTTP 200 with a usable session; the
 informative follow-up showed the family survived. The dispatch pre-classified
-acceptance as **a finding, not a note**. Consequence, stated precisely: the
+acceptance as **a finding, not a note**.
+
+**Cause, narrowed by the owner's post-run dashboard reading** (an
+owner-executed environment fact, reported in-session, unbound by artifact —
+the 004b owner-event class): **the reuse interval reads 10 s and
+compromised-token detection is ON, unchanged.** The
+longer-configured-interval hypothesis this README first offered is thereby
+ELIMINATED — the acceptance is not configuration. What the measured pair of
+observations matches instead is a narrower server semantic, stated here as
+a HYPOTHESIS (no server source was read — learning 20; probes, not
+readings, decide it): **a superseded token whose successor has never been
+used is honored as a retry and returns the successor's session,
+independent of the interval**; the family-probe's subsequent normal use of
+the successor is consistent with that. The discriminating probes are named
+below and cost sessions, so they are a follow-up unit's instruments, not
+this one's.
+
+Consequence, stated precisely and now sharper than at capture time: the
 ruling-25 bound — PROJECT-STATE names it compensating control 2 for Known
 Issues 1–2, "rotation rejects a consumed refresh token outside the reuse
-interval so the on-disk residue cannot be refreshed into a usable session" —
-**was not observed to hold at 30 seconds**. The acceptance is consistent
-with a staging reuse interval configured longer than 30 s; the dashboard
-value was not read by this unit (stated boundary), so cause is undetermined
-here. What IS separately proven live: a locally signed-out session's token
-dies immediately (L5, `refresh_token_not_found`) — revocation, unlike
-supersession, was observed to bind at once. Disposition: new unit / owner
-action — read and, if the owner so rules, tighten the interval, then
-re-measure the backstop; this unit fixes nothing.
+interval so the on-disk residue cannot be refreshed into a usable
+session" — **was not observed to hold, in exactly the schedule the ruling
+describes.** The ruling-25 residue is a superseded token on disk whose
+successor was returned but never persisted and never used; the measured
+behaviour (superseded + unused successor → 200) is that schedule, and the
+residue WAS refreshed into a usable session. What IS separately proven
+live: a locally signed-out session's token dies immediately (L5,
+`refresh_token_not_found`) — revocation, unlike supersession, binds at
+once. Disposition: controller/owner — the compensating-control record is
+measurement-contradicted and its correction is controller-class; a
+follow-up unit discriminates the hypothesis (present a superseded token
+whose successor HAS been used; present a deeper ancestor — each expects
+revocation if detection semantics hold) and re-measures. This unit fixes
+nothing.
 
 **F2 — JWT-expiry posture drift (`L6-jwt-expiry.txt`).** Ruling 23 and
 PROJECT-STATE record staging JWT expiry as 600 s, owner-confirmed
@@ -211,8 +234,12 @@ attestation, or any future live round.
    is deterministic over the bytes it scanned; the control's scratch path
    varies per run.
 5. **Staging's reuse-interval and reuse-detection dashboard values.** Not
-   read by this unit; F1's cause is therefore undetermined here (stated in
-   the finding).
+   read by this unit's instruments. Owner-read post-run and reported
+   in-session — interval 10 s, detection on, unchanged — recorded as an
+   owner-executed environment fact (unbound by artifact) that narrows F1's
+   cause; the discriminating reuse probes (superseded-with-USED-successor;
+   deeper ancestor) are NOT RUN — follow-up-unit instruments, each costing
+   sessions and messages.
 6. **The post-run 600-second expiry.** Owner-reported (18:02), unbound by
    any artifact here; first bound by the next artifact measuring a session
    issued after it (the device attestation, or a future round).

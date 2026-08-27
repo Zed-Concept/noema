@@ -157,6 +157,27 @@ procedure's 1 is unconsumed.
 **LOCK status line:** `Status: BUILD` — read and left untouched
 (controller-owned transitions; reported here per AGENTS.md).
 
+**Post-report amendment, 2026-08-27, same builder session — F1 narrowed by
+an owner dashboard reading; the paragraph above stands, this governs.** The
+owner read the staging dashboard after the run and reported in-session:
+**reuse interval 10 s, compromised-token detection ON, unchanged.** The
+finding-1 paragraph's longer-interval hypothesis is thereby ELIMINATED —
+the 30-second acceptance is not configuration. The measured pair (superseded
+token → 200; its successor then used normally) matches a narrower server
+semantic, recorded as a HYPOTHESIS per learning 20 (no server source read;
+probes decide): a superseded token whose successor has never been used is
+honored as a retry, independent of the interval. That is **exactly the
+ruling-25 residue schedule** — superseded token on disk, successor returned
+but never persisted and never used — so compensating control 2 for Known
+Issues 1–2 was not observed to hold in the schedule it was written for.
+Correction of the measurement-contradicted control record is
+controller-class; the discriminating probes (superseded-with-USED-successor;
+deeper ancestor) are named follow-up-unit instruments. Also recorded: the
+owner's meter report was given twice as "reads N" with no numeric value —
+recorded verbatim; the instrument-counted 3 is the budget fact. Amendment
+touch-set: the 007a README (F1 body, NOT RUN item 5, budget line), this
+paragraph, and the Active work row — no other file.
+
 ---
 
 ## 2026-08-27 — REVIEW-028, Unit E subtraction correction 3c
